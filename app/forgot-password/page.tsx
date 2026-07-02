@@ -231,11 +231,11 @@ export default function ForgotPasswordPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#f4f4f4] flex flex-col font-['Rubik']">
+    <div className="min-h-screen bg-canvas flex flex-col font-['Rubik']">
 
 
       <div className="flex-1 flex items-center justify-center p-4 md:p-10">
-        <div className="w-full max-w-[450px] bg-white rounded-[3px] shadow-lg border border-gray-100 flex flex-col overflow-hidden">
+        <div className="w-full max-w-[450px] bg-white rounded-sm shadow-lg border border-gray-100 flex flex-col overflow-hidden">
 
           {/* Header Section */}
           <div className="p-4 sm:p-6 md:p-8 flex flex-col gap-6">
@@ -292,9 +292,9 @@ export default function ForgotPasswordPage() {
                         placeholder={t("login.emailPlaceholder")}
                         value={email}
                         onChange={(e) => { setEmail(e.target.value); if (errors.email) setErrors({ ...errors, email: "" }); }}
-                        className={`w-full h-10 sm:h-11 bg-white px-3 text-sm rounded-[1px] outline outline-1 transition-all cursor-text ${errors.email ? 'outline-red-500' : 'outline-neutral-200 focus:outline-black focus:outline-2 focus:ring-1 focus:ring-black'}`}
+                        className={`w-full h-10 sm:h-11 bg-white px-3 text-sm rounded-xs outline outline-1 transition-all cursor-text ${errors.email ? 'outline-red-500' : 'outline-neutral-200 focus:outline-black focus:outline-2 focus:ring-1 focus:ring-black'}`}
                       />
-                      {errors.email && <span className="text-red-500 text-[11px] font-medium leading-none">{errors.email}</span>}
+                      {errors.email && <span className="text-red-500 text-label font-medium leading-none">{errors.email}</span>}
                     </div>
                   ) : (
                     <div className="flex flex-col gap-1.5 relative">
@@ -302,7 +302,7 @@ export default function ForgotPasswordPage() {
                         <span className="text-black text-xs font-semibold uppercase tracking-tight">{t("forgotPassword.mobileNumber")}</span>
                         <span className="text-red-600 text-xl font-semibold leading-none mt-1">*</span>
                       </div>
-                      <div className={`flex h-10 sm:h-11 bg-white rounded-[1px] outline outline-1 transition-all overflow-visible ${errors.mobile ? 'outline-red-500' : 'outline-neutral-200 focus-within:outline-black focus-within:outline-2'}`}>
+                      <div className={`flex h-10 sm:h-11 bg-white rounded-xs outline outline-1 transition-all overflow-visible ${errors.mobile ? 'outline-red-500' : 'outline-neutral-200 focus-within:outline-black focus-within:outline-2'}`}>
                         <div
                           className="bg-[#f5f5f5] px-3 flex items-center gap-2 border-r border-neutral-200 cursor-pointer min-w-[75px] sm:min-w-[100px] hover:bg-neutral-200 transition-colors"
                           onClick={() => setShowDropdown(!showDropdown)}
@@ -321,7 +321,7 @@ export default function ForgotPasswordPage() {
                         />
 
                         {showDropdown && (
-                          <div className="absolute top-full mt-1 left-0 w-full bg-white border border-neutral-300 shadow-2xl z-[9999] rounded-[2px] overflow-hidden">
+                          <div className="absolute top-full mt-1 left-0 w-full bg-white border border-neutral-300 shadow-2xl z-[9999] rounded-xs overflow-hidden">
                             {COUNTRY_CODES.map((item) => (
                               <div
                                 key={item.code}
@@ -330,13 +330,13 @@ export default function ForgotPasswordPage() {
                               >
                                 <span className={item.flagClass}></span>
                                 <span className="text-xs font-bold text-black">{item.code}</span>
-                                <span className="text-[10px] text-gray-400 italic">{item.country}</span>
+                                <span className="text-caption text-gray-400 italic">{item.country}</span>
                               </div>
                             ))}
                           </div>
                         )}
                       </div>
-                      {errors.mobile && <span className="text-red-500 text-[11px] font-medium leading-none">{errors.mobile}</span>}
+                      {errors.mobile && <span className="text-red-500 text-label font-medium leading-none">{errors.mobile}</span>}
                     </div>
                   )}
                 </>
@@ -355,13 +355,13 @@ export default function ForgotPasswordPage() {
                     placeholder={t("login.enterOtp")}
                     value={otp}
                     onChange={(e) => { setOtp(e.target.value); if (errors.otp) setErrors({ ...errors, otp: "" }); }}
-                    className={`w-full h-10 sm:h-11 bg-white px-3 text-sm text-center font-bold tracking-[6px] sm:tracking-[8px] rounded-[1px] outline outline-1 transition-all placeholder:tracking-normal placeholder:font-normal cursor-text ${errors.otp ? 'outline-red-500' : 'outline-neutral-200 focus:outline-black focus:outline-2 focus:ring-1 focus:ring-black'}`}
+                    className={`w-full h-10 sm:h-11 bg-white px-3 text-sm text-center font-bold tracking-[6px] sm:tracking-[8px] rounded-xs outline outline-1 transition-all placeholder:tracking-normal placeholder:font-normal cursor-text ${errors.otp ? 'outline-red-500' : 'outline-neutral-200 focus:outline-black focus:outline-2 focus:ring-1 focus:ring-black'}`}
                   />
-                  {errors.otp && <span className="text-red-500 text-[11px] font-medium leading-none">{errors.otp}</span>}
+                  {errors.otp && <span className="text-red-500 text-label font-medium leading-none">{errors.otp}</span>}
                   <button
                     type="button"
                     onClick={handleSendMobileOtp}
-                    className="text-amber-600 text-[11px] font-semibold text-right mt-1 hover:underline cursor-pointer"
+                    className="text-amber-600 text-label font-semibold text-right mt-1 hover:underline cursor-pointer"
                   >
                     {t("forgotPassword.resendCode")}
                   </button>
@@ -382,9 +382,9 @@ export default function ForgotPasswordPage() {
                       placeholder={t("login.passwordPlaceholder")}
                       value={newPassword}
                       onChange={(e) => { setNewPassword(e.target.value); if (errors.password) setErrors({ ...errors, password: "" }); }}
-                      className={`w-full h-10 sm:h-11 bg-white px-3 text-sm rounded-[1px] outline outline-1 transition-all cursor-text ${errors.password ? 'outline-red-500' : 'outline-neutral-200 focus:outline-black focus:outline-2 focus:ring-1 focus:ring-black'}`}
+                      className={`w-full h-10 sm:h-11 bg-white px-3 text-sm rounded-xs outline outline-1 transition-all cursor-text ${errors.password ? 'outline-red-500' : 'outline-neutral-200 focus:outline-black focus:outline-2 focus:ring-1 focus:ring-black'}`}
                     />
-                    {errors.password && <span className="text-red-500 text-[11px] font-medium leading-none">{errors.password}</span>}
+                    {errors.password && <span className="text-red-500 text-label font-medium leading-none">{errors.password}</span>}
                   </div>
 
                   <div className="flex flex-col gap-1.5">
@@ -398,9 +398,9 @@ export default function ForgotPasswordPage() {
                       placeholder={t("forgotPassword.confirmPassword")}
                       value={confirmPassword}
                       onChange={(e) => { setConfirmPassword(e.target.value); if (errors.confirmPassword) setErrors({ ...errors, confirmPassword: "" }); }}
-                      className={`w-full h-10 sm:h-11 bg-white px-3 text-sm rounded-[1px] outline outline-1 transition-all cursor-text ${errors.confirmPassword ? 'outline-red-500' : 'outline-neutral-200 focus:outline-black focus:outline-2 focus:ring-1 focus:ring-black'}`}
+                      className={`w-full h-10 sm:h-11 bg-white px-3 text-sm rounded-xs outline outline-1 transition-all cursor-text ${errors.confirmPassword ? 'outline-red-500' : 'outline-neutral-200 focus:outline-black focus:outline-2 focus:ring-1 focus:ring-black'}`}
                     />
-                    {errors.confirmPassword && <span className="text-red-500 text-[11px] font-medium leading-none">{errors.confirmPassword}</span>}
+                    {errors.confirmPassword && <span className="text-red-500 text-label font-medium leading-none">{errors.confirmPassword}</span>}
                   </div>
                 </>
               )}
@@ -410,9 +410,9 @@ export default function ForgotPasswordPage() {
                   id="submit-button"
                   type="submit"
                   disabled={loading || reduxLoading}
-                  className="w-full h-12 bg-amber-400 hover:bg-amber-500 rounded-[3px] flex justify-center items-center transition-all disabled:opacity-50 shadow-sm active:scale-[0.98] cursor-pointer"
+                  className="w-full h-12 bg-amber-400 hover:bg-amber-500 rounded-sm flex justify-center items-center transition-all disabled:opacity-50 shadow-sm active:scale-[0.98] cursor-pointer"
                 >
-                  <div className="text-center text-black text-[13px] font-bold uppercase tracking-wider cursor-pointer">
+                  <div className="text-center text-black text-body font-bold uppercase tracking-wider cursor-pointer">
                     {loading || reduxLoading ? t("forgotPassword.sending") : (
                       step === 'input' ? (resetMode === 'email' ? t("forgotPassword.sendResetLink") : t("forgotPassword.sendOtp")) :
                         step === 'otp' ? t("forgotPassword.verifyOtpButton") : t("forgotPassword.resetPasswordButton")

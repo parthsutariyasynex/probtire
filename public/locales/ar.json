@@ -212,6 +212,7 @@
   "cart.yourCartIsEmpty": "سلة التسوق فارغة.",
   "cart.addItems": "أضف منتجات لتظهر هنا.",
   "cart.updatingCart": "جارٍ تحديث السلة...",
+  "cart.processingAddToCart": "جارٍ إضافة المنتج إلى السلة...",
   "cart.itemDescription": "وصف المنتج",
   "cart.price": "السعر",
   "cart.qty": "الكمية",

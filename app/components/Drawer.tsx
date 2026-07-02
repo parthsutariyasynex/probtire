@@ -10,19 +10,20 @@ interface DrawerProps {
     children: React.ReactNode;
     title?: string;
     scrollable?: boolean;
+    widthClassName?: string;
 }
 
 /**
  * Reusable Side Drawer component that slides in from the right.
  * Now powered by Framer Motion for premium smooth animations.
  */
-export default function Drawer({ isOpen, onClose, children, title, scrollable = false }: DrawerProps) {
+export default function Drawer({ isOpen, onClose, children, title, scrollable = false, widthClassName = "" }: DrawerProps) {
     return (
         <Popup
             isOpen={isOpen}
             onClose={onClose}
             animation="slide-right"
-            className="flex flex-col"
+            className={`flex flex-col ${widthClassName}`}
             scrollable={scrollable}
         >
             {/* Close Button Overlay */}
@@ -36,8 +37,8 @@ export default function Drawer({ isOpen, onClose, children, title, scrollable = 
 
             {/* Header if title exists */}
             {title && (
-                <div className="px-6 py-5 border-b border-gray-100 flex-shrink-0">
-                    <h2 className="text-xl font-bold text-gray-800">{title}</h2>
+                <div className="bg-brand-yellow px-4 py-4 flex items-center justify-between flex-shrink-0">
+                    <h2 className="text-xl font-bold text-black">{title}</h2>
                 </div>
             )}
 

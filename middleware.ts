@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getToken } from "next-auth/jwt";
+import { KLEVER_MENU_ITEMS_QUERY } from "@/src/graphql/queries";
 
 // ─── i18n config ────────────────────────────────────────────────────────────
 const LOCALES = ["en", "ar"] as const;
@@ -49,7 +50,6 @@ type ResolvedUrl =
 const urlResolutionCache = new Map<string, ResolvedUrl>();
 
 // Cache of the dynamic "first category URL" used as the default landing path.
-// Populated by calling Magento's /menu endpoint with the user's auth token.
 const defaultLandingCache = new Map<string, { path: string; expires: number }>();
 const LANDING_CACHE_TTL_MS = 60 * 60 * 1000;
 
@@ -58,29 +58,23 @@ async function getDefaultLandingPath(request: NextRequest, locale: string): Prom
     if (cached && cached.expires > Date.now()) return cached.path;
 
     try {
-        const jwt = await getToken({
-            req: request,
-            secret: process.env.NEXTAUTH_SECRET || "yoursecret",
-            secureCookie: process.env.NODE_ENV === "production",
-        });
-        const accessToken = (jwt as any)?.accessToken;
-        if (!accessToken) return null;
-
         const domain = process.env.NEXT_PUBLIC_MAGENTO_BASE_URL || "https://altalayi-demo.btire.com";
-        const res = await fetch(`${domain}/rest/${locale}/V1/kleverapi/menu`, {
-            headers: {
-                "Content-Type": "application/json",
-                "Authorization": `Bearer ${accessToken}`,
-            },
+        const res = await fetch(`${domain}/graphql`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Store: locale },
+            body: JSON.stringify({ query: KLEVER_MENU_ITEMS_QUERY }),
             cache: "no-store",
         });
         if (!res.ok) return null;
 
-        const items = await res.json();
-        if (!Array.isArray(items)) return null;
+        const json = await res.json();
+        if (Array.isArray(json?.errors) && json.errors.length > 0) return null;
 
-        // Pick the first menu item whose URL is a category page (ends with .html).
+        const items: any[] = Array.isArray(json?.data?.kleverMenuItems) ? json.data.kleverMenuItems : [];
+
+        // Pick the first visible menu item whose URL is a category page (ends with .html).
         for (const item of items) {
+            if (item?.is_visible === false) continue;
             const url = item?.url || "";
             if (typeof url === "string" && url.endsWith(".html")) {
                 try {

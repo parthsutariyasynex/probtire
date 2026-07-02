@@ -44,11 +44,15 @@ export async function GET(req: Request) {
         const excl = prices.subtotal_excluding_tax?.value;
         const tax_amount = taxFromApplied || (typeof incl === "number" && typeof excl === "number" ? incl - excl : 0);
         const shipping_amount = json?.data?.cart?.shipping_addresses?.[0]?.selected_shipping_method?.amount?.value ?? 0;
+        const discount_amount = Array.isArray(prices.discounts)
+            ? prices.discounts.reduce((sum: number, d: any) => sum + (d?.amount?.value ?? 0), 0)
+            : 0;
 
         return NextResponse.json({
             subtotal,
             tax_amount,
             shipping_amount,
+            discount_amount,
             grand_total: grand,
             currency_code: prices.grand_total?.currency ?? "SAR",
         });

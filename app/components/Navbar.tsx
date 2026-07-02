@@ -477,7 +477,8 @@ export default function Navbar() {
 
 
   return (
-    <div className={`main-header w-full ${isScrolled ? 'fixed fadeInDown' : 'relative'} top-0 left-0 right-0 z-[60] flex flex-col transition-all duration-300 ease-in-out`}>
+    <>
+      <div className={`main-header w-full ${isScrolled ? 'fixed fadeInDown' : 'relative'} top-0 left-0 right-0 z-[60] flex flex-col transition-all duration-300 ease-in-out`}>
 
       {/* ── HEADER ── */}
       <header className="bg-white border-b border-gray-100 shadow-[0_1px_4px_rgba(0,0,0,0.06)]">
@@ -516,14 +517,14 @@ export default function Navbar() {
               <div className="relative hidden lg:block" ref={dropdownRef}>
                 <div
                   onClick={() => setIsProfileOpen(!isProfileOpen)}
-                  className="flex items-center gap-1.5 lg:gap-2 bg-white border border-gray-100 rounded-full px-1.5 lg:px-3 py-1 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.12)] hover:shadow-md transition-shadow group cursor-pointer"
+                  className="flex items-center gap-1.5 lg:gap-2 bg-white border border-[#ddd] rounded-full ltr:pl-1 ltr:pr-3 rtl:pr-1 rtl:pl-3 py-1 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.12)] hover:shadow-md transition-shadow group cursor-pointer"
                 >
-                  <div className="w-7 h-7 bg-[#f5b21a] rounded-full flex items-center justify-center flex-shrink-0 transition-transform">
-                    <UserCircle size={16} strokeWidth={2.5} />
+                  <div className="w-7 h-7 bg-brand-yellow rounded-full flex items-center justify-center flex-shrink-0 transition-transform">
+                    <UserCircle size={16} strokeWidth={2.5} className="text-black" />
                   </div>
                   <div className="flex flex-col min-w-0 pr-1 rtl:pr-0 rtl:pl-1">
-                    <span className="hidden lg:block text-[8px] text-gray-400 font-bold uppercase tracking-widest leading-none">{t("nav.welcomeBack")}</span>
-                    <span className="text-[11px] lg:text-[12px] text-black font-black tracking-tighter leading-snug mt-0.5 truncate max-w-[80px] lg:max-w-[140px] font-bold" dir="auto">
+                    <span className="hidden lg:block text-[8px] text-black/50 font-semibold uppercase tracking-widest leading-none">{t("nav.welcomeBack")}</span>
+                    <span className="text-body text-black font-semibold tracking-tighter leading-snug mt-0.5 truncate max-w-[80px] lg:max-w-[140px]" dir="auto">
                       {isSubAccount && subAccountName ? subAccountName : displayUser}
                     </span>
                   </div>
@@ -534,7 +535,7 @@ export default function Navbar() {
                   <div className="absolute right-0 mt-2 w-48 bg-white rounded-sm shadow-2xl border border-gray-200 py-1 z-[100]" dir={isRtl ? "rtl" : "ltr"}>
                     <Link
                       href={lp("/customer/account")}
-                      className="block px-4 py-2.5 text-[12px] font-bold text-gray-800 hover:bg-gray-50 transition-colors ltr:text-left rtl:text-right"
+                      className="block px-4 py-2.5 text-body-sm font-bold text-gray-800 hover:bg-gray-50 transition-colors ltr:text-left rtl:text-right"
                       onClick={() => setIsProfileOpen(false)}
                     >
                       {t("nav.myAccount")}
@@ -542,7 +543,7 @@ export default function Navbar() {
                     {isSubAccount && (
                       <Link
                         href={lp("/customer/account")}
-                        className="block px-4 py-2.5 text-[12px] font-bold text-red-600 hover:bg-red-50 transition-colors border-t border-gray-100 ltr:text-left rtl:text-right"
+                        className="block px-4 py-2.5 text-body-sm font-bold text-red-600 hover:bg-red-50 transition-colors border-t border-gray-100 ltr:text-left rtl:text-right"
                         onClick={() => {
                           setIsProfileOpen(false);
                           localStorage.removeItem("subAccountName");
@@ -556,7 +557,7 @@ export default function Navbar() {
                     )}
                     <button
                       onClick={handleLogout}
-                      className="w-full ltr:text-left rtl:text-right px-4 py-2.5 text-[12px] font-bold text-gray-800 hover:bg-gray-50 transition-colors cursor-pointer border-t border-gray-100"
+                      className="w-full ltr:text-left rtl:text-right px-4 py-2.5 text-body-sm font-bold text-gray-800 hover:bg-gray-50 transition-colors cursor-pointer border-t border-gray-100"
                     >
                       {t("nav.signOut")}
                     </button>
@@ -590,7 +591,7 @@ export default function Navbar() {
               >
                 <Bell size={24} fill="black" stroke="black" strokeWidth={1} />
                 {unreadCount > 0 && (
-                  <span className="absolute w-[26px] h-[26px] font-medium text-[12px] -top-[13px] -right-[14px] bg-[#f5af02] text-black font-black flex items-center justify-center rounded-full border border-white">
+                  <span className="absolute w-[26px] h-[26px] font-medium text-body-sm -top-[13px] -right-[14px] bg-brand-yellow text-black font-black flex items-center justify-center rounded-full border border-white">
                     {unreadCount}
                   </span>
                 )}
@@ -606,7 +607,7 @@ export default function Navbar() {
               >
                 <ShoppingCart size={24} strokeWidth={1.5} />
                 {cartCount > 0 && (
-                  <span className="absolute w-[20px] h-[20px] lg:w-[26px] lg:h-[26px] font-medium text-[9px] lg:text-[12px] -top-[10px] -right-[6px] lg:-right-[14px] bg-[#f5af02] text-black font-black flex items-center justify-center rounded-full border border-white">
+                  <span className="absolute w-[20px] h-[20px] lg:w-[26px] lg:h-[26px] font-medium text-micro lg:text-body-sm -top-[10px] -right-[6px] lg:-right-[14px] lg:-top-[13px] bg-brand-yellow text-black font-black flex items-center justify-center rounded-full border border-white">
                     {cartCount}
                   </span>
                 )}
@@ -629,14 +630,14 @@ export default function Navbar() {
 
       {/* ── YELLOW NAV BAR — desktop only ── */}
       {/* Always rendered with a fixed min-height matching a loaded link's
-          natural height (py-3 + text-[16px] ≈ 48px) so the navbar's total
+          natural height (py-3 + text-h3-sm ≈ 48px) so the navbar's total
           height never shifts between (loading | menu loaded | menu empty). */}
-      <nav className="bg-[#f5b21a] w-full hidden lg:block min-h-[48px]">
+      <nav className="bg-brand-yellow w-full hidden lg:block min-h-[48px]">
         <div className="flex items-center justify-center max-w-[1280px] mx-auto px-2 lg:px-4 min-h-[48px]">
           {navLoading ? (
             <div className="flex items-center gap-6">
               {[1, 2, 3, 4, 5].map(i => (
-                <div key={i} className="h-3 w-20 bg-yellow-500/40 rounded animate-pulse" />
+                <div key={i} className="h-3 w-20 bg-black/10 rounded animate-pulse" />
               ))}
             </div>
           ) : (
@@ -647,7 +648,7 @@ export default function Navbar() {
                 <Link
                   key={item.href || item.code || item.label}
                   href={href}
-                  className={`py-3 flex items-center h-full px-2.5 lg:px-7 text-[11px] lg:text-[16px] font-semibold capitalize transition-all duration-200 whitespace-nowrap ${isActive
+                  className={`py-3 flex items-center h-full px-2.5 lg:px-7 text-label lg:text-h3-sm font-semibold capitalize transition-all duration-200 whitespace-nowrap ${isActive
                     ? "bg-black text-white"
                     : "text-black hover:bg-black hover:text-white"
                     }`}
@@ -670,8 +671,8 @@ export default function Navbar() {
               <div className="px-4 py-3 bg-gray-50 border-b border-gray-100 mb-1">
                 <div className="flex items-center gap-3">
                   <div className="flex flex-col overflow-hidden">
-                    <span className="text-[9px] text-gray-400 font-bold uppercase tracking-widest leading-none">{t("nav.loggedInAs")}</span>
-                    <span className="text-[12px] text-black font-black uppercase truncate tracking-tight" dir="auto">
+                    <span className="text-micro text-gray-400 font-bold uppercase tracking-widest leading-none">{t("nav.loggedInAs")}</span>
+                    <span className="text-body-sm text-black font-black uppercase truncate tracking-tight" dir="auto">
                       {isSubAccount && subAccountName ? subAccountName : displayUser}
                     </span>
                   </div>
@@ -681,7 +682,7 @@ export default function Navbar() {
 
             {/* Nav links */}
             <div className="px-4 py-2">
-              <span className="text-[9px] font-bold text-gray-400 uppercase tracking-[0.2em] block mb-2">{t("nav.navigation")}</span>
+              <span className="text-micro font-bold text-gray-400 uppercase tracking-[0.2em] block mb-2">{t("nav.navigation")}</span>
               {navLinks.map((item) => {
                 const href = resolveNavHref(item);
                 const isActive = pathname === href || pathname?.startsWith(href + "/");
@@ -689,12 +690,12 @@ export default function Navbar() {
                   <Link
                     key={item.href}
                     href={href}
-                    className={`py-2.5 text-[12px] font-bold uppercase tracking-wide flex items-center justify-between group ${isActive ? "text-[#f5b21a]" : "text-black hover:text-[#f5b21a]"
+                    className={`py-2.5 text-body-sm font-bold uppercase tracking-wide flex items-center justify-between group ${isActive ? "text-brand-yellow" : "text-black hover:text-brand-yellow"
                       }`}
                     onClick={() => setIsMenuOpen(false)}
                   >
                     {item.label}
-                    <span className="text-gray-300 group-hover:text-[#f5b21a] transition-colors text-[10px]">→</span>
+                    <span className="text-gray-300 group-hover:text-brand-yellow transition-colors text-caption">→</span>
                   </Link>
                 );
               })}
@@ -702,24 +703,24 @@ export default function Navbar() {
 
             {/* Quick actions */}
             <div className="px-4 py-3 mt-1 border-t border-gray-100">
-              <span className="text-[9px] font-bold text-gray-400 uppercase tracking-[0.2em] block mb-2">{t("nav.quickActions")}</span>
+              <span className="text-micro font-bold text-gray-400 uppercase tracking-[0.2em] block mb-2">{t("nav.quickActions")}</span>
 
               {isAuthenticated && pathname !== "/login" && (
                 <>
                   <button
                     onClick={() => { setIsSearchOpen(true); setIsMenuOpen(false); }}
-                    className="py-2.5 text-[12px] font-bold text-gray-700 flex items-center gap-3 w-full text-start"
+                    className="py-2.5 text-body-sm font-bold text-gray-700 flex items-center gap-3 w-full text-start"
                   >
                     <Search size={16} /> {t("nav.searchProducts") || "Search Products"}
                   </button>
 
                   <button
                     onClick={() => { setIsNotificationOpen(true); setIsMenuOpen(false); }}
-                    className="py-2.5 text-[12px] font-bold text-gray-700 flex items-center gap-3 w-full"
+                    className="py-2.5 text-body-sm font-bold text-gray-700 flex items-center gap-3 w-full"
                   >
                     <Bell size={16} /> {t("nav.notifications")} ({unreadCount})
                   </button>
-                  <Link href={lp("/customer/account")} className="py-2.5 text-[12px] font-bold text-gray-700 flex items-center gap-3" onClick={() => setIsMenuOpen(false)}>
+                  <Link href={lp("/customer/account")} className="py-2.5 text-body-sm font-bold text-gray-700 flex items-center gap-3" onClick={() => setIsMenuOpen(false)}>
 
                     <UserCircle size={16} /> {t("nav.myAccount")}
                   </Link>
@@ -733,7 +734,7 @@ export default function Navbar() {
               {isAuthenticated && pathname !== "/login" && (
                 <button
                   onClick={handleLogout}
-                  className="py-2.5 mt-2 text-[12px] font-bold text-red-600 flex items-center gap-3 border-t border-gray-100 w-full pt-3"
+                  className="py-2.5 mt-2 text-body-sm font-bold text-red-600 flex items-center gap-3 border-t border-gray-100 w-full pt-3"
                 >
                   <LogOut size={16} /> {t("nav.signOut")}
                 </button>
@@ -748,5 +749,7 @@ export default function Navbar() {
       <SearchPopup isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
 
     </div>
+    {isScrolled && <div className="h-[56px] sm:h-[64px] lg:h-[120px] pointer-events-none w-full" />}
+  </>
   );
 }

@@ -96,8 +96,8 @@ const SearchableDropdown: React.FC<SearchableDropdownProps> = ({
 
     const renderDropdownList = () => (
         <>
-            <div className="px-3 sm:px-4 py-2 bg-[#f5a623] border-b border-yellow-600/20">
-                <span className="text-[12px] sm:text-[14px] font-semibold text-black uppercase tracking-tight">
+            <div className="px-3 sm:px-4 py-2 bg-brand-yellow border-b border-yellow-600/20">
+                <span className="text-body-sm sm:text-body-lg font-semibold text-black uppercase tracking-tight">
                     {label.replace(" Options", "")}
                 </span>
             </div>
@@ -110,12 +110,12 @@ const SearchableDropdown: React.FC<SearchableDropdownProps> = ({
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                         placeholder={t("m.search")}
-                        className="w-full pl-8 pr-8 py-1.5 text-[12px] sm:text-[14px] bg-gray-50 border border-gray-200 rounded outline-none focus:ring-1 focus:ring-[#f5a623] focus:border-[#f5a623] transition-all"
+                        className="w-full pl-8 pr-8 py-1.5 text-body-sm sm:text-body-lg bg-gray-50 border border-gray-200 rounded outline-none focus:ring-1 focus:ring-brand-yellow focus:border-brand-yellow transition-all"
                     />
                     {searchTerm && (
                         <button
                             onClick={() => setSearchTerm("")}
-                            className="absolute right-2 top-1/2 -translate-y-1/2 hover:text-[#f5a623] text-gray-400"
+                            className="absolute right-2 top-1/2 -translate-y-1/2 hover:text-brand-yellow text-gray-400"
                         >
                             <X className="w-3 h-3" />
                         </button>
@@ -134,8 +134,8 @@ const SearchableDropdown: React.FC<SearchableDropdownProps> = ({
                                 setIsOpen(false);
                                 setSearchTerm("");
                             }}
-                            className={`px-3 sm:px-4 py-2.5 sm:py-3 text-[12px] sm:text-[14px] font-semibold cursor-pointer transition-colors ${value === opt.value
-                                ? "bg-yellow-50 text-black border-l-4 border-[#f5a623]"
+                            className={`px-3 sm:px-4 py-2.5 sm:py-3 text-body-sm sm:text-body-lg font-semibold cursor-pointer transition-colors ${value === opt.value
+                                ? "bg-yellow-50 text-black border-l-4 border-brand-yellow"
                                 : "text-gray-700 hover:bg-gray-50 hover:text-black"
                                 }`}
                         >
@@ -143,7 +143,7 @@ const SearchableDropdown: React.FC<SearchableDropdownProps> = ({
                         </div>
                     ))
                 ) : (
-                    <div className="px-4 py-6 text-center text-[12px] text-gray-500 font-medium italic">
+                    <div className="px-4 py-6 text-center text-body-sm text-gray-500 font-medium italic">
                         {emptyMessage}
                     </div>
                 )}
@@ -157,11 +157,11 @@ const SearchableDropdown: React.FC<SearchableDropdownProps> = ({
                 ref={triggerRef}
                 onClick={handleToggle}
                 className={`flex items-center justify-between px-3 sm:px-4 py-2.5 w-full bg-white border rounded cursor-pointer transition-all h-full ${disabled ? "bg-gray-50 border-gray-200 cursor-not-allowed text-gray-400" :
-                    loading ? "border-[#f5a623] bg-yellow-50 cursor-wait text-gray-800" :
-                        "border-gray-300 hover:border-[#f5a623] text-gray-800"
-                    } ${isOpen ? "ring-2 ring-[#f5a623]/20 border-[#f5a623]" : ""}`}
+                    loading ? "border-brand-yellow bg-yellow-50 cursor-wait text-gray-800" :
+                        "border-gray-300 hover:border-brand-yellow text-gray-800"
+                    } ${isOpen ? "ring-2 ring-brand-yellow/20 border-brand-yellow" : ""}`}
             >
-                <span className="text-[12px] sm:text-[14px] font-semibold truncate">
+                <span className="text-body-sm sm:text-body-lg font-semibold truncate">
                     {loading ? "Loading..." : displayLabel}
                 </span>
                 <ChevronDown className={`w-4 h-4 flex-shrink-0 ml-1 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`} />
@@ -346,7 +346,7 @@ const HorizontalFilter: React.FC<HorizontalFilterProps> = ({ onSearch, initialVa
         return (
             <div className="flex flex-col gap-4 w-full overflow-visible">
                 <div className="flex flex-col gap-3">
-                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{t("m.width")}</label>
+                    <label className="text-caption font-black text-gray-400 uppercase tracking-widest">{t("m.width")}</label>
                     <div className="h-[48px]">
                         {loadingWidth ? <Skeleton className="w-full h-full" /> : (
                             <SearchableDropdown label="Width" placeholder={t("m.width")} options={widthList} value={width} onChange={setWidth} loading={loadingWidth} direction="down" />
@@ -354,7 +354,7 @@ const HorizontalFilter: React.FC<HorizontalFilterProps> = ({ onSearch, initialVa
                     </div>
                 </div>
                 <div className="flex flex-col gap-3">
-                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{t("m.height")}</label>
+                    <label className="text-caption font-black text-gray-400 uppercase tracking-widest">{t("m.height")}</label>
                     <div className="h-[48px]">
                         {loadingHeight ? <Skeleton className="w-full h-full" /> : (
                             <SearchableDropdown label="Height" placeholder={t("m.height")} options={heightList} value={height} onChange={setHeight} loading={loadingHeight} emptyMessage={t("filter.noHeights")} direction="down" />
@@ -362,7 +362,7 @@ const HorizontalFilter: React.FC<HorizontalFilterProps> = ({ onSearch, initialVa
                     </div>
                 </div>
                 <div className="flex flex-col gap-3">
-                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{t("m.rim")}</label>
+                    <label className="text-caption font-black text-gray-400 uppercase tracking-widest">{t("m.rim")}</label>
                     <div className="h-[48px]">
                         {loadingRim ? <Skeleton className="w-full h-full" /> : (
                             <SearchableDropdown label="Rim" placeholder={t("m.rim")} options={rimList} value={rim} onChange={setRim} loading={loadingRim} emptyMessage={t("filter.noRims")} direction="down" />
@@ -372,7 +372,7 @@ const HorizontalFilter: React.FC<HorizontalFilterProps> = ({ onSearch, initialVa
                 <div className="flex gap-3 mt-2">
                     <button
                         onClick={handleSearchClick}
-                        className="flex-1 h-[48px] bg-[#f5a623] hover:bg-black hover:text-white rounded-lg text-black font-semibold italic uppercase text-[13px] tracking-tight active:scale-95 cursor-pointer flex items-center justify-center gap-2 shadow-sm transition-all"
+                        className="flex-1 h-[48px] bg-brand-yellow hover:bg-black hover:text-white rounded-lg text-black font-semibold italic uppercase text-body tracking-tight active:scale-95 cursor-pointer flex items-center justify-center gap-2 shadow-sm transition-all"
                     >
                         <Search className="w-4 h-4" /> {t("m.search")}
                     </button>
@@ -392,8 +392,8 @@ const HorizontalFilter: React.FC<HorizontalFilterProps> = ({ onSearch, initialVa
     return (
         <div className="w-full bg-white h-full px-2 sm:px-4 md:px-6 flex items-center justify-center gap-2 sm:gap-4 flex-nowrap overflow-visible relative">
             {/* Label */}
-            <div className="bg-[#f5a623] px-4 md:px-6 py-2 md:py-2.5 rounded shadow-sm flex-shrink-0">
-                <span className="text-black font-semibold italic uppercase text-[12px] md:text-[15px] tracking-tight whitespace-nowrap">
+            <div className="bg-brand-yellow px-4 md:px-6 py-2 md:py-2.5 rounded shadow-sm flex-shrink-0">
+                <span className="text-black font-semibold italic uppercase text-body-sm md:text-body-xl tracking-tight whitespace-nowrap">
                     {t("m.search-by-size")}
                 </span>
             </div>
@@ -418,7 +418,7 @@ const HorizontalFilter: React.FC<HorizontalFilterProps> = ({ onSearch, initialVa
 
             <button
                 onClick={handleSearchClick}
-                className="bg-[#f5a623] hover:bg-black hover:text-white px-4 sm:px-6 md:px-10 py-2 md:py-2.5 h-[40px] md:h-[45px] rounded border-none shadow-sm transition-all text-black font-semibold italic uppercase text-[12px] md:text-[15px] tracking-tight active:scale-95 cursor-pointer flex-shrink-0 flex items-center justify-center"
+                className="bg-brand-yellow hover:bg-black hover:text-white px-4 sm:px-6 md:px-10 py-2 md:py-2.5 h-[40px] md:h-[45px] rounded border-none shadow-sm transition-all text-black font-semibold italic uppercase text-body-sm md:text-body-xl tracking-tight active:scale-95 cursor-pointer flex-shrink-0 flex items-center justify-center"
             >
                 {t("m.search")}
             </button>

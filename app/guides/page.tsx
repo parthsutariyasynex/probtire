@@ -103,7 +103,7 @@ function VideoModal({
                     >
                         {/* Header - black bar */}
                         <div className="flex items-center justify-between bg-[#1a1a1a] px-4 py-2">
-                            <span className="text-white text-[13px] font-normal truncate pr-4">
+                            <span className="text-white text-body font-normal truncate pr-4">
                                 {title}
                             </span>
                             <div className="flex items-center gap-1 flex-shrink-0">
@@ -214,13 +214,13 @@ export default function UserGuidesPage() {
                                         className="w-full h-full object-cover"
                                     />
                                     <div className="absolute inset-0 flex items-center justify-center pointer-events-none transition-transform group-hover:scale-110 duration-300">
-                                        <div className="w-14 h-14 bg-[#f5b21a] rounded-full flex items-center justify-center shadow-md">
+                                        <div className="w-14 h-14 bg-brand-yellow rounded-full flex items-center justify-center shadow-md">
                                             <div className="w-0 h-0 border-t-[8px] border-t-transparent border-l-[14px] border-l-white border-b-[8px] border-b-transparent ml-1"></div>
                                         </div>
                                     </div>
                                 </div>
                                 <div className="w-full border-t-[2px] border-gray-200 py-4 flex justify-center bg-white">
-                                    <span className="text-black font-bold text-[15px]">
+                                    <span className="text-black font-bold text-body-xl">
                                         {t(guide.titleKey)}
                                     </span>
                                 </div>

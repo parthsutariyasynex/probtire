@@ -62,15 +62,15 @@ export default function BusinessOverviewEditModal({ isOpen, onClose, initialData
         }
     };
 
-    const inputClass = "w-full border border-gray-200 px-4 py-3 text-[14px] focus:border-[#F5B21B] focus:ring-1 focus:ring-[#F5B21B] outline-none transition-all rounded-sm bg-white font-medium text-gray-800 placeholder:text-gray-400";
-    const labelClass = "block text-[12px] font-bold text-black mb-1.5 uppercase tracking-wider";
+    const inputClass = "w-full border border-gray-200 px-4 py-3 text-body-lg focus:border-brand-yellow focus:ring-1 focus:ring-brand-yellow outline-none transition-all rounded-sm bg-white font-medium text-gray-800 placeholder:text-gray-400";
+    const labelClass = "block text-body-sm font-bold text-black mb-1.5 uppercase tracking-wider";
 
     return (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
             <div className="bg-white w-full max-w-xl shadow-2xl rounded-sm overflow-hidden transform animate-in slide-in-from-bottom-8 duration-300">
                 {/* Header */}
-                <div className="bg-[#fcfcfc] px-8 py-5 border-b border-gray-100 flex justify-between items-center">
-                    <h2 className="text-[18px] font-black text-black uppercase tracking-widest border-b-2 border-[#F5B21B] pb-1">
+                <div className="bg-surface px-8 py-5 border-b border-gray-100 flex justify-between items-center">
+                    <h2 className="text-subheading font-black text-black uppercase tracking-widest border-b-2 border-brand-yellow pb-1">
                         Edit Business Overview
                     </h2>
                     <button
@@ -144,18 +144,18 @@ export default function BusinessOverviewEditModal({ isOpen, onClose, initialData
                 </div>
 
                 {/* Footer */}
-                <div className="bg-[#fcfcfc] px-8 py-5 border-t border-gray-100 flex justify-end gap-4">
+                <div className="bg-surface px-8 py-5 border-t border-gray-100 flex justify-end gap-4">
                     {/* <button
                         onClick={onClose}
                         disabled={isSaving}
-                        className="px-6 py-2.5 text-[13px] font-bold text-gray-500 hover:text-black uppercase transition-all tracking-widest"
+                        className="px-6 py-2.5 text-body font-bold text-gray-500 hover:text-black uppercase transition-all tracking-widest"
                     >
                         Cancel
                     </button> */}
                     <button
                         onClick={handleSave}
                         disabled={isSaving}
-                        className="bg-[#F5B21B] hover:bg-black hover:text-white text-black text-[13px] font-bold px-10 py-2.5 uppercase transition-all shadow-lg shadow-[#F5B21B]/10 tracking-widest disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="bg-brand-yellow hover:bg-black hover:text-white text-black text-body font-bold px-10 py-2.5 uppercase transition-all shadow-lg shadow-brand-yellow/10 tracking-widest disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                         {isSaving ? "Saving..." : "Save"}
                     </button>

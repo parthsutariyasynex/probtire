@@ -692,6 +692,7 @@ export const CART_TOTALS_QUERY = /* GraphQL */ `
         subtotal_excluding_tax { value }
         subtotal_including_tax { value }
         applied_taxes { amount { value } }
+        discounts { amount { value } }
       }
       shipping_addresses {
         selected_shipping_method { amount { value } }
@@ -863,16 +864,30 @@ export const KLEVER_EXPORT_ORDERS_QUERY = /* GraphQL */ `
 `;
 
 export const KLEVER_ORDER_UPLOAD_SEARCH_QUERY = /* GraphQL */ `
-  query KleverOrderUploadSearch($pageSize: Int, $currentPage: Int) {
-    kleverOrderUploadSearch(pageSize: $pageSize, currentPage: $currentPage) {
+  query KleverOrderUploadSearch(
+    $pageSize: Int
+    $currentPage: Int
+    $orderIncrementId: String
+    $documents: String
+    $invoiceDue: String
+  ) {
+    kleverOrderUploadSearch(
+      pageSize: $pageSize
+      currentPage: $currentPage
+      orderIncrementId: $orderIncrementId
+      documents: $documents
+      invoiceDue: $invoiceDue
+    ) {
       items {
         id
         order_id
+        order_increment_id
         file_name
         file_path
         comment
         upload_for
         created_at
+        invoice_due
         payment_status
       }
       total_count

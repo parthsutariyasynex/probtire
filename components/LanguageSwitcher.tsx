@@ -50,7 +50,7 @@ export default function LanguageSwitcher() {
                     className={`
             px-3 py-1.5 text-xs font-semibold rounded-full transition-all duration-200
             ${currentLocale === locale
-                            ? "bg-[#f5a623] text-white shadow-sm"
+                            ? "bg-brand-yellow text-white shadow-sm"
                             : "text-gray-600 hover:text-gray-900 hover:bg-gray-200"
                         }
           `}

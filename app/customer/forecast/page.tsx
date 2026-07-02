@@ -208,7 +208,7 @@ export default function MyForecastPage() {
 
     if (loading || loadingForecasts) {
         return (
-            <div className="min-h-screen flex flex-col w-full bg-[#fcfcfc] font-rubik">
+            <div className="min-h-screen flex flex-col w-full bg-surface font-rubik">
                 <div className="flex flex-col lg:flex-row flex-1 w-full">
                     <SidebarSkeleton />
                     <main className="flex-1 min-w-0"><ForecastSkeleton /></main>
@@ -223,15 +223,15 @@ export default function MyForecastPage() {
         <div className="flex flex-col lg:flex-row min-h-screen">
             <Sidebar />
 
-            <main className="flex-1 p-4 md:p-8 bg-[#f9f9f9] min-h-screen" dir={isRtl ? "rtl" : "ltr"}>
+            <main className="flex-1 px-4 md:px-6 lg:px-8 py-4 md:py-6 lg:py-5 bg-surface min-h-screen" dir={isRtl ? "rtl" : "ltr"}>
                 {/* Header with Refresh */}
-                <div className="flex justify-between items-center mb-6 md:mb-8">
-                    <h1 className="text-[18px] md:text-[22px] font-black text-black uppercase tracking-tight">
+                <div className="flex justify-between items-center mb-5">
+                    <h1 className="text-h3 md:text-h1-sm font-semibold text-black uppercase tracking-tight">
                         {t("forecast.title")}
                     </h1>
                     <button
                         onClick={() => pullForecasts(currentPage, pageSize)}
-                        className="bg-white border border-gray-300 text-[11px] md:text-[12px] font-black px-3 md:px-4 py-1.5 uppercase hover:bg-gray-100 transition-all shadow-sm flex items-center gap-2"
+                        className="bg-white border border-[#ddd] text-label md:text-body-sm font-semibold px-3 md:px-4 py-1.5 uppercase hover:bg-gray-100 transition-all flex items-center gap-2 text-black"
                     >
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8" /><path d="M21 3v5h-5" /></svg>
                         {t("forecast.refresh")}
@@ -239,15 +239,15 @@ export default function MyForecastPage() {
                 </div>
 
                 {/* Section: Upload */}
-                <h2 className="text-[13px] md:text-[15px] font-black text-black mb-3 md:mb-4 uppercase tracking-tighter">
+                <h2 className="text-body-lg md:text-h3-sm font-bold text-black uppercase mb-1.5 md:mb-3">
                     {t("forecast.uploadForecast")}
                 </h2>
 
-                <div className="bg-white border border-gray-200 rounded-sm mb-8 md:mb-12 shadow-sm overflow-hidden">
-                    <div className="p-4 md:p-8">
-                        <div className="border-2 border-dashed border-gray-300 rounded-sm bg-[#eeeeee] px-4 md:px-6 py-6 md:py-8 flex flex-col items-center gap-4 md:gap-6">
+                <div className="bg-white border border-[#ddd] rounded-sm mb-6 overflow-hidden">
+                    <div className="p-3 md:p-4">
+                        <div className="border border-dashed border-[#ccc] rounded-sm bg-[#fcfcfc] px-4 py-4 md:py-6 flex flex-col items-center gap-3 md:gap-4">
                             <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
-                                <span className="text-[13px] md:text-[14px] font-medium text-black">{t("forecast.dropFiles")}</span>
+                                <span className="text-body md:text-body-lg font-semibold text-black">{t("forecast.dropFiles")}</span>
                                 <input
                                     type="file"
                                     id="file-upload"
@@ -257,104 +257,87 @@ export default function MyForecastPage() {
                                 />
                                 <label
                                     htmlFor="file-upload"
-                                    className="bg-[#f0f0f0] border border-gray-400 px-4 py-1.5 text-[12px] md:text-[13px] font-medium text-black cursor-pointer hover:bg-gray-200 transition-colors rounded-[2px]"
+                                    className="bg-white border border-[#ddd] px-4 py-1.5 text-body-sm md:text-body font-semibold text-black cursor-pointer hover:bg-gray-50 transition-colors rounded-xs"
                                 >
                                     {t("forecast.chooseFile")}
                                 </label>
                             </div>
                             {selectedFile && (
-                                <span className="text-[12px] md:text-[13px] text-gray-800 font-medium truncate max-w-full">
+                                <span className="text-body-sm md:text-body text-black font-semibold truncate max-w-full">
                                     {selectedFile.name}
                                 </span>
                             )}
                             <div className="text-center">
-                                <span className="text-[11px] md:text-[14px] font-medium text-gray-600 leading-relaxed">
+                                <span className="text-label md:text-body-sm font-semibold text-[#888] leading-relaxed">
                                     {t("forecast.allowedFileTypes")}
                                 </span>
                             </div>
                         </div>
                     </div>
 
-                    <div className={`bg-white px-4 md:px-8 pb-4 md:pb-8 flex justify-center ${isRtl ? 'md:justify-start' : 'md:justify-end'}`}>
+                    <div className={`bg-white px-3 md:px-4 pb-3 md:pb-4 flex justify-center ${isRtl ? 'md:justify-start' : 'md:justify-end'}`}>
                         <button
                             onClick={handleUpload}
                             disabled={uploading}
-                            className="w-full sm:w-auto bg-[#f4b400] text-black text-[12px] md:text-[13px] font-black px-8 md:px-12 py-2.5 md:py-2.5 uppercase tracking-wider hover:bg-black hover:text-white transition-all shadow-sm disabled:opacity-50"
+                            className="w-full sm:w-auto bg-brand-yellow text-black text-body-sm md:text-body font-semibold px-6 md:px-8 py-2 uppercase tracking-wider hover:bg-black hover:text-white transition-all disabled:opacity-50"
                         >
                             {uploading ? t("forecast.uploading") : t("forecast.submit")}
                         </button>
                     </div>
                 </div>
 
-                {/* Desktop Table Header */}
-                <div className="hidden sm:grid grid-cols-2 bg-[#fcfcfc] border border-gray-100 py-3 md:py-4 mb-2">
-                    <span className="text-[12px] md:text-[13px] font-black text-black px-4 md:px-6 ltr:text-left rtl:text-right">{t("forecast.fileName")}</span>
-                    <span className={`text-[12px] md:text-[13px] font-black text-black text-center ${isRtl ? 'border-r' : 'border-l'} border-gray-100`}>{t("forecast.uploadedDate")}</span>
-                </div>
-
-                {/* Mobile Header */}
-                <div className="sm:hidden bg-[#fcfcfc] border border-gray-100 py-3 mb-2 px-4">
-                    <span className="text-[12px] font-black text-black">{t("forecast.files")}</span>
-                </div>
-
-                {/* Files List */}
-                <div className="bg-white border border-gray-100 border-t-0 rounded-sm overflow-hidden">
-                    {forecasts.length > 0 ? forecasts.map((file, idx) => {
-                        const fileId = file.forecast_id || file.entity_id || file.id || file.file_id;
-                        return (
-                            <div key={fileId || idx} className="border-b border-gray-50 hover:bg-[#fff7e6] transition-colors group">
-                                {/* Mobile layout */}
-                                <div className="sm:hidden px-4 py-3">
-                                    <div className="flex items-start justify-between gap-2">
-                                        <button
-                                            onClick={() => handleDownload(file)}
-                                            disabled={downloadingId !== null && downloadingId === fileId}
-                                            className="text-[13px] text-gray-700 font-medium group-hover:text-[#f4b400] hover:underline ltr:text-left rtl:text-right disabled:opacity-50 break-all"
-                                        >
-                                            {file.file_name || file.filename || file.name || t("m.name")}
-                                        </button>
-                                    </div>
-                                    <span className="text-[11px] text-gray-400 font-medium mt-1 block">
-                                        {getProperDate(file)}
-                                    </span>
-                                </div>
-                                {/* Desktop layout */}
-                                <div className="hidden sm:grid grid-cols-2 py-3 md:py-4">
-                                    <div className="flex items-center gap-3 px-4 md:px-6">
-                                        <button
-                                            onClick={() => handleDownload(file)}
-                                            disabled={downloadingId !== null && downloadingId === fileId}
-                                            className="text-[13px] text-gray-700 font-medium group-hover:text-[#f4b400] hover:underline ltr:text-left rtl:text-right disabled:opacity-50"
-                                        >
-                                            {file.file_name || file.filename || file.name || t("m.name")}
-                                        </button>
-                                    </div>
-                                    <span className={`text-[13px] text-gray-700 font-medium text-center ${isRtl ? 'border-r' : 'border-l'} border-gray-50`}>
-                                        {getProperDate(file)}
-                                    </span>
-                                </div>
-                            </div>
-                        );
-                    }) : (
-                        <div className="py-16 md:py-20 text-center text-gray-400 text-[13px] md:text-[14px] bg-white">
-                            {t("forecast.noRecords")}
-                        </div>
-                    )}
+                {/* Desktop and Mobile Table Header & List */}
+                <div className="overflow-x-auto border border-[#ddd] rounded-sm">
+                    <table className="w-full text-body text-left border-collapse">
+                        <thead>
+                            <tr className="bg-brand-yellow text-black text-label uppercase font-bold tracking-widest h-10">
+                                <th className="px-4 py-2 border border-[#ddd] ltr:text-left rtl:text-right">{t("forecast.fileName")}</th>
+                                <th className="px-4 py-2 border border-[#ddd] text-center w-[150px] sm:w-[200px]">{t("forecast.uploadedDate")}</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-200 bg-white">
+                            {forecasts.length > 0 ? forecasts.map((file, idx) => {
+                                const fileId = file.forecast_id || file.entity_id || file.id || file.file_id;
+                                return (
+                                    <tr key={fileId || idx} className="hover:bg-brand-yellow/5 group transition-colors">
+                                        <td className="px-4 py-1.5 border-r border-gray-200 text-black text-body-lg font-bold">
+                                            <button
+                                                onClick={() => handleDownload(file)}
+                                                disabled={downloadingId !== null && downloadingId === fileId}
+                                                className="text-body text-black font-semibold hover:underline ltr:text-left rtl:text-right disabled:opacity-50 break-all"
+                                            >
+                                                {file.file_name || file.filename || file.name || t("m.name")}
+                                            </button>
+                                        </td>
+                                        <td className="px-4 py-1.5 text-center text-black text-body font-semibold">
+                                            {getProperDate(file)}
+                                        </td>
+                                    </tr>
+                                );
+                            }) : (
+                                <tr>
+                                    <td colSpan={2} className="py-16 md:py-20 text-center text-gray-400 text-body md:text-body-lg bg-white italic">
+                                        {t("forecast.noRecords")}
+                                    </td>
+                                </tr>
+                            )}
+                        </tbody>
+                    </table>
                 </div>
 
                 {/* Pagination */}
-                <div className="bg-[#f2f2f2] mt-6 md:mt-10 py-3 md:py-3.5 px-3 md:px-6 flex flex-col sm:flex-row justify-between items-center gap-3 text-[#555] rounded-sm">
+                <div className="bg-surface-muted mt-5 py-3 px-4 flex flex-col sm:flex-row justify-between items-center gap-3 text-black border border-[#ddd] rounded-sm">
                     <div className="flex items-center gap-4 sm:gap-6">
-                        <span className="text-[11px] md:text-[12px] font-medium">{totalItems} {t("forecast.items")}</span>
+                        <span className="text-label md:text-body-sm font-semibold">{totalItems} {t("forecast.items")}</span>
                         <div className="flex items-center gap-2">
-                            <span className="text-[11px] md:text-[12px] font-medium">{t("forecast.show")}</span>
+                            <span className="text-label md:text-body-sm font-semibold">{t("forecast.show")}</span>
                             <PortalDropdown
                                 value={String(pageSize)}
                                 onChange={(val) => { setPageSize(Number(val)); setCurrentPage(1); }}
                                 options={[{ label: "10", value: "10" }, { label: "20", value: "20" }, { label: "50", value: "50" }]}
                                 minWidth={55}
                             />
-                            <span className="text-[11px] md:text-[12px] font-medium">{t("forecast.perPage")}</span>
+                            <span className="text-label md:text-body-sm font-semibold">{t("forecast.perPage")}</span>
                         </div>
                     </div>
 
@@ -362,17 +345,17 @@ export default function MyForecastPage() {
                         <button
                             onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
                             disabled={currentPage === 1}
-                            className="px-3 sm:px-4 py-1.5 bg-white border border-gray-300 text-[11px] md:text-[12px] font-black disabled:opacity-30 disabled:cursor-not-allowed hover:bg-gray-50 transition-all rounded-sm shadow-sm"
+                            className="px-3 sm:px-4 py-1.5 bg-white border border-[#ddd] text-label md:text-body-sm font-semibold disabled:opacity-30 disabled:cursor-not-allowed hover:bg-gray-50 transition-all rounded-sm"
                         >
                             {t("forecast.prev")}
                         </button>
-                        <span className="text-[11px] md:text-[12px] font-black text-black text-center uppercase tracking-tight">
+                        <span className="text-label md:text-body-sm font-semibold text-black text-center uppercase tracking-tight">
                             {t("forecast.page")} {currentPage}
                         </span>
                         <button
                             onClick={() => setCurrentPage(prev => prev + 1)}
                             disabled={forecasts.length < pageSize}
-                            className="px-3 sm:px-4 py-1.5 bg-white border border-gray-300 text-[11px] md:text-[12px] font-black disabled:opacity-30 disabled:cursor-not-allowed hover:bg-gray-50 transition-all rounded-sm shadow-sm"
+                            className="px-3 sm:px-4 py-1.5 bg-white border border-[#ddd] text-label md:text-body-sm font-semibold disabled:opacity-30 disabled:cursor-not-allowed hover:bg-gray-50 transition-all rounded-sm"
                         >
                             {t("forecast.next")}
                         </button>

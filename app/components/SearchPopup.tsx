@@ -166,7 +166,7 @@ const SearchPopup: React.FC<SearchPopupProps> = ({ isOpen, onClose }) => {
 
                 <div className="flex flex-col gap-0">
                     {/* Search Input */}
-                    <form dir="ltr" onSubmit={(e) => handleSearch(e)} className="flex items-stretch gap-0 bg-white border-2 border-[#f5b21a] rounded-xl overflow-hidden shadow-sm h-14 md:h-16 transition-all relative z-20 flex-shrink-0">
+                    <form dir="ltr" onSubmit={(e) => handleSearch(e)} className="flex items-stretch gap-0 bg-white border-2 border-brand-yellow rounded-xl overflow-hidden shadow-sm h-14 md:h-16 transition-all relative z-20 flex-shrink-0">
                         <input
                             type="text"
                             autoFocus
@@ -177,7 +177,7 @@ const SearchPopup: React.FC<SearchPopupProps> = ({ isOpen, onClose }) => {
                         />
                         <button
                             type="submit"
-                            className="bg-[#f5b21a] hover:bg-yellow-500 text-black w-14 md:w-20 flex items-center justify-center transition-all duration-300 cursor-pointer active:scale-95 flex-shrink-0"
+                            className="bg-brand-yellow hover:bg-yellow-500 text-black w-14 md:w-20 flex items-center justify-center transition-all duration-300 cursor-pointer active:scale-95 flex-shrink-0"
                         >
                             <Search size={22} strokeWidth={3} />
                         </button>
@@ -210,7 +210,7 @@ const SearchPopup: React.FC<SearchPopupProps> = ({ isOpen, onClose }) => {
                                     onClick={() => handleSuggestionClick(item)}
                                     className="px-6 md:px-10 py-3.5 hover:bg-gray-50 cursor-pointer border-b border-gray-50 last:border-0 transition-colors"
                                 >
-                                    <span dir="ltr" className="text-[15px] font-bold text-black">{item.label}</span>
+                                    <span dir="ltr" className="text-body-xl font-bold text-black">{item.label}</span>
                                 </div>
                             ))}
                         </div>

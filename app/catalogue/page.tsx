@@ -19,7 +19,7 @@ export default function CataloguePage() {
 
             {/* Content Section */}
             <div className="max-w-[1200px] mx-auto px-6 mt-8 sm:mt-12 md:mt-20 pb-10 sm:pb-16 md:pb-20 flex flex-col items-center" dir={isRtl ? "rtl" : "ltr"}>
-                <h1 className="text-[22px] sm:text-[26px] md:text-[32px] font-black text-center mb-16 tracking-wide text-black uppercase">
+                <h1 className="text-[22px] sm:text-[26px] md:text-h1 font-black text-center mb-16 tracking-wide text-black uppercase">
                     {t("catalogue.title")}
                 </h1>
 
@@ -39,7 +39,7 @@ export default function CataloguePage() {
                             />
                         </div>
                         <div className="w-full border-t-[2px] border-gray-200 py-3 flex justify-center bg-white group-hover:bg-gray-50 transition-colors">
-                            <span className="text-black font-bold text-[14px]">
+                            <span className="text-black font-bold text-body-lg">
                                 {t("catalogue.tbrCatalog")}
                             </span>
                         </div>

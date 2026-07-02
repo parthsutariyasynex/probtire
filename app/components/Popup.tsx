@@ -135,8 +135,11 @@ const Popup: React.FC<PopupProps> = ({
     const getContentClasses = () => {
         switch (animation) {
             case "slide-right":
-            case "slide-left":
-                return "h-full w-full sm:w-[480px]";
+            case "slide-left": {
+                const hasCustomWidth = className.includes("sm:w-") || className.includes("w-") || className.includes("md:w-");
+                const hasCustomHeight = className.includes("h-screen") || className.includes("h-");
+                return `${hasCustomHeight ? "" : "h-full"} ${hasCustomWidth ? "" : "w-full sm:w-[480px]"}`;
+            }
             case "slide-bottom":
                 return "w-full sm:max-w-2xl rounded-t-2xl";
             default: // centered modal

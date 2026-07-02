@@ -18,11 +18,11 @@ interface OrdersTableProps {
 
 const OrdersTable: React.FC<OrdersTableProps> = ({ orders }) => {
     return (
-        <div className="w-full bg-white border border-[#ebebeb] rounded-xl shadow-sm overflow-hidden transition-all duration-300 hover:shadow-md">
+        <div className="w-full bg-white border border-subtle rounded-xl shadow-sm overflow-hidden transition-all duration-300 hover:shadow-md">
             <div className="overflow-x-auto">
-                <table className="w-full text-[13px] text-left border-collapse min-w-[900px]">
+                <table className="w-full text-body text-left border-collapse min-w-[900px]">
                     <thead>
-                        <tr className="bg-gray-50/80 text-black text-[11px] font-black uppercase tracking-widest h-[60px] border-b border-[#ebebeb]">
+                        <tr className="bg-gray-50/80 text-black text-label font-black uppercase tracking-widest h-[60px] border-b border-subtle">
                             <th className="px-6 py-4 ltr:text-left rtl:text-right">Order #</th>
                             <th className="px-6 py-4 ltr:text-left rtl:text-right">SAP Order Number</th>
                             <th className="px-6 py-4 text-center whitespace-nowrap">Date</th>
@@ -55,12 +55,12 @@ const OrdersTable: React.FC<OrdersTableProps> = ({ orders }) => {
                                         {order.orderedBy}
                                     </td>
                                     <td className="px-6 py-4 text-center">
-                                        <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${order.status?.toLowerCase() === 'complete' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>
+                                        <span className={`px-3 py-1 rounded-full text-caption font-black uppercase tracking-widest ${order.status?.toLowerCase() === 'complete' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>
                                             {order.status}
                                         </span>
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap text-center">
-                                        <div className="flex items-center justify-center gap-4 text-[11px] font-black uppercase tracking-wider">
+                                        <div className="flex items-center justify-center gap-4 text-label font-black uppercase tracking-wider">
                                             <button className="text-gray-800 hover:text-yellow-600 transition-colors flex items-center gap-1">
                                                 View
                                             </button>

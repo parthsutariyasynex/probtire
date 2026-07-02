@@ -64,15 +64,15 @@ export function PageSizeSelect({ value, onChange }: { value: number; onChange: (
 
     return (
         <div className="flex items-center gap-2 md:gap-3">
-            <span className="text-[10px] md:text-[11px] text-gray-500 font-bold uppercase tracking-wider">{t("favorites.show")}</span>
+            <span className="text-caption md:text-label text-gray-500 font-bold uppercase tracking-wider">{t("favorites.show")}</span>
             <button
                 ref={triggerRef}
                 type="button"
                 onClick={handleToggle}
-                className={`h-8 md:h-9 px-3 bg-white border rounded text-[12px] md:text-[13px] font-black text-black flex items-center gap-2 min-w-[70px] justify-between cursor-pointer transition-all shadow-sm active:scale-95 ${isOpen ? "border-[#f5a623] ring-2 ring-[#f5a623]/10" : "border-gray-200 hover:border-[#f5a623] hover:shadow-md"}`}
+                className={`h-8 md:h-9 px-3 bg-white border rounded text-body-sm md:text-body font-black text-black flex items-center gap-2 min-w-[70px] justify-between cursor-pointer transition-all shadow-sm active:scale-95 ${isOpen ? "border-brand-yellow ring-2 ring-brand-yellow/10" : "border-gray-200 hover:border-brand-yellow hover:shadow-md"}`}
             >
                 <span className="flex-1 text-center font-bold">{value}</span>
-                <ChevronDown size={14} className={`text-[#f5a623] transition-transform duration-300 flex-shrink-0 ${isOpen ? "rotate-180" : ""}`} />
+                <ChevronDown size={14} className={`text-brand-yellow transition-transform duration-300 flex-shrink-0 ${isOpen ? "rotate-180" : ""}`} />
             </button>
             {isOpen && mounted && createPortal(
                 <>
@@ -87,14 +87,14 @@ export function PageSizeSelect({ value, onChange }: { value: number; onChange: (
                             width: Math.max(pos.width + 10, 80),
                             zIndex: 9999
                         }}
-                        className="bg-white border-2 border-[#f5a623] rounded-lg shadow-[0_15px_50px_-15px_rgba(0,0,0,0.3)] overflow-hidden animate-in fade-in zoom-in-95 duration-200"
+                        className="bg-white border-2 border-brand-yellow rounded-lg shadow-[0_15px_50px_-15px_rgba(0,0,0,0.3)] overflow-hidden animate-in fade-in zoom-in-95 duration-200"
                     >
                         {sizes.map((s) => (
                             <button
                                 key={s}
                                 type="button"
                                 onClick={() => { onChange(s); setIsOpen(false); }}
-                                className={`w-full text-center px-3 py-3 text-[13px] font-black cursor-pointer transition-all border-b last:border-0 border-gray-50 ${s === value ? "bg-[#f5a623] text-black" : "text-gray-900 hover:bg-gray-50 hover:text-[#f5a623]"}`}
+                                className={`w-full text-center px-3 py-3 text-body font-black cursor-pointer transition-all border-b last:border-0 border-gray-50 ${s === value ? "bg-brand-yellow text-black" : "text-gray-900 hover:bg-gray-50 hover:text-brand-yellow"}`}
                             >
                                 {s}
                             </button>
@@ -103,7 +103,7 @@ export function PageSizeSelect({ value, onChange }: { value: number; onChange: (
                 </>,
                 document.body
             )}
-            <span className="text-[10px] md:text-[11px] text-gray-500 font-bold uppercase tracking-wider whitespace-nowrap">{t("common.perPage")}</span>
+            <span className="text-caption md:text-label text-gray-500 font-bold uppercase tracking-wider whitespace-nowrap">{t("common.perPage")}</span>
         </div>
     );
 }
@@ -165,7 +165,7 @@ const Pagination: React.FC<PaginationProps> = ({
                 {currentPage > 1 && (
                     <button
                         onClick={() => onPageChange(currentPage - 1)}
-                        className="h-9 md:h-10 w-9 md:w-10 flex items-center justify-center bg-white border border-gray-200 text-black font-extrabold rounded-full hover:bg-gray-50 hover:border-[#f5a623] hover:text-[#f5a623] transition-all duration-200 cursor-pointer shadow-sm"
+                        className="h-9 md:h-10 w-9 md:w-10 flex items-center justify-center bg-white border border-gray-200 text-black font-extrabold rounded-full hover:bg-gray-50 hover:border-brand-yellow hover:text-brand-yellow transition-all duration-200 cursor-pointer shadow-sm"
                     >
                         {isRtl ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
                     </button>
@@ -178,9 +178,9 @@ const Pagination: React.FC<PaginationProps> = ({
                         <button
                             key={p}
                             onClick={() => onPageChange(p as number)}
-                            className={`w-9 h-9 md:w-10 md:h-10 flex items-center justify-center text-[13px] md:text-[14px] rounded-full border transition-all duration-200 cursor-pointer ${currentPage === p
-                                ? "bg-[#f5a623] border-[#f5a623] text-black font-extrabold shadow-md transform scale-105"
-                                : "bg-white border-gray-200 text-gray-600 font-bold hover:bg-gray-50 hover:border-[#f5a623] hover:text-[#f5a623]"
+                            className={`w-9 h-9 md:w-10 md:h-10 flex items-center justify-center text-body md:text-body-lg rounded-full border transition-all duration-200 cursor-pointer ${currentPage === p
+                                ? "bg-brand-yellow border-brand-yellow text-black font-extrabold shadow-md transform scale-105"
+                                : "bg-white border-gray-200 text-gray-600 font-bold hover:bg-gray-50 hover:border-brand-yellow hover:text-brand-yellow"
                                 }`}
                         >
                             {p}
@@ -191,14 +191,14 @@ const Pagination: React.FC<PaginationProps> = ({
                 {currentPage < totalPages && (
                     <button
                         onClick={() => onPageChange(currentPage + 1)}
-                        className="h-9 md:h-10 w-9 md:w-10 flex items-center justify-center bg-white border border-gray-200 text-black font-extrabold rounded-full hover:bg-gray-50 hover:border-[#f5a623] hover:text-[#f5a623] transition-all duration-200 cursor-pointer shadow-sm"
+                        className="h-9 md:h-10 w-9 md:w-10 flex items-center justify-center bg-white border border-gray-200 text-black font-extrabold rounded-full hover:bg-gray-50 hover:border-brand-yellow hover:text-brand-yellow transition-all duration-200 cursor-pointer shadow-sm"
                     >
                         {isRtl ? <ChevronLeft size={18} /> : <ChevronRight size={18} />}
                     </button>
                 )}
             </div>
             {/* 3. Item count (Right on desktop, Bottom on mobile) */}
-            <div className="text-[11px] md:text-[13px] text-gray-500 font-medium order-3 md:w-[220px] text-center md:text-right">
+            <div className="text-label md:text-body text-gray-500 font-medium order-3 md:w-[220px] text-center md:text-right">
                 {t("favorites.show")} <span className="text-black font-bold">{t("favorites.items")} {startItem} - {endItem}</span> {t("favorites.of")} <span className="text-black font-bold">{totalItems}</span> {t("favorites.total")}
             </div>
         </div>

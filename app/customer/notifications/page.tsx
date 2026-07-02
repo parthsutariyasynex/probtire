@@ -122,85 +122,77 @@ export default function NotificationsPage() {
     // firstLoadDone, data present) keeps the real chrome and only skeletons the table body below.
     if (!firstLoadDone) {
         return (
-            <div className="w-full">
-                <div className="flex flex-col lg:flex-row gap-0">
-                    <SidebarSkeleton />
-                    <main className="flex-1 min-w-0 px-4 md:px-6 lg:px-8">
-                        <NotificationsSkeleton count={pageSize} />
-                    </main>
-                </div>
+            <div className="flex flex-col lg:flex-row flex-1 min-h-0 w-full bg-white font-rubik">
+                <SidebarSkeleton />
+                <main className="flex-1 w-full min-w-0 px-4 md:px-6 lg:px-8 py-4 md:py-6 lg:py-5 bg-white">
+                    <NotificationsSkeleton count={pageSize} />
+                </main>
             </div>
         );
     }
 
     return (
-        <>
+        <div className="flex flex-col lg:flex-row flex-1 min-h-0 w-full">
+            {/* SIDEBAR */}
+            <Sidebar />
 
-
-            <div className="w-full">
-                <div className="flex flex-col lg:flex-row gap-0">
-                    {/* SIDEBAR */}
-                    <Sidebar />
-
-                    {/* MAIN CONTENT */}
-                    <main className="flex-1 min-w-0 px-4 md:px-6 lg:px-8">
-                        <h1 className="text-[20px] md:text-[24px] font-black text-black mb-6 md:mb-10 uppercase tracking-wide py-3" >
+            {/* MAIN CONTENT */}
+            <main className="flex-1 w-full min-w-0 px-4 md:px-6 lg:px-8 py-4 md:py-6 lg:py-5 bg-white" dir={isRtl ? "rtl" : "ltr"}>
+                    <h1 className="text-h3 md:text-h1-sm font-semibold text-black mb-5 uppercase tracking-tight" >
                             {t('notifications.title')}
                         </h1>
 
-                        <div className="border border-[#ebebeb] rounded-sm overflow-hidden shadow-sm">
+                        <div className="border border-[#ddd] rounded-sm overflow-hidden bg-white">
                             {/* Desktop Table */}
                             <div className="hidden md:block overflow-x-auto">
                                 <table className="w-full text-left border-collapse table-fixed min-w-[600px]">
                                     <thead>
-                                        <tr className="border-b border-[#ebebeb]">
-                                            <th className="px-6 py-4 text-[13px] font-black text-black uppercase text-center w-[15%] border-r border-[#ebebeb]">{t('common.date')}</th>
-                                            <th className="px-6 py-4 text-[13px] font-black text-black uppercase text-center w-[20%] border-r border-[#ebebeb]">{t('m.title')}</th>
-                                            <th className="px-6 py-4 text-[13px] font-black text-black uppercase text-center w-[45%] border-r border-[#ebebeb]">{t('m.message')}</th>
-                                            <th className="px-6 py-4 text-[13px] font-black text-black uppercase text-center w-[20%]">{t('common.action')}</th>
+                                        <tr className="bg-brand-yellow text-black text-label uppercase font-bold tracking-widest h-10">
+                                            <th className="px-4 py-2 border border-[#ddd] ltr:text-left rtl:text-right w-[15%]">{t('common.date')}</th>
+                                            <th className="px-4 py-2 border border-[#ddd] ltr:text-left rtl:text-right w-[20%]">{t('m.title')}</th>
+                                            <th className="px-4 py-2 border border-[#ddd] ltr:text-left rtl:text-right w-[45%]">{t('m.message')}</th>
+                                            <th className="px-4 py-2 border border-[#ddd] text-center w-[20%]">{t('common.action')}</th>
                                         </tr>
                                     </thead>
                                     <tbody className="bg-white">
-                                        {isLoading ? (
+                                        {(isLoading && (!notifications || notifications.length === 0)) ? (
                                             Array.from({ length: pageSize }).map((_, i) => (
-                                                <tr key={`skel-${i}`} className="border-b border-gray-100">
-                                                    <td className="px-4 py-4"><div className="h-3 w-32 bg-gray-200 rounded animate-pulse" /></td>
-                                                    <td className="px-4 py-4"><div className="h-3 w-48 bg-gray-200 rounded animate-pulse" /></td>
-                                                    <td className="px-4 py-4"><div className="h-3 w-24 bg-gray-200 rounded animate-pulse" /></td>
-                                                    <td className="px-4 py-4"><div className="h-3 w-16 bg-gray-200 rounded animate-pulse" /></td>
+                                                <tr key={`skel-${i}`} className="border-b border-[#ddd]">
+                                                    <td className="px-4 py-2.5 border border-[#ddd]"><div className="h-3 w-32 bg-gray-200 rounded animate-pulse" /></td>
+                                                    <td className="px-4 py-2.5 border border-[#ddd]"><div className="h-3 w-48 bg-gray-200 rounded animate-pulse" /></td>
+                                                    <td className="px-4 py-2.5 border border-[#ddd]"><div className="h-3 w-24 bg-gray-200 rounded animate-pulse" /></td>
+                                                    <td className="px-4 py-2.5 border border-[#ddd]"><div className="h-3 w-16 bg-gray-200 rounded animate-pulse mx-auto" /></td>
                                                 </tr>
                                             ))
                                         ) : notifications && notifications.length > 0 ? (
                                             notifications.map((item, index) => (
                                                 <tr
                                                     key={`${item.notification_id || index}-${index}`}
-                                                    className={`border-b border-[#ebebeb] last:border-0 transition-colors ${!item.is_read ? "bg-[#fcf8ec]" : "bg-white"}`}
+                                                    className={`border-b border-[#ddd] last:border-0 transition-colors ${!item.is_read ? "bg-[#fcf8ec]" : "bg-white"} hover:bg-brand-yellow/5`}
                                                 >
-                                                    <td className="px-6 py-6 text-[14px] text-[#333333] text-center border-r border-[#ebebeb] align-middle relative">
-                                                        {!item.is_read && (
-                                                            <div className="absolute left-2 top-1/2 -translate-y-1/2 w-2 h-2 bg-[#f5af02] rounded-full shadow-sm"></div>
-                                                        )}
+                                                    <td className="px-4 py-2.5 text-body text-[#333333] ltr:text-left rtl:text-right border border-[#ddd] align-middle relative">
+
                                                         {formatDate(item.date_added_formatted, locale)}
                                                     </td>
-                                                    <td className={`px-6 py-6 text-[14px] text-center border-r border-[#ebebeb] align-middle ${!item.is_read ? "font-bold text-black" : "font-normal text-[#666666]"}`}>
+                                                    <td className={`px-4 py-2.5 text-body ltr:text-left rtl:text-right border border-[#ddd] align-middle ${!item.is_read ? "font-bold text-black" : "font-normal text-[#666666]"}`}>
                                                         {getOrderLink(item) ? (
-                                                            <Link href={getOrderLink(item)!} className="hover:text-[#f5af02] transition-colors cursor-pointer underline-offset-2 hover:underline">
+                                                            <Link href={getOrderLink(item)!} className="hover:text-brand-yellow transition-colors cursor-pointer underline-offset-2 hover:underline">
                                                                 {translateNotificationText(item.title, locale)}
                                                             </Link>
                                                         ) : translateNotificationText(item.title, locale)}
                                                     </td>
-                                                    <td className={`px-6 py-6 text-[14px] text-center border-r border-[#ebebeb] leading-relaxed align-middle ${!item.is_read ? "font-medium text-black" : "text-[#666666]"}`}>
+                                                    <td className={`px-4 py-2.5 text-body ltr:text-left rtl:text-right border border-[#ddd] leading-relaxed align-middle ${!item.is_read ? "font-medium text-black" : "text-[#666666]"}`}>
                                                         {translateNotificationText(item.description, locale)}
                                                     </td>
-                                                    <td className="px-6 py-6 text-[13px] text-center align-middle">
+                                                    <td className="px-4 py-2.5 text-body text-center border border-[#ddd] align-middle">
                                                         <div className="flex items-center justify-center gap-2 whitespace-nowrap text-[#333333]">
                                                             {!item.is_read && (
                                                                 <>
-                                                                    <button onClick={(e) => { e.stopPropagation(); markAsRead(item.notification_id); }} className="hover:text-[#f5af02] transition-colors font-bold">{t('m.mark-as-read')}</button>
+                                                                    <button onClick={(e) => { e.stopPropagation(); markAsRead(item.notification_id); }} className="hover:text-brand-yellow transition-colors font-bold">{t('m.mark-as-read')}</button>
                                                                     <span className="text-[#cccccc]">|</span>
                                                                 </>
                                                             )}
-                                                            <button onClick={(e) => { e.stopPropagation(); removeNotification(item.notification_id, item.is_read); }} disabled={deletingIds.includes(item.notification_id)} className="hover:text-[#f5af02] cursor-pointer transition-colors font-bold disabled:opacity-50 disabled:cursor-not-allowed">
+                                                            <button onClick={(e) => { e.stopPropagation(); removeNotification(item.notification_id, item.is_read); }} disabled={deletingIds.includes(item.notification_id)} className="hover:text-brand-yellow cursor-pointer transition-colors font-bold disabled:opacity-50 disabled:cursor-not-allowed">
                                                                 {deletingIds.includes(item.notification_id) ? t('common.loading') : t('m.remove')}
                                                             </button>
                                                         </div>
@@ -209,7 +201,7 @@ export default function NotificationsPage() {
                                             ))
                                         ) : (
                                             <tr>
-                                                <td colSpan={4} className="py-24 text-center text-gray-500 text-[14px]">{t('notifications.empty')}</td>
+                                                <td colSpan={4} className="py-16 text-center text-gray-400 text-body bg-white border border-[#ddd] italic">{t('notifications.empty')}</td>
                                             </tr>
                                         )}
                                     </tbody>
@@ -218,10 +210,10 @@ export default function NotificationsPage() {
 
                             {/* Mobile Card List */}
                             <div className="md:hidden">
-                                {isLoading ? (
+                                {(isLoading && (!notifications || notifications.length === 0)) ? (
                                     <div className="space-y-2 py-2">
                                         {Array.from({ length: pageSize }).map((_, i) => (
-                                            <div key={i} className="bg-white border border-gray-100 p-3 flex items-start gap-3">
+                                            <div key={i} className="bg-white border border-[#ddd] p-3 flex items-start gap-3">
                                                 <div className="h-8 w-8 rounded-full bg-gray-200 animate-pulse flex-shrink-0" />
                                                 <div className="flex-1 space-y-1.5">
                                                     <div className="h-3.5 w-3/4 bg-gray-200 rounded animate-pulse" />
@@ -234,55 +226,55 @@ export default function NotificationsPage() {
                                     notifications.map((item, index) => (
                                         <div
                                             key={`mobile-${item.notification_id || index}-${index}`}
-                                            className={`p-4 border-b border-[#ebebeb] last:border-0 transition-colors ${!item.is_read ? "bg-[#fcf8ec]" : "bg-white"}`}
+                                            className={`py-2.5 px-3.5 border-b border-[#ddd] last:border-0 transition-colors ${!item.is_read ? "bg-[#fcf8ec]" : "bg-white"}`}
                                         >
-                                            <div className="flex items-start justify-between gap-2 mb-2">
+                                            <div className="flex items-start justify-between gap-2 mb-1">
                                                 <div className="flex items-center gap-2">
-                                                    {!item.is_read && <div className="w-2 h-2 bg-[#f5af02] rounded-full flex-shrink-0 mt-1"></div>}
+                                                    {!item.is_read && <div className="w-2 h-2 bg-brand-yellow rounded-full flex-shrink-0 mt-1"></div>}
                                                     {getOrderLink(item) ? (
-                                                        <Link href={getOrderLink(item)!} className={`text-[13px] hover:text-[#f5af02] transition-colors hover:underline ${!item.is_read ? "font-bold text-black" : "font-normal text-[#666666]"}`}>
+                                                        <Link href={getOrderLink(item)!} className={`text-body hover:text-brand-yellow transition-colors hover:underline ${!item.is_read ? "font-bold text-black" : "font-normal text-[#666666]"}`}>
                                                             {translateNotificationText(item.title, locale)}
                                                         </Link>
                                                     ) : (
-                                                        <span className={`text-[13px] ${!item.is_read ? "font-bold text-black" : "font-normal text-[#666666]"}`}>{translateNotificationText(item.title, locale)}</span>
+                                                        <span className={`text-body ${!item.is_read ? "font-bold text-black" : "font-normal text-[#666666]"}`}>{translateNotificationText(item.title, locale)}</span>
                                                     )}
                                                 </div>
-                                                <span className="text-[11px] text-gray-400 flex-shrink-0">{formatDate(item.date_added_formatted, locale)}</span>
+                                                <span className="text-label text-gray-400 flex-shrink-0">{formatDate(item.date_added_formatted, locale)}</span>
                                             </div>
-                                            <p className={`text-[12px] leading-relaxed mb-3 ${!item.is_read ? "font-medium text-black" : "text-[#666666]"}`}>
+                                            <p className={`text-body-sm leading-relaxed mb-1.5 ${!item.is_read ? "font-medium text-black" : "text-[#666666]"}`}>
                                                 {translateNotificationText(item.description, locale)}
                                             </p>
-                                            <div className="flex items-center gap-3 text-[11px] font-bold text-[#333333]">
+                                            <div className="flex items-center gap-3 text-label font-bold text-[#333333]">
                                                 {!item.is_read && (
                                                     <>
-                                                        <button onClick={(e) => { e.stopPropagation(); markAsRead(item.notification_id); }} className="hover:text-[#f5af02] transition-colors">{t('m.mark-as-read')}</button>
+                                                        <button onClick={(e) => { e.stopPropagation(); markAsRead(item.notification_id); }} className="hover:text-brand-yellow transition-colors">{t('m.mark-as-read')}</button>
                                                         <span className="text-[#cccccc]">|</span>
                                                     </>
                                                 )}
-                                                <button onClick={(e) => { e.stopPropagation(); removeNotification(item.notification_id, item.is_read); }} disabled={deletingIds.includes(item.notification_id)} className="hover:text-[#f5af02] transition-colors disabled:opacity-50">
+                                                <button onClick={(e) => { e.stopPropagation(); removeNotification(item.notification_id, item.is_read); }} disabled={deletingIds.includes(item.notification_id)} className="hover:text-brand-yellow transition-colors disabled:opacity-50">
                                                     {deletingIds.includes(item.notification_id) ? t('common.loading') : t('m.remove')}
                                                 </button>
                                             </div>
                                         </div>
                                     ))
                                 ) : (
-                                    <div className="py-16 text-center text-gray-500 text-[13px]">{t('notifications.empty')}</div>
+                                    <div className="py-16 text-center text-gray-500 text-body">{t('notifications.empty')}</div>
                                 )}
                             </div>
 
                             {/* PAGINATION PANEL */}
-                            <div className="bg-[#e8e8e8] px-4 md:px-6 py-4 flex flex-col sm:flex-row items-center justify-between gap-4 md:gap-6 border-t border-[#dddddd]">
-                                <div className="text-[13px] text-[#333333] font-medium order-2 lg:order-1">
+                            <div className="bg-white py-2 px-4 flex flex-col md:flex-row items-center justify-between gap-4 text-black border-t border-[#ddd]">
+                                <div className="text-body text-black font-bold order-2 md:order-1">
                                     {t('favorites.items')} {((currentPage - 1) * pageSize) + 1} {t('m.to')} {Math.min(currentPage * pageSize, totalCount)} {t('favorites.of')} {totalCount} {t('favorites.total')}
                                 </div>
 
-                                <div className="flex items-center gap-3 order-1 lg:order-2">
+                                <div className="flex items-center gap-1 order-1 md:order-2">
                                     {currentPage > 1 && (
                                         <button
                                             onClick={() => setCurrentPage(currentPage - 1)}
-                                            className="w-10 h-10 flex items-center justify-center text-[#666666] hover:text-black hover:bg-white/50 rounded-full transition-all border border-transparent hover:border-[#cccccc]"
+                                            className="w-8 h-8 flex items-center justify-center text-black hover:text-brand-yellow transition-colors"
                                         >
-                                            {isRtl ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}
+                                            {isRtl ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
                                         </button>
                                     )}
                                     <div className="flex gap-2">
@@ -290,9 +282,9 @@ export default function NotificationsPage() {
                                             <button
                                                 key={num}
                                                 onClick={() => setCurrentPage(num)}
-                                                className={`w-10 h-10 flex items-center justify-center text-[14px] font-bold rounded-full border transition-all ${currentPage === num
-                                                    ? "bg-[#f5af02] border-[#f5af02] text-white shadow-md transform scale-105"
-                                                    : "bg-white border-[#cccccc] text-[#333333] hover:border-[#f5af02] hover:text-[#f5af02]"
+                                                className={`w-8 h-8 flex items-center justify-center text-body-sm font-bold rounded-full border transition-all ${currentPage === num
+                                                    ? "bg-brand-yellow border-brand-yellow text-black"
+                                                    : "bg-white border-[#ddd] text-black hover:border-brand-yellow hover:text-brand-yellow"
                                                     }`}
                                             >
                                                 {num}
@@ -302,28 +294,27 @@ export default function NotificationsPage() {
                                     {currentPage < totalPages && (
                                         <button
                                             onClick={() => setCurrentPage(currentPage + 1)}
-                                            className="w-10 h-10 flex items-center justify-center text-[#666666] hover:text-black hover:bg-white/50 rounded-full transition-all border border-transparent hover:border-[#cccccc]"
+                                            className="w-8 h-8 flex items-center justify-center text-black hover:text-brand-yellow transition-colors"
                                         >
-                                            {isRtl ? <ChevronLeft size={20} /> : <ChevronRight size={20} />}
+                                            {isRtl ? <ChevronLeft size={18} /> : <ChevronRight size={18} />}
                                         </button>
                                     )}
                                 </div>
 
-                                <div className="flex items-center gap-3 text-[13px] text-[#333333] font-medium order-3">
+                                <div className="flex items-center gap-2 text-body text-black font-bold order-3">
                                     <span>{t('favorites.show')}</span>
                                     <PortalDropdown
                                         value={String(pageSize)}
                                         onChange={(val) => { setPageSize(Number(val)); setCurrentPage(1); }}
                                         options={[{ label: "15", value: "15" }, { label: "30", value: "30" }, { label: "50", value: "50" }]}
+                                        minWidth={60}
+                                        buttonClassName="bg-white border border-gray-300 rounded px-2.5 py-1 text-body font-bold text-black hover:border-gray-400 focus:outline-none flex items-center justify-between gap-1 shadow-sm"
                                     />
                                     <span>{t('common.perPage')}</span>
                                 </div>
                             </div>
                         </div>
                     </main>
-                </div>
-            </div>
-
-        </>
+        </div>
     );
 }

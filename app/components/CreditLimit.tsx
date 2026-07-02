@@ -62,7 +62,7 @@ const CreditLimit = () => {
         return (
             <div className="w-full p-4 bg-red-50 border border-red-100 rounded-lg flex items-center gap-3">
                 <Info className="text-red-500 w-5 h-5" />
-                <p className="text-[12px] text-red-600 font-medium">{error}</p>
+                <p className="text-body-sm text-red-600 font-medium">{error}</p>
             </div>
         );
     }
@@ -71,17 +71,17 @@ const CreditLimit = () => {
         return null;
     }
 
-    const cardClass = "flex shadow-sm rounded-lg overflow-hidden transition-all duration-300 hover:shadow-md transform hover:-translate-y-1 group";
+    const cardClass = "flex shadow-sm rounded-sm overflow-hidden transition-all duration-300 hover:shadow-md transform hover:-translate-y-1 group";
     const iconContainerClass = "w-16 md:w-20 flex items-center justify-center p-3 transition-colors duration-300";
     const contentClass = "flex-1 p-3 md:p-4 flex flex-col justify-center items-end text-white";
 
 
     return (
         <section className="animate-in fade-in slide-in-from-bottom duration-700">
-            <h2 className="text-[14px] md:text-[16px] font-bold text-black uppercase mb-3">
+            <h2 className="text-body-lg md:text-h3-sm font-bold text-black uppercase mb-3">
                 {t("m.credit-limit-information") || "Credit Limit Information"}
             </h2>
-            <hr className="border-gray-200 mb-6" />
+            <hr className="border-[#ddd] mb-6" />
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 mb-8">
                 {/* Total Credit Limit */}
@@ -90,11 +90,11 @@ const CreditLimit = () => {
                         <Hourglass className="text-white w-6 h-6 md:w-8 md:h-8" />
                     </div>
                     <div className={`${contentClass} bg-[#3498db]`}>
-                        <span className="text-[9px] md:text-[10px] font-bold uppercase tracking-tight opacity-90">
+                        <span className="text-micro md:text-caption font-bold uppercase tracking-tight opacity-90">
                             {t("m.total-credit-limit") || "Total Credit Limit"}
                         </span>
                         <div className="flex items-center gap-1 mt-1 md:mt-1.5">
-                            <Price amount={data.total_credit_limit} className="text-base md:text-xl font-black leading-none text-white" />
+                            <Price amount={data.total_credit_limit} className="text-base md:text-xl font-bold text-white" />
                         </div>
                     </div>
                 </div>
@@ -105,11 +105,11 @@ const CreditLimit = () => {
                         <Hourglass className="text-white w-6 h-6 md:w-8 md:h-8" />
                     </div>
                     <div className={`${contentClass} bg-[#e74c3c]`}>
-                        <span className="text-[9px] md:text-[10px] font-bold uppercase tracking-tight opacity-90">
+                        <span className="text-micro md:text-caption font-bold uppercase tracking-tight opacity-90">
                             {t("m.used-credit-limit") || "Used Credit Limit"}
                         </span>
                         <div className="flex items-center gap-1 mt-1 md:mt-1.5">
-                            <Price amount={data.used_credit_limit} className="text-base md:text-xl font-black leading-none text-white" />
+                            <Price amount={data.used_credit_limit} className="text-base md:text-xl font-bold text-white" />
                         </div>
                     </div>
                 </div>
@@ -120,11 +120,11 @@ const CreditLimit = () => {
                         <Hourglass className="text-white w-6 h-6 md:w-8 md:h-8" />
                     </div>
                     <div className={`${contentClass} bg-[#1abc9c]`}>
-                        <span className="text-[9px] md:text-[10px] font-bold uppercase tracking-tight opacity-90">
+                        <span className="text-micro md:text-caption font-bold uppercase tracking-tight opacity-90">
                             {t("m.available-credit-limit") || "Available Credit Limit"}
                         </span>
                         <div className="flex items-center gap-1 mt-1 md:mt-1.5">
-                            <Price amount={data.available_credit_limit} className="text-base md:text-xl font-black leading-none text-white" />
+                            <Price amount={data.available_credit_limit} className="text-base md:text-xl font-bold text-white" />
                         </div>
                     </div>
                 </div>

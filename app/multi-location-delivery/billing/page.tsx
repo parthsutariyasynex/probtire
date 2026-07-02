@@ -141,7 +141,7 @@ const MultiShippingBillingPage: React.FC = () => {
         <div className="bg-white min-h-screen font-sans pb-10 md:pb-20">
 
             <div className="max-w-[1440px] mx-auto pt-8 md:pt-16 px-3 sm:px-4">
-                <h1 className="text-[20px] sm:text-[24px] md:text-[28px] font-black text-black text-center uppercase mb-8 md:mb-16 tracking-tight">
+                <h1 className="text-h3 sm:text-h2 md:text-h1-sm font-black text-black text-center uppercase mb-8 md:mb-16 tracking-tight">
                     {t("multi.billingInfo")}
                 </h1>
 
@@ -149,14 +149,14 @@ const MultiShippingBillingPage: React.FC = () => {
                     {/* Billing Address Block */}
                     <div className="flex flex-col bg-white border border-[#f0f0f0] shadow-sm">
                         <div className="bg-[#e9e9e9] py-3 px-4 md:px-6 text-center">
-                            <h2 className="text-[11px] font-black text-black uppercase tracking-widest leading-none">
+                            <h2 className="text-label font-black text-black uppercase tracking-widest leading-none">
                                 {t("multi.billingAddress")}
                             </h2>
                         </div>
                         <div className="p-5 md:p-10 flex-grow min-h-[200px] md:min-h-[300px]">
                             {currentAddress ? (
-                                <div className="text-[13px] md:text-[14px] text-black leading-[1.8] font-medium">
-                                    <p className="font-black text-[14px] md:text-[15px] uppercase mb-1" dir="ltr" style={{ unicodeBidi: "isolate" }}>{currentAddress.firstname} {currentAddress.lastname}</p>
+                                <div className="text-body md:text-body-lg text-black leading-[1.8] font-medium">
+                                    <p className="font-black text-body-lg md:text-body-xl uppercase mb-1" dir="ltr" style={{ unicodeBidi: "isolate" }}>{currentAddress.firstname} {currentAddress.lastname}</p>
                                     <p dir="ltr" style={{ unicodeBidi: "isolate" }}>{currentAddress.company}</p>
                                     <p dir="ltr" style={{ unicodeBidi: "isolate" }}>{currentAddress.street}</p>
                                     <p dir="ltr" style={{ unicodeBidi: "isolate" }}>{currentAddress.city}, {currentAddress.postcode}</p>
@@ -173,7 +173,7 @@ const MultiShippingBillingPage: React.FC = () => {
                     {/* Payment Method Block */}
                     <div className="flex flex-col bg-white border border-[#f0f0f0] shadow-sm">
                         <div className="bg-[#e9e9e9] py-3 px-4 md:px-6 text-center">
-                            <h2 className="text-[11px] font-black text-black uppercase tracking-widest leading-none">
+                            <h2 className="text-label font-black text-black uppercase tracking-widest leading-none">
                                 {t("multi.paymentMethod")}
                             </h2>
                         </div>
@@ -194,13 +194,13 @@ const MultiShippingBillingPage: React.FC = () => {
                                                         disabled={isSubmitting}
                                                         checked={selectedPaymentCode === method.code}
                                                         onChange={() => setSelectedPaymentCode(method.code)}
-                                                        className="appearance-none w-4 h-4 border-2 border-gray-300 rounded-full checked:border-[#f5b21a] focus:outline-none transition-all"
+                                                        className="appearance-none w-4 h-4 border-2 border-gray-300 rounded-full checked:border-brand-yellow focus:outline-none transition-all"
                                                     />
                                                     {selectedPaymentCode === method.code && (
-                                                        <div className="absolute w-2 h-2 bg-[#f5b21a] rounded-full" />
+                                                        <div className="absolute w-2 h-2 bg-brand-yellow rounded-full" />
                                                     )}
                                                 </div>
-                                                <span className="text-[13px] md:text-[14px] font-black text-black uppercase tracking-tight group-hover:text-[#f5b21a] transition-colors mt-0.5">
+                                                <span className="text-body md:text-body-lg font-black text-black uppercase tracking-tight group-hover:text-brand-yellow transition-colors mt-0.5">
                                                     {t(`payment_method.${method.code}`) !== `payment_method.${method.code}`
                                                         ? t(`payment_method.${method.code}`)
                                                         : method.title}
@@ -210,10 +210,10 @@ const MultiShippingBillingPage: React.FC = () => {
                                 ) : (
                                     <div className="flex items-center gap-3">
                                         <div className="relative flex items-center justify-center">
-                                            <div className="w-4 h-4 border-2 border-[#f5b21a] rounded-full" />
-                                            <div className="absolute w-2 h-2 bg-[#f5b21a] rounded-full" />
+                                            <div className="w-4 h-4 border-2 border-brand-yellow rounded-full" />
+                                            <div className="absolute w-2 h-2 bg-brand-yellow rounded-full" />
                                         </div>
-                                        <span className="text-[13px] md:text-[14px] font-black text-black uppercase tracking-tight mt-0.5">
+                                        <span className="text-body md:text-body-lg font-black text-black uppercase tracking-tight mt-0.5">
                                             {t("multi.creditAccount")}
                                         </span>
                                     </div>
@@ -224,11 +224,11 @@ const MultiShippingBillingPage: React.FC = () => {
                 </div>
 
                 {/* Footer Actions */}
-                <div className="bg-[#f2f2f2] p-4 sm:p-6 md:p-8 flex flex-col sm:flex-row justify-between items-center gap-3 sm:gap-4">
+                <div className="bg-surface-muted p-4 sm:p-6 md:p-8 flex flex-col sm:flex-row justify-between items-center gap-3 sm:gap-4">
                     <button
                         onClick={() => router.push(lp('/multi-location-delivery/shipping'))}
                         disabled={isSubmitting}
-                        className="w-full sm:w-auto text-center bg-black text-white px-6 md:px-10 py-3.5 md:py-4 text-[11px] font-black uppercase tracking-[0.15em] hover:opacity-90 transition-opacity disabled:opacity-50"
+                        className="w-full sm:w-auto text-center bg-black text-white px-6 md:px-10 py-3.5 md:py-4 text-label font-black uppercase tracking-[0.15em] hover:opacity-90 transition-opacity disabled:opacity-50"
                     >
                         {t("multi.backToShipping")}
                     </button>
@@ -236,7 +236,7 @@ const MultiShippingBillingPage: React.FC = () => {
                     <button
                         onClick={handleGoToReview}
                         disabled={isSubmitting || !selectedAddressId || !selectedPaymentCode}
-                        className="w-full sm:w-auto justify-center bg-[#f5b21a] text-black px-8 md:px-12 py-3.5 md:py-4 text-[11px] font-black uppercase tracking-[0.15em] hover:bg-black hover:text-white transition-all shadow-sm flex items-center gap-2 disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed"
+                        className="w-full sm:w-auto justify-center bg-brand-yellow text-black px-8 md:px-12 py-3.5 md:py-4 text-label font-black uppercase tracking-[0.15em] hover:bg-black hover:text-white transition-all shadow-sm flex items-center gap-2 disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed"
                     >
                         {t("multi.goToReview")}
                     </button>

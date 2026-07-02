@@ -90,15 +90,15 @@ const CheckoutSuccessContent = () => {
 
             <main className="flex-grow flex flex-col items-center justify-center px-4 py-8 sm:py-12 md:py-20 text-center">
                 <div className="max-w-2xl mx-auto space-y-4 sm:space-y-5 md:space-y-6">
-                    <h1 className="text-[24px] sm:text-[28px] md:text-[32px] lg:text-[42px] font-black text-black uppercase tracking-tight leading-tight">
+                    <h1 className="text-h2 sm:text-h1-sm md:text-h1 lg:text-h1-lg font-black text-black uppercase tracking-tight leading-tight">
                         {t("checkoutSuccess.thankYou")}
                     </h1>
 
                     <div className="space-y-2">
-                        <p className="text-[14px] sm:text-[16px] md:text-[18px] text-black">
+                        <p className="text-body-lg sm:text-h3-sm md:text-subheading text-black">
                             {t("checkoutSuccess.orderNumber")} <span className="font-bold">{orderData?.order_increment_id || "..."}</span>.
                         </p>
-                        <p className="text-[13px] sm:text-[14px] md:text-[16px] text-[#555] font-medium max-w-lg mx-auto leading-relaxed">
+                        <p className="text-body sm:text-body-lg md:text-h3-sm text-[#555] font-medium max-w-lg mx-auto leading-relaxed">
                             {t("checkoutSuccess.orderConfirmation")}
                         </p>
                     </div>
@@ -106,7 +106,7 @@ const CheckoutSuccessContent = () => {
                     <div className="pt-4 sm:pt-6 md:pt-8">
                         <Link
                             href={lp("/products")}
-                            className="inline-block w-full sm:w-auto px-6 sm:px-12 py-3 sm:py-3.5 bg-[#F5B21B] text-black text-[13px] font-bold uppercase tracking-wider hover:bg-black hover:text-white transition-all shadow-sm rounded-sm"
+                            className="inline-block w-full sm:w-auto px-6 sm:px-12 py-3 sm:py-3.5 bg-brand-yellow text-black text-body font-bold uppercase tracking-wider hover:bg-black hover:text-white transition-all shadow-sm rounded-sm"
                         >
                             {t("checkoutSuccess.continueShopping")}
                         </Link>

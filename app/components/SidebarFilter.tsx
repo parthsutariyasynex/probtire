@@ -41,17 +41,17 @@ const FilterItem = memo(({
                         type="checkbox"
                         checked={isChecked}
                         onChange={(e) => onCheckboxChange(groupCode, option.value, e.target.checked)}
-                        className="peer appearance-none w-4 h-4 border-2 border-gray-300 rounded-[3px] checked:bg-yellow-400 checked:border-yellow-400 focus:outline-none focus:ring-2 focus:ring-yellow-400/50 focus:ring-offset-1 transition-all cursor-pointer"
+                        className="peer appearance-none w-4 h-4 border-2 border-gray-300 rounded-sm checked:bg-yellow-400 checked:border-yellow-400 focus:outline-none focus:ring-2 focus:ring-yellow-400/50 focus:ring-offset-1 transition-all cursor-pointer"
                     />
                     <svg className="absolute w-3 h-3 text-black pointer-events-none opacity-0 peer-checked:opacity-100 transition-opacity" viewBox="0 0 14 10" fill="none">
                         <path d="M1 5L4.5 8.5L13 1" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                     </svg>
                 </div>
-                <span className={`text-[13px] transition-colors leading-tight ${isChecked ? 'text-black font-bold' : 'text-gray-600 font-medium group-hover/label:text-black'}`}>
+                <span className={`text-body transition-colors leading-tight ${isChecked ? 'text-black font-bold' : 'text-gray-600 font-medium group-hover/label:text-black'}`}>
                     {translatedLabel}
                 </span>
             </div>
-            <span className="text-[10px] font-bold text-gray-400 bg-gray-50 px-1.5 py-0.5 rounded border border-gray-100 group-hover/label:bg-gray-100 transition-colors">
+            <span className="text-caption font-bold text-gray-400 bg-gray-50 px-1.5 py-0.5 rounded border border-gray-100 group-hover/label:bg-gray-100 transition-colors">
                 {option.count ?? 0}
             </span>
         </label>
@@ -90,7 +90,7 @@ const FilterGroup = memo(({
                 aria-expanded={isExpanded}
             >
                 <div className="flex items-center gap-2">
-                    <span className="font-bold text-gray-900 text-[15px]">{t(`filter.${group.code}`) !== `filter.${group.code}` ? t(`filter.${group.code}`) : group.label}</span>
+                    <span className="font-bold text-gray-900 text-body-xl">{t(`filter.${group.code}`) !== `filter.${group.code}` ? t(`filter.${group.code}`) : group.label}</span>
                 </div>
                 <div className={`text-gray-400 transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`}>
                     <ChevronDown className="w-4 h-4" strokeWidth={2.5} />
@@ -109,7 +109,7 @@ const FilterGroup = memo(({
                                         placeholder={`${t("m.search")} ${translatedGroupLabel}...`}
                                         value={searchTerm}
                                         onChange={(e) => setSearchTerm(e.target.value)}
-                                        className="w-full ltr:pl-8 ltr:pr-3 rtl:pr-8 rtl:pl-3 py-1.5 text-xs border border-gray-200 rounded-md outline-none focus:border-yellow-400 transition-colors"
+                                        className="w-full py-1.5 px-2 text-xs border border-gray-200 rounded-md outline-none focus:border-yellow-400 transition-colors"
                                     />
                                 );
                             })()}
@@ -129,7 +129,7 @@ const FilterGroup = memo(({
                                 />
                             ))
                         ) : (
-                            <div className="text-[11px] text-gray-400 italic py-2 text-center">{t("m.no-matches")}</div>
+                            <div className="text-label text-gray-400 italic py-2 text-center">{t("m.no-matches")}</div>
                         )}
                     </div>
                 </div>
@@ -228,7 +228,10 @@ function SidebarFilter({
     }, [onFilterChange, filterGroups, selectedFilters]);
 
     const toggleGroup = useCallback((code: string) => {
-        setExpandedGroups(prev => ({ ...prev, [code]: !prev[code] }));
+        setExpandedGroups(prev => {
+            const wasExpanded = !!prev[code];
+            return wasExpanded ? {} : { [code]: true };
+        });
     }, []);
 
     // Matches logic we had before for relevant codes
@@ -252,7 +255,7 @@ function SidebarFilter({
             <div className="flex items-center w-full h-[60px] border-b border-gray-200 bg-white shadow-sm flex-shrink-0">
                 {!isCollapsed && (
                     <div className="flex-1 px-6 flex items-center overflow-hidden min-w-0">
-                        <h2 className="font-bold text-gray-900 text-[16px] whitespace-nowrap">{t("m.filter-options")}</h2>
+                        <h2 className="font-bold text-gray-900 text-h3-sm whitespace-nowrap">{t("m.filter-options")}</h2>
                     </div>
                 )}
                 <div
@@ -282,7 +285,7 @@ function SidebarFilter({
                                         </div>
                                         {Array.from({ length: 3 }).map((_, j) => (
                                             <div key={j} className="flex items-center gap-3">
-                                                <div className="h-4 w-4 rounded-[3px] bg-gray-200 animate-pulse" />
+                                                <div className="h-4 w-4 rounded-sm bg-gray-200 animate-pulse" />
                                                 <div className="h-3 w-32 bg-gray-200 rounded animate-pulse" />
                                             </div>
                                         ))}
@@ -307,9 +310,9 @@ function SidebarFilter({
 
                     <div className="p-4 border-t border-gray-100 bg-white">
                         <Link href={lp("/guides")}>
-                            <div className="bg-[#f5a623] rounded-sm p-4 flex items-center gap-4 cursor-pointer hover:bg-black group transition-all">
-                                <FileText size={20} className="text-white group-hover:scale-110 transition-transform" />
-                                <span className="font-black text-black group-hover:text-white text-xs uppercase">{t("guides.title")}</span>
+                            <div className="bg-brand-yellow rounded-sm p-4 flex items-center gap-4 cursor-pointer hover:bg-black group transition-all">
+                                <FileText size={20} className="text-black group-hover:scale-110 transition-transform" />
+                                <span className="font-bold text-black group-hover:text-white text-xs uppercase">{t("guides.title")}</span>
                             </div>
                         </Link>
                     </div>

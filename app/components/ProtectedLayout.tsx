@@ -10,6 +10,7 @@ import ScrollToTop from './ScrollToTop';
 import { stripLocaleFromPath, useLocale } from '@/lib/i18n/client';
 import { handleGlobalLogout } from '@/lib/auth/utils';
 import { RouteAwareContent } from '@/components/skeletons';
+import { LoadingOverlayProvider } from '@/contexts/LoadingOverlayContext';
 
 interface ProtectedLayoutProps {
   children: ReactNode;
@@ -85,22 +86,13 @@ export default function ProtectedLayout({ children }: ProtectedLayoutProps) {
     if (status === 'authenticated') redirectedRef.current = false;
   }, [status, isPublicPage, locale, pathname, router]);
 
-  // Show route-matched skeleton while auth is checking on protected pages
-  if (isLoading && !isPublicPage) {
-    return (
-      <div className="flex flex-col min-h-screen bg-white">
-        <Navbar />
-        <main className="flex-1 flex flex-col w-full relative">
-          <RouteAwareContent />
-        </main>
-      </div>
-    );
-  }
-
-  // Don't render page content if unauthenticated on protected pages (redirecting to login)
-  const showContent = isPublicPage || status === 'authenticated' || isLoading;
+  // Show route-matched skeleton while auth is resolving. Always use the same DOM
+  // structure (no early return) so Navbar never remounts — eliminates the two-phase
+  // skeleton flicker where navbar-skeleton → real-navbar caused a visible jump.
+  const showContent = isPublicPage || status === 'authenticated';
 
   return (
+    <LoadingOverlayProvider>
     <div className="flex flex-col min-h-screen bg-white">
       <Navbar />
 
@@ -114,5 +106,6 @@ export default function ProtectedLayout({ children }: ProtectedLayoutProps) {
 
       <ScrollToTop />
     </div>
+    </LoadingOverlayProvider>
   );
 }

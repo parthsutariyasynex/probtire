@@ -45,7 +45,7 @@ const RegionCard: React.FC<RegionCardProps> = ({ title, address, mapLink, index 
                     href={mapLink}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="block text-sm sm:text-[15px] leading-relaxed text-gray-700 space-y-0.5 hover:text-[#f5a623] transition-colors group/address"
+                    className="block text-sm sm:text-body-xl leading-relaxed text-gray-700 space-y-0.5 hover:text-brand-yellow transition-colors group/address"
                 >
                     {address.split("\n").map((line, i) => (
                         <p key={i} dir="ltr" style={{ unicodeBidi: "isolate" }}>{line}</p>
@@ -56,9 +56,9 @@ const RegionCard: React.FC<RegionCardProps> = ({ title, address, mapLink, index 
                 href={mapLink}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-3 text-sm font-bold text-black hover:text-[#f5a623] transition-all w-fit mt-6"
+                className="flex items-center gap-3 text-sm font-bold text-black hover:text-brand-yellow transition-all w-fit mt-6"
             >
-                <div className="bg-gray-800 text-white p-2 rounded-full group-hover:bg-[#f5a623] transition-all duration-300">
+                <div className="bg-gray-800 text-white p-2 rounded-full group-hover:bg-brand-yellow transition-all duration-300">
                     <MapPin className="w-4 h-4" />
                 </div>
                 <span className="uppercase tracking-wide">{t("locations.googleMap")}</span>

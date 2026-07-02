@@ -48,39 +48,39 @@ export default function ChangePasswordPage() {
           <h1 className="text-base sm:text-lg md:text-xl font-bold mb-4 sm:mb-6 uppercase tracking-wider text-black">{t("changePassword.title")}</h1>
           <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-5">
             <div>
-              <label className="block text-[11px] font-bold uppercase text-gray-700 tracking-tight mb-1">{t("changePassword.currentPassword")} *</label>
+              <label className="block text-label font-bold uppercase text-gray-700 tracking-tight mb-1">{t("changePassword.currentPassword")} *</label>
               <input
                 type="password"
                 required
                 value={currentPassword}
                 onChange={(e) => setCurrentPassword(e.target.value)}
-                className="w-full border border-gray-300 px-3 py-2.5 rounded-[1px] text-sm focus:outline-none focus:ring-1 focus:ring-black cursor-text"
+                className="w-full border border-gray-300 px-3 py-2.5 rounded-xs text-sm focus:outline-none focus:ring-1 focus:ring-black cursor-text"
               />
             </div>
             <div>
-              <label className="block text-[11px] font-bold uppercase text-gray-700 tracking-tight mb-1">{t("changePassword.newPassword")} *</label>
+              <label className="block text-label font-bold uppercase text-gray-700 tracking-tight mb-1">{t("changePassword.newPassword")} *</label>
               <input
                 type="password"
                 required
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
-                className="w-full border border-gray-300 px-3 py-2.5 rounded-[1px] text-sm focus:outline-none focus:ring-1 focus:ring-black cursor-text"
+                className="w-full border border-gray-300 px-3 py-2.5 rounded-xs text-sm focus:outline-none focus:ring-1 focus:ring-black cursor-text"
               />
             </div>
             <div>
-              <label className="block text-[11px] font-bold uppercase text-gray-700 tracking-tight mb-1">{t("changePassword.confirmNewPassword")} *</label>
+              <label className="block text-label font-bold uppercase text-gray-700 tracking-tight mb-1">{t("changePassword.confirmNewPassword")} *</label>
               <input
                 type="password"
                 required
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                className="w-full border border-gray-300 px-3 py-2.5 rounded-[1px] text-sm focus:outline-none focus:ring-1 focus:ring-black cursor-text"
+                className="w-full border border-gray-300 px-3 py-2.5 rounded-xs text-sm focus:outline-none focus:ring-1 focus:ring-black cursor-text"
               />
             </div>
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-amber-400 text-black font-bold py-3 rounded-[3px] shadow-sm hover:bg-amber-500 transition-all uppercase text-xs tracking-wider cursor-pointer active:scale-95 disabled:opacity-50"
+              className="w-full bg-amber-400 text-black font-bold py-3 rounded-sm shadow-sm hover:bg-amber-500 transition-all uppercase text-xs tracking-wider cursor-pointer active:scale-95 disabled:opacity-50"
             >
               {loading ? t("changePassword.saving") : t("changePassword.save")}
             </button>

@@ -64,9 +64,9 @@
 //     // Graceful loading state
 //     if (loading) {
 //         return (
-//             <aside className="w-full lg:w-64 flex-shrink-0 bg-[#f8f8f8] border-b lg:border-b-0 ltr:lg:border-r rtl:lg:border-l border-[#ebebeb] z-30 sticky top-[56px] sm:top-[64px] lg:top-[108px] h-auto lg:h-[calc(100vh-108px)] flex flex-col items-center justify-center p-10">
-//                 <Loader2 className="w-6 h-6 animate-spin text-[#f5a623] mb-2" />
-//                 <span className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">{t("common.loading") || "Loading..."}</span>
+//             <aside className="w-full lg:w-64 flex-shrink-0 bg-surface-muted border-b lg:border-b-0 ltr:lg:border-r rtl:lg:border-l border-subtle z-30 sticky top-[56px] sm:top-[64px] lg:top-[108px] h-auto lg:h-[calc(100vh-108px)] flex flex-col items-center justify-center p-10">
+//                 <Loader2 className="w-6 h-6 animate-spin text-brand-yellow mb-2" />
+//                 <span className="text-caption text-gray-400 font-bold uppercase tracking-widest">{t("common.loading") || "Loading..."}</span>
 //             </aside>
 //         );
 //     }
@@ -74,8 +74,8 @@
 //     // Graceful error state/fallback
 //     if (error || !sidebarData || !sidebarData.items || sidebarData.items.length === 0) {
 //         return (
-//             <aside className="w-full lg:w-64 flex-shrink-0 bg-[#f8f8f8] border-b lg:border-b-0 ltr:lg:border-r rtl:lg:border-l border-[#ebebeb] z-30 sticky top-[56px] sm:top-[64px] lg:top-[108px] h-auto lg:h-[calc(100vh-108px)] p-4">
-//                 <p className="text-[12px] text-gray-500 italic text-center py-10">
+//             <aside className="w-full lg:w-64 flex-shrink-0 bg-surface-muted border-b lg:border-b-0 ltr:lg:border-r rtl:lg:border-l border-subtle z-30 sticky top-[56px] sm:top-[64px] lg:top-[108px] h-auto lg:h-[calc(100vh-108px)] p-4">
+//                 <p className="text-body-sm text-gray-500 italic text-center py-10">
 //                     {t("sidebar.error") || "Account menu currently unavailable."}
 //                 </p>
 //             </aside>
@@ -88,7 +88,7 @@
 //         .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
 
 //     return (
-//         <aside className="w-full lg:w-64 flex-shrink-0 bg-[#f8f8f8] border-b lg:border-b-0 ltr:lg:border-r rtl:lg:border-l border-[#ebebeb] z-30 sticky top-[56px] sm:top-[64px] lg:top-[108px] h-auto lg:h-[calc(100vh-108px)] overflow-x-auto lg:overflow-x-hidden lg:overflow-y-auto custom-scrollbar shadow-sm lg:shadow-none">
+//         <aside className="w-full lg:w-64 flex-shrink-0 bg-surface-muted border-b lg:border-b-0 ltr:lg:border-r rtl:lg:border-l border-subtle z-30 sticky top-[56px] sm:top-[64px] lg:top-[108px] h-auto lg:h-[calc(100vh-108px)] overflow-x-auto lg:overflow-x-hidden lg:overflow-y-auto custom-scrollbar shadow-sm lg:shadow-none">
 //             <nav className="p-0 lg:p-4">
 //                 <ul className="flex flex-row lg:flex-col space-y-0 lg:space-y-1">
 //                     {visibleItems.map((item) => {
@@ -114,7 +114,7 @@
 //                                 <li key={item.code} className="flex-shrink-0">
 //                                     <button
 //                                         onClick={() => signOut({ callbackUrl: `${window.location.origin}${lp("/login")}` })}
-//                                         className="block w-full ltr:text-left rtl:text-right py-3 px-6 lg:px-4 text-gray-600 hover:text-black hover:bg-gray-100 transition-all duration-200 border-b-[3px] lg:border-b-0 ltr:lg:border-l-4 rtl:lg:border-r-4 border-transparent whitespace-nowrap font-medium text-[13px] md:text-[14px]"
+//                                         className="block w-full ltr:text-left rtl:text-right py-3 px-6 lg:px-4 text-gray-600 hover:text-black hover:bg-gray-100 transition-all duration-200 border-b-[3px] lg:border-b-0 ltr:lg:border-l-4 rtl:lg:border-r-4 border-transparent whitespace-nowrap font-medium text-body md:text-body-lg"
 //                                     >
 //                                         {item.label}
 //                                     </button>
@@ -126,8 +126,8 @@
 //                             <li key={item.code} className="flex-shrink-0">
 //                                 <Link
 //                                     href={href}
-//                                     className={`block py-3 px-6 lg:px-4 transition-all duration-200 whitespace-nowrap ltr:text-left rtl:text-right text-[13px] md:text-[14px] ${isActive
-//                                         ? "font-bold text-black border-b-[3px] lg:border-b-0 ltr:lg:border-l-4 rtl:lg:border-r-4 border-[#f5a623] bg-white shadow-sm"
+//                                     className={`block py-3 px-6 lg:px-4 transition-all duration-200 whitespace-nowrap ltr:text-left rtl:text-right text-body md:text-body-lg ${isActive
+//                                         ? "font-bold text-black border-b-[3px] lg:border-b-0 ltr:lg:border-l-4 rtl:lg:border-r-4 border-brand-yellow bg-white shadow-sm"
 //                                         : "text-gray-600 hover:text-black hover:bg-gray-100 border-b-[3px] lg:border-b-0 ltr:lg:border-l-4 rtl:lg:border-r-4 border-transparent"
 //                                         }`}
 //                                 >
@@ -236,8 +236,8 @@ const Sidebar = () => {
     // Graceful error state/fallback
     if (error || !sidebarData || !sidebarData.items || sidebarData.items.length === 0) {
         return (
-            <aside className="w-full lg:w-64 flex-shrink-0 bg-[#f8f8f8] border-b lg:border-b-0 ltr:lg:border-r rtl:lg:border-l border-[#ebebeb] z-30 sticky top-[56px] sm:top-[64px] lg:top-[108px] h-auto lg:h-[calc(100vh-108px)] p-4">
-                <p className="text-[12px] text-gray-500 italic text-center py-10">
+            <aside className="w-full lg:w-64 flex-shrink-0 bg-surface-muted border-b lg:border-b-0 ltr:lg:border-r rtl:lg:border-l border-subtle z-30 sticky top-[56px] sm:top-[64px] lg:top-[108px] h-auto lg:h-[calc(100vh-108px)] p-4">
+                <p className="text-body-sm text-gray-500 italic text-center py-10">
                     {t("sidebar.error") || "Account menu currently unavailable."}
                 </p>
             </aside>
@@ -283,9 +283,9 @@ const Sidebar = () => {
     });
 
     return (
-        <aside className="w-full lg:w-64 flex-shrink-0 bg-[#f8f8f8] border-b lg:border-b-0 ltr:lg:border-r rtl:lg:border-l border-[#ebebeb] z-30 sticky top-[56px] sm:top-[64px] lg:top-[108px] h-auto lg:h-[calc(100vh-108px)] overflow-x-auto lg:overflow-x-hidden lg:overflow-y-auto custom-scrollbar shadow-sm lg:shadow-none">
+        <aside className="w-full lg:w-56 xl:w-64 flex-shrink-0 bg-surface-muted border-b lg:border-b-0 ltr:lg:border-r rtl:lg:border-l border-gray-200 z-30 sticky top-[56px] sm:top-[64px] lg:top-[108px] h-auto lg:h-[calc(100vh-108px)] overflow-x-auto lg:overflow-x-hidden lg:overflow-y-auto custom-scrollbar">
             <nav className="p-0 lg:p-4">
-                <ul className="flex flex-row lg:flex-col space-y-0 lg:space-y-1">
+                <ul className="flex flex-row lg:flex-col space-y-0 lg:space-y-1 bg-[#f5f5f5]">
                     {visibleItems.map((item) => {
                         // Prefer the mapped friendly Next route (locale-prefixed); fall back to the
                         // backend Magento path if this item isn't in the map.
@@ -316,7 +316,7 @@ const Sidebar = () => {
                                 <li key={item.code} className="flex-shrink-0">
                                     <button
                                         onClick={() => signOut({ callbackUrl: `${window.location.origin}${lp("/login")}` })}
-                                        className="block w-full ltr:text-left rtl:text-right py-3 px-6 lg:px-4 text-gray-600 hover:text-black hover:bg-gray-100 transition-all duration-200 border-b-[3px] lg:border-b-0 ltr:lg:border-l-4 rtl:lg:border-r-4 border-transparent whitespace-nowrap font-medium text-[13px] md:text-[14px]"
+                                        className="block w-full ltr:text-left rtl:text-right py-3 px-6 lg:px-4 text-black/70 hover:text-black hover:bg-gray-100 transition-all duration-200 border-b-[3px] lg:border-b-0 ltr:lg:border-l-4 rtl:lg:border-r-4 border-transparent whitespace-nowrap font-bold uppercase text-body-sm"
                                     >
                                         {item.label}
                                     </button>
@@ -328,9 +328,9 @@ const Sidebar = () => {
                             <li key={item.code} className="flex-shrink-0">
                                 <Link
                                     href={href}
-                                    className={`block py-3 px-6 lg:px-4 transition-all duration-200 whitespace-nowrap ltr:text-left rtl:text-right text-[13px] md:text-[14px] ${isActive
-                                        ? "font-bold text-black border-b-[3px] lg:border-b-0 ltr:lg:border-l-4 rtl:lg:border-r-4 border-[#f5a623] bg-white shadow-sm"
-                                        : "text-gray-600 hover:text-black hover:bg-gray-100 border-b-[3px] lg:border-b-0 ltr:lg:border-l-4 rtl:lg:border-r-4 border-transparent"
+                                    className={`block py-3 px-6 lg:px-4 transition-all duration-200 whitespace-nowrap ltr:text-left rtl:text-right font-semibold uppercase text-body-sm ${isActive
+                                        ? "text-black border-b-[3px] lg:border-b-0 ltr:lg:border-l-4 rtl:lg:border-r-4 border-brand-yellow"
+                                        : "text-black/70 hover:text-black hover:bg-gray-100 border-b-[3px] lg:border-b-0 ltr:lg:border-l-4 rtl:lg:border-r-4 border-transparent"
                                         }`}
                                 >
                                     {item.label}

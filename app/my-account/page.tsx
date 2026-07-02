@@ -132,7 +132,7 @@ export default function MyAccountPage() {
     const showSkeleton = loading || status === "loading" || (!customer && !fetchError);
     if (showSkeleton) {
         return (
-            <div className="min-h-screen flex flex-col w-full bg-[#fcfcfc] font-rubik">
+            <div className="min-h-screen flex flex-col w-full bg-surface font-rubik">
                 <div className="flex flex-col lg:flex-row flex-1 w-full">
                     <SidebarSkeleton />
                     <main className="flex-1 min-w-0">
@@ -146,19 +146,19 @@ export default function MyAccountPage() {
     // Fetch failed and we have no profile data → proper error fallback with retry (never blank).
     if (!customer) {
         return (
-            <div className="min-h-screen flex flex-col w-full bg-[#fcfcfc] font-rubik">
+            <div className="min-h-screen flex flex-col w-full bg-surface font-rubik">
                 <div className="flex flex-col lg:flex-row flex-1 w-full">
                     <Sidebar />
-                    <main className="flex-1 w-full px-4 md:px-6 lg:px-8 py-4 md:py-6 lg:py-10">
-                        <h1 className="text-[20px] sm:text-[22px] md:text-[26px] font-black text-black mb-6 md:mb-10 uppercase tracking-wide">
+                    <main className="flex-1 w-full px-4 md:px-6 lg:px-8 py-4 md:py-6 lg:py-5">
+                        <h1 className="text-h3 sm:text-[22px] md:text-[26px] font-black text-black mb-6 md:mb-10 uppercase tracking-wide">
                             {t("account.title")}
                         </h1>
                         <div className="border border-gray-300 bg-white shadow-sm rounded-none p-8 md:p-12 text-center max-w-xl">
-                            <p className="text-[15px] font-bold text-black mb-2 uppercase">{t("common.error")}</p>
-                            <p className="text-[13px] text-gray-600 mb-6">{t("m.sorry-there-has-been-an-error-processing-your-request-please-try-again-later")}</p>
+                            <p className="text-body-xl font-bold text-black mb-2 uppercase">{t("common.error")}</p>
+                            <p className="text-body text-gray-600 mb-6">{t("m.sorry-there-has-been-an-error-processing-your-request-please-try-again-later")}</p>
                             <button
                                 onClick={retryLoad}
-                                className="bg-[#F5B21B] hover:bg-[#e0a116] text-black text-[12px] font-bold px-6 py-2.5 uppercase transition-all rounded-sm"
+                                className="bg-brand-yellow hover:bg-brand-yellow-dark text-black text-body-sm font-bold px-6 py-2.5 uppercase transition-all rounded-sm"
                             >
                                 {t("common.tryAgain")}
                             </button>
@@ -188,7 +188,7 @@ export default function MyAccountPage() {
     };
 
     const cardBase = "border border-gray-300 bg-white shadow-sm rounded-none";
-    const sectionHeader = "bg-[#f5f5f5] px-4 py-3 border-b border-gray-300 text-black font-bold uppercase text-[13px]";
+    const sectionHeader = "bg-[#f5f5f5] px-4 py-3 border-b border-gray-300 text-black font-bold uppercase text-body";
 
     const addresses = (customer as any).addresses as Address[] | undefined;
     const defaultBilling = addresses?.find((a: Address) => a.default_billing);
@@ -226,38 +226,38 @@ export default function MyAccountPage() {
         <>
 
 
-            <div className="min-h-screen flex flex-col w-full bg-[#fcfcfc] font-rubik">
+            <div className="min-h-screen flex flex-col w-full bg-surface font-rubik">
                 <div className="flex flex-col lg:flex-row flex-1 w-full">
                     <Sidebar />
 
                     {/* Right Content */}
-                    <main className="flex-1 w-full px-4 md:px-6 lg:px-8 py-4 md:py-6 lg:py-10">
+                    <main className="flex-1 w-full px-4 md:px-6 lg:px-8 py-4 md:py-6 lg:py-5">
 
                         {/* Sub-account Identity Banner */}
                         {isSubAccountSession && (
                             <div className="bg-[#e7f6e7] border-l-4 border-[#2d8a2d] text-[#1b5e20] p-4 mb-8 flex items-center gap-3 animate-in fade-in slide-in-from-top duration-500 shadow-sm" role="alert">
                                 <span className="text-[#2d8a2d] font-bold text-lg">✔</span>
-                                <p className="text-[14px] font-medium tracking-tight">{t("account.youAreLoggedAs")}</p>
+                                <p className="text-body-lg font-medium tracking-tight">{t("account.youAreLoggedAs")}</p>
                             </div>
                         )}
 
-                        <h1 className="text-[20px] sm:text-[22px] md:text-[26px] font-black text-black mb-6 md:mb-10 uppercase tracking-wide">
+                        <h1 className="text-h3 sm:text-[22px] md:text-[26px] font-black text-black mb-6 md:mb-10 uppercase tracking-wide">
                             {t("account.title")}
                         </h1>
 
                         <div className="space-y-8">
                             {/* ACCOUNT INFORMATION */}
                             <div>
-                                <h2 className="text-[14px] md:text-[16px] font-bold text-black uppercase mb-3">{t("account.accountInformation")}</h2>
+                                <h2 className="text-body-lg md:text-h3-sm font-bold text-black uppercase mb-3">{t("account.accountInformation")}</h2>
                                 <hr className="border-gray-200 mb-6" />
 
-                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4 md:gap-6">
                                     {/* Contact Information */}
-                                    <div className={cardBase}>
+                                    <div className={`${cardBase} md:col-span-1 lg:col-span-2`}>
                                         <div className={sectionHeader}>
                                             {t("account.contactInformation")}
                                         </div>
-                                        <div className="p-3 md:p-5 text-[13px] text-gray-700 space-y-2.5 font-medium leading-relaxed">
+                                        <div className="p-3 md:p-5 text-body text-gray-700 space-y-2.5 font-medium leading-relaxed">
                                             <p>{t("account.contactName")}: {(customer as any).firstname} {(customer as any).lastname}</p>
                                             <p>{t("account.email")}: {(customer as any).email}</p>
                                             <p>{t("account.customerMobile")}: {customerMobile}</p>
@@ -268,91 +268,71 @@ export default function MyAccountPage() {
                                             <p>{t("account.contactInformation")}: {(customer as any).email} ,{customerMobile}</p>
 
                                             <div className="flex flex-col md:flex-row gap-3 pt-4 md:pt-6">
-                                                <Link href={lp("/customer/account/edit")} className="w-full md:w-auto text-center bg-[#F5B21B] hover:bg-[#e0a116] text-black text-[12px] font-bold px-6 py-2 uppercase transition-all rounded-sm">
+                                                <Link href={lp("/customer/account/edit")} className="w-full md:w-auto text-center bg-brand-yellow hover:bg-brand-yellow-dark text-black text-body-sm font-bold px-6 py-2 uppercase transition-all rounded-sm">
                                                     {t("m.edit")}
                                                 </Link>
-                                                <Link href={lp("/customer/account/edit?change=password")} className="w-full md:w-auto text-center bg-[#F5B21B] hover:bg-[#e0a116] text-black text-[12px] font-bold px-6 py-2 uppercase transition-all rounded-sm whitespace-nowrap">
+                                                <Link href={lp("/customer/account/edit?change=password")} className="w-full md:w-auto text-center bg-brand-yellow hover:bg-brand-yellow-dark text-black text-body-sm font-bold px-6 py-2 uppercase transition-all rounded-sm whitespace-nowrap">
                                                     {t("changePassword.title")}
                                                 </Link>
                                             </div>
                                         </div>
                                     </div>
-                                </div>
-                            </div>
 
-                            {/* BUSINESS OVERVIEW & SALES DATA */}
-                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
-                                <div className={cardBase}>
-                                    <div className={sectionHeader + " flex justify-between items-center"}>
-                                        <span>{t("dashboard.businessOverview")}</span>
-                                        <button
-                                            onClick={() => setIsEditModalOpen(true)}
-                                            className="bg-[#F5B21B] hover:bg-black hover:text-white text-black text-[10px] font-bold px-4 py-1.5 uppercase transition-all rounded-sm shadow-sm"
-                                        >
-                                            {t("m.edit")}
-                                        </button>
+                                    {/* Business Overview */}
+                                    <div className={`${cardBase} md:col-span-1 lg:col-span-2`}>
+                                        <div className={sectionHeader + " flex justify-between items-center"}>
+                                            <span>{t("dashboard.businessOverview")}</span>
+                                            <button
+                                                onClick={() => setIsEditModalOpen(true)}
+                                                className="bg-brand-yellow hover:bg-black hover:text-white text-black text-caption font-bold px-4 py-1.5 uppercase transition-all rounded-sm shadow-sm"
+                                            >
+                                                {t("m.edit")}
+                                            </button>
+                                        </div>
+                                        <div className="p-3 md:p-5 text-body text-gray-700 space-y-2.5 font-medium leading-relaxed">
+                                            <p>{t("m.company-size")}: {getOverviewAttr("total_employees")} {t("account.employees")}, {getOverviewAttr("trucks")} {t("account.trucks")}, {getOverviewAttr("annual_revenue")} {t("account.annualRevenue")}</p>
+                                            <p>{t("m.business-model")}: {getOverviewAttr("business_model")}</p>
+                                            <p>{t("m.products-services-offered")}: {getOverviewAttr("products_offered")}</p>
+                                        </div>
                                     </div>
-                                    <div className="p-3 md:p-5 text-[13px] text-gray-700 space-y-2.5 font-medium leading-relaxed">
-                                        <p>{t("m.company-size")}: {getOverviewAttr("total_employees")} {t("account.employees")}, {getOverviewAttr("trucks")} {t("account.trucks")}, {getOverviewAttr("annual_revenue")} {t("account.annualRevenue")}</p>
-                                        <p>{t("m.business-model")}: {getOverviewAttr("business_model")}</p>
-                                        <p>{t("m.products-services-offered")}: {getOverviewAttr("products_offered")}</p>
-                                    </div>
-                                </div>
 
-                                <div className={cardBase}>
-                                    <div className={sectionHeader}>
-                                        {t("m.sales-data-qty")}
+                                    {/* Sales Data (Qty) */}
+                                    <div className={`${cardBase} md:col-span-1 lg:col-span-2`}>
+                                        <div className={sectionHeader}>
+                                            {t("m.sales-data-qty")}
+                                        </div>
+                                        <div className="p-3 md:p-5 text-body text-gray-700 space-y-2.5 font-medium leading-relaxed">
+                                            <p>{t("m.total-sales-qty")}: {getAttr("total_sales_qty", "0")}</p>
+                                            <p>{t("m.order-frequency")}: {getAttr("order_frequency", "0")} {t("account.ordersPerMonth")}</p>
+                                        </div>
                                     </div>
-                                    <div className="p-3 md:p-5 text-[13px] text-gray-700 space-y-2.5 font-medium leading-relaxed">
-                                        <p>{t("m.total-sales-qty")}: {getAttr("total_sales_qty", "0")}</p>
-                                        <p>{t("m.order-frequency")}: {getAttr("order_frequency", "0")} {t("account.ordersPerMonth")}</p>
-                                    </div>
-                                </div>
-                            </div>
 
-                            {/* TARGETS & BEHAVIOR */}
-                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
-                                <div className={cardBase}>
-                                    <div className={sectionHeader + " flex justify-between items-center"}>
-                                        <span>{t("m.targets-and-achievements")}</span>
-                                        <PortalDropdown
-                                            value={selectedYear}
-                                            onChange={setSelectedYear}
-                                            options={(availableYears.length > 0 ? availableYears : [2023, 2024, 2025]).map(y => ({ label: String(y), value: String(y) }))}
-                                            minWidth={70}
-                                        />
+                                    {/* Targets & Achievements */}
+                                    <div className={`${cardBase} md:col-span-1 lg:col-span-3`}>
+                                        <div className={sectionHeader + " flex justify-between items-center"}>
+                                            <span>{t("m.targets-and-achievements")}</span>
+                                            <select className="border border-gray-300 rounded-sm text-[12px] px-2 py-1 bg-white outline-none">
+                                                <option>2023</option>
+                                                <option>2024</option>
+                                            </select>
+                                        </div>
+                                        <div className="p-3 md:p-5 text-body text-gray-700 space-y-2.5 font-medium leading-relaxed">
+                                            <p>{t("m.sales-targets")}: {getAttr("sales_targets")}</p>
+                                            <p>{t("m.achievements")}: {getAttr("achievements")}</p>
+                                            <p>{t("m.incentive")}: SAR {formatCurrency(getAttr("incentive"))}</p>
+                                        </div>
                                     </div>
-                                    <div className="p-3 md:p-5 text-[13px] text-gray-700 space-y-2.5 font-medium leading-relaxed">
-                                        {targets ? (
-                                            <>
-                                                <p>{t("m.sales-targets")}: {targets.sales_target || "0"}</p>
-                                                <p>{t("m.achievements")}: {targets.achievement || "0"}</p>
-                                                <p>{t("m.incentive")}: SAR {formatCurrency(targets.incentive)}</p>
-                                                {/* Customer Incentive — reads targets.customer_incentive. The GraphQL field
-                                                    does not exist yet (KLEVER_TARGETS_ACHIEVEMENTS_QUERY can't select it without
-                                                    breaking the query); shows 0.00 until the backend adds `customer_incentive`,
-                                                    then add that field to the query and this auto-populates. */}
-                                                <p>{t("account.customerIncentive")}: SAR {formatCurrency(targets.customer_incentive)}</p>
-                                                {targets.remarks && <p className="text-[#F5B21B] font-bold">{t("m.comment")}: {targets.remarks}</p>}
-                                            </>
-                                        ) : (
-                                            <>
-                                                <p>{t("m.sales-targets")}: {getAttr("sales_targets")}</p>
-                                                <p>{t("m.achievements")}: {getAttr("achievements")}</p>
-                                                <p>{t("m.incentive")}: SAR {formatCurrency(getAttr("incentive"))}</p>
-                                            </>
-                                        )}
-                                    </div>
-                                </div>
 
-                                <div className={cardBase}>
-                                    <div className={sectionHeader}>
-                                        {t("m.customer-behavior")}
-                                    </div>
-                                    <div className="p-3 md:p-5 text-[13px] text-gray-700 space-y-2.5 font-medium leading-relaxed">
-                                        <p>{t("m.payment-historydso")}: {getAttr("payment_history")}</p>
-                                        <p>{t("m.credit-limit")}: SAR {formatCurrency(getAttr("total_credit_limit"))}</p>
-                                        <p>{t("m.credit-period")}: {getAttr("credit_period") } {t("account.days")}</p>
+                                    {/* Customer Behavior */}
+                                    <div className={`${cardBase} md:col-span-2 lg:col-span-3`}>
+                                        <div className={sectionHeader}>
+                                            {t("m.customer-behavior")}
+                                        </div>
+                                        <div className="p-3 md:p-5 text-body text-gray-700 space-y-2.5 font-medium leading-relaxed">
+                                            <p>{t("m.payment-historydso")}: {getAttr("payment_history")}</p>
+                                            <p>{t("m.credit-limit")}: SAR {formatCurrency(getAttr("total_credit_limit"))}</p>
+                                            <p>{t("m.credit-period")}: {getAttr("credit_period")} {t("account.days")}</p>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -363,7 +343,7 @@ export default function MyAccountPage() {
                             {/* ADDRESS BOOK */}
 
                             <div>
-                                <h2 className="text-[14px] md:text-[16px] font-bold text-black uppercase mb-3">{t("addressBook.title")}</h2>
+                                <h2 className="text-body-lg md:text-h3-sm font-bold text-black uppercase mb-3">{t("addressBook.title")}</h2>
                                 <hr className="border-gray-200 mb-6" />
 
                                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
@@ -374,7 +354,7 @@ export default function MyAccountPage() {
                                         </div>
                                         <div className="p-3 md:p-5 flex flex-col flex-1">
                                             {defaultBilling ? (
-                                                <div className="text-[13px] text-gray-800 leading-relaxed space-y-1 font-normal flex-1">
+                                                <div className="text-body text-gray-800 leading-relaxed space-y-1 font-normal flex-1">
                                                     <p dir="ltr" style={{ unicodeBidi: "isolate" }}>{defaultBilling.firstname} {defaultBilling.lastname}</p>
                                                     {defaultBilling.company && <p dir="ltr" style={{ unicodeBidi: "isolate" }}>{defaultBilling.company}</p>}
                                                     {defaultBilling.street?.map((s: string, i: number) => <p key={i} dir="ltr" style={{ unicodeBidi: "isolate" }}>{s}</p>)}
@@ -383,7 +363,7 @@ export default function MyAccountPage() {
                                                     <p dir="ltr" style={{ unicodeBidi: "isolate" }}>T: {defaultBilling.telephone}</p>
                                                 </div>
                                             ) : (
-                                                <p className="text-[13px] text-gray-500 italic flex-1">{t("addressBook.noBillingAddress")}</p>
+                                                <p className="text-body text-gray-500 italic flex-1">{t("addressBook.noBillingAddress")}</p>
                                             )}
                                         </div>
                                     </div>
@@ -395,7 +375,7 @@ export default function MyAccountPage() {
                                         </div>
                                         <div className="p-3 md:p-5 flex flex-col flex-1">
                                             {defaultShipping ? (
-                                                <div className="text-[13px] text-gray-800 leading-relaxed space-y-1 font-normal flex-1">
+                                                <div className="text-body text-gray-800 leading-relaxed space-y-1 font-normal flex-1">
                                                     <p dir="ltr" style={{ unicodeBidi: "isolate" }}>{defaultShipping.firstname} {defaultShipping.lastname}</p>
                                                     {defaultShipping.company && <p dir="ltr" style={{ unicodeBidi: "isolate" }}>{defaultShipping.company}</p>}
                                                     {defaultShipping.street?.map((s: string, i: number) => <p key={i} dir="ltr" style={{ unicodeBidi: "isolate" }}>{s}</p>)}
@@ -404,16 +384,16 @@ export default function MyAccountPage() {
                                                     <p dir="ltr" style={{ unicodeBidi: "isolate" }}>T: {defaultShipping.telephone}</p>
                                                 </div>
                                             ) : (
-                                                <p className="text-[13px] text-gray-500 italic flex-1">{t("addressBook.noShippingAddress")}</p>
+                                                <p className="text-body text-gray-500 italic flex-1">{t("addressBook.noShippingAddress")}</p>
                                             )}
 
                                             <div className="pt-4 md:pt-8">
                                                 {defaultShipping?.id ? (
-                                                    <Link href={lp(`/customer/address-book/edit/${defaultShipping.id}`)} className="w-full md:w-auto text-center bg-[#F5B21B] hover:bg-[#e0a116] text-black text-[13px] font-bold px-4 md:px-8 py-2.5 uppercase transition-all rounded-none inline-block">
+                                                    <Link href={lp(`/customer/address-book/edit/${defaultShipping.id}`)} className="w-full md:w-auto text-center bg-brand-yellow hover:bg-brand-yellow-dark text-black text-body font-bold px-4 md:px-8 py-2.5 uppercase transition-all rounded-none inline-block">
                                                         {t("addressBook.editAddress")}
                                                     </Link>
                                                 ) : (
-                                                    <Link href={lp("/customer/address")} className="w-full md:w-auto text-center bg-[#F5B21B] hover:bg-[#e0a116] text-black text-[13px] font-bold px-4 md:px-8 py-2.5 uppercase transition-all rounded-none inline-block">
+                                                    <Link href={lp("/customer/address")} className="w-full md:w-auto text-center bg-brand-yellow hover:bg-brand-yellow-dark text-black text-body font-bold px-4 md:px-8 py-2.5 uppercase transition-all rounded-none inline-block">
                                                         {t("addressBook.addAddress")}
                                                     </Link>
                                                 )}

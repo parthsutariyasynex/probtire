@@ -2,6 +2,7 @@
 import { useTranslation } from "@/hooks/useTranslation";
 import { useLocalePath } from "@/hooks/useLocalePath";
 import { CheckoutSkeleton } from "@/components/skeletons";
+import { useLoadingOverlay } from "@/contexts/LoadingOverlayContext";
 
 import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { createPortal } from "react-dom";
@@ -40,18 +41,17 @@ import Price from "@/app/components/Price";
 // --- Sub-components ---
 
 const SectionHeader = ({ title, step }: { title: string; step?: number }) => (
-    <div className="bg-gray-50/80 px-4 py-3 border-b border-[#ebebeb] flex items-center justify-between h-[50px]">
+    <div className="bg-gray-50/80 px-4 py-3 border-b border-subtle flex items-center justify-between h-[50px] rounded-t-sm">
         <div className="flex items-center gap-2.5 min-w-0">
             {step && (
-                <span className="w-6 h-6 flex-shrink-0 rounded-full bg-black text-white text-[10px] font-black flex items-center justify-center shadow-sm leading-none">
+                <span className="w-6 h-6 flex-shrink-0 rounded-full bg-black text-white text-caption font-black flex items-center justify-center shadow-sm leading-none">
                     {step}
                 </span>
             )}
-            <h3 className="text-[10px] font-black text-black uppercase tracking-[0.15em] truncate">
+            <h3 className="text-caption font-bold text-black uppercase tracking-[0.15em] truncate">
                 {title}
             </h3>
         </div>
-        <div className="h-px flex-1 bg-gradient-to-r from-transparent via-[#ebebeb] to-transparent mx-4 hidden sm:block"></div>
     </div>
 );
 
@@ -98,6 +98,7 @@ const CheckoutPageUI: React.FC = () => {
     const [paymentMethod, setPaymentMethod] = useState("checkmo");
     const [comment, setComment] = useState("");
     const [isPlacingOrder, setIsPlacingOrder] = useState(false);
+    const { showLoading, hideLoading } = useLoadingOverlay();
     const [isPoUploadOpen, setIsPoUploadOpen] = useState(false);
     const [uploadedPOs, setUploadedPOs] = useState<{ fileName: string }[]>([]);
     const [isUploading, setIsUploading] = useState(false);
@@ -525,6 +526,7 @@ const CheckoutPageUI: React.FC = () => {
         }
 
         setIsPlacingOrder(true);
+        showLoading("PLACING ORDER...");
         try {
             // 2. Call Shipping Extras if Pickup
             if (shippingType === "pickup") {
@@ -599,6 +601,7 @@ const CheckoutPageUI: React.FC = () => {
             toast.error(error.message || "Failed to place order. Please try again.");
         } finally {
             setIsPlacingOrder(false);
+            hideLoading();
         }
     };
 
@@ -742,7 +745,7 @@ const CheckoutPageUI: React.FC = () => {
                     <ShoppingBag size={64} className="mx-auto text-gray-200 mb-6" />
                     <h1 className="text-2xl font-black text-black uppercase tracking-widest mb-4">{t("cart.empty")}</h1>
                     <p className="text-gray-500 mb-8 max-w-md mx-auto">{t("common.loading")}</p>
-                    <Link href={lp("/products")} className="inline-flex items-center gap-2 bg-[#F5B21B] text-black font-black px-8 py-4 text-[12px] uppercase tracking-widest hover:bg-black hover:text-white transition-all">
+                    <Link href={lp("/products")} className="inline-flex items-center gap-2 bg-brand-yellow text-black font-black px-8 py-4 text-body-sm uppercase tracking-widest hover:bg-black hover:text-white transition-all">
                         {t("m.products")}
                     </Link>
                 </div>
@@ -758,29 +761,29 @@ const CheckoutPageUI: React.FC = () => {
     };
 
     return (
-        <div className="min-h-screen flex flex-col w-full bg-[#fcfcfc] font-rubik text-xs italic-none">
-            <main className="flex-1 w-full px-4 md:px-6 lg:px-8 py-4 md:py-6 lg:py-10 pt-2 md:pt-4">
+        <div className="min-h-screen flex flex-col w-full bg-surface font-rubik text-xs italic-none">
+            <main className="flex-1 w-full max-w-[1920px] mx-auto px-4 md:px-6 lg:px-8 py-4 md:py-6 lg:py-10 pt-2 md:pt-4">
                 {/* Header Section */}
                 <div className="flex flex-col items-center justify-center text-center gap-4 mb-12 relative">
-                    <Link href={lp("/checkout/cart")} className="lg:absolute left-0 top-1/2 lg:-translate-y-1/2 flex items-center gap-2 text-black hover:text-yellow-500 transition-all text-[10px] font-black uppercase tracking-[0.2em] group mb-4 lg:mb-0">
+                    <Link href={lp("/checkout/cart")} className="lg:absolute left-0 top-1/2 lg:-translate-y-1/2 flex items-center gap-2 text-black hover:text-yellow-500 transition-all text-caption font-black uppercase tracking-[0.2em] group mb-4 lg:mb-0">
                         <div className="w-8 h-8 rounded-full border border-black flex items-center justify-center group-hover:border-yellow-500 transition-all">
                             <ArrowLeft size={14} strokeWidth={3} className="group-hover:-translate-x-1 transition-transform" />
                         </div>
-                        <span className="hidden sm:inline">{t("m.back-to-shopping-cart")}</span>
+                        <span className="hidden sm:inline text-sm mt-0.5">{t("m.back-to-shopping-cart")}</span>
                     </Link>
 
                     <div className="flex flex-col items-center gap-4">
-                        <h1 className="text-[20px] sm:text-[24px] md:text-[26px] font-black text-black uppercase tracking-tight">Checkout</h1>
-                        <div className="h-[2px] w-full max-w-[400px] bg-gradient-to-r from-transparent via-yellow-400 to-transparent"></div>
+                        <h1 className="text-h3 sm:text-h2 md:text-[26px] font-bold text-black uppercase tracking-tight">Checkout</h1>
+                        <div className="h-[3.5px] w-12 bg-brand-yellow mx-auto"></div>
                     </div>
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 md:gap-6 lg:gap-8 items-start">
 
                     {/* ═══════════ Left Column ═══════════ */}
-                    <div className="lg:col-span-8 space-y-6">
+                    <div className="lg:col-span-8 xl:col-span-9 space-y-6">
 
-                        <div className="bg-white border border-[#ebebeb] shadow-sm rounded-xl overflow-hidden transition-all duration-300 hover:shadow-md">
+                        <div className="bg-white border border-subtle shadow-sm rounded-sm overflow-hidden transition-all duration-300 hover:shadow-md">
                             <SectionHeader title={t("checkout.shippingAddress")} step={1} />
                             <div className="p-4">
                                 {/* Search */}
@@ -788,7 +791,7 @@ const CheckoutPageUI: React.FC = () => {
                                     <input
                                         type="text"
                                         placeholder={t("m.search")}
-                                        className="w-full px-4 py-2.5 bg-gray-50/50 border border-[#ebebeb] rounded-xl outline-none text-[12px] font-medium transition-all placeholder:text-gray-400 focus:bg-white focus:border-yellow-400 shadow-sm focus:ring-4 focus:ring-yellow-400/10"
+                                        className="w-full px-4 py-2.5 bg-gray-50/50 border border-subtle rounded-sm outline-none text-body-sm font-medium transition-all placeholder:text-gray-400 focus:bg-white focus:border-yellow-400 shadow-sm focus:ring-4 focus:ring-yellow-400/10"
                                         value={searchQuery}
                                         onChange={(e) => setSearchQuery(e.target.value)}
                                     />
@@ -797,7 +800,7 @@ const CheckoutPageUI: React.FC = () => {
                                 {/* Address List Container */}
                                 <div className="max-h-[300px] sm:max-h-[380px] md:max-h-[460px] overflow-y-auto pr-1 card-scrollbar space-y-4">
                                     {filteredAddresses.map((addr) => (
-                                        selectedAddressId === addr.id ? (
+                                        String(selectedAddressId) === String(addr.id) ? (
                                             <SelectedAddressCard
                                                 key={addr.id}
                                                 address={addr}
@@ -808,7 +811,7 @@ const CheckoutPageUI: React.FC = () => {
                                         ) : (
                                             <div
                                                 key={addr.id}
-                                                className="relative flex items-start gap-3 cursor-pointer group p-4 border border-[#ebebeb] bg-white hover:bg-yellow-50/20 transition-all duration-300 rounded-xl hover:shadow-sm"
+                                                className="relative flex items-start gap-4 cursor-pointer group pt-3 pb-2 px-4 border border-gray-200 bg-white hover:bg-gray-50/40 transition-all duration-300 rounded-sm"
                                                 onClick={() => handleAddressSelect(addr.id)}
                                             >
                                                 {/* Selection Indicator */}
@@ -819,9 +822,9 @@ const CheckoutPageUI: React.FC = () => {
 
                                                 {/* Details */}
                                                 <div className="flex-1 min-w-0">
-                                                    <div className="text-[12px] text-gray-600 leading-relaxed mb-3">
-                                                        <p className="font-medium text-[12px] sm:text-[13px] text-black" dir="ltr" style={{ unicodeBidi: "isolate" }}>
-                                                            <span className="font-black">{addr.firstname} {addr.lastname}</span>{" "}
+                                                    <div className="mb-2">
+                                                        <p className="text-[13px] md:text-[14px] text-gray-600 leading-relaxed font-[500]" dir="ltr" style={{ unicodeBidi: "isolate" }}>
+                                                            <span className="font-[800] text-black">{addr.firstname} {addr.lastname}</span>{" "}
                                                             {addr.street} {addr.city}, {addr.postcode}{" "}
                                                             {addr.country_id === 'SA' ? t("data.Saudi Arabia") : addr.country_id} {addr.telephone}
                                                             {[
@@ -831,9 +834,9 @@ const CheckoutPageUI: React.FC = () => {
                                                         </p>
                                                     </div>
 
-                                                    <div className="flex gap-3 pt-2">
+                                                    <div className="flex gap-3 pt-1">
                                                         <button
-                                                            className="text-[9px] font-black uppercase tracking-[0.15em] px-6 py-2 transition-all duration-300 border bg-black text-white border-black hover:bg-yellow-400 hover:text-black hover:border-yellow-400 rounded-lg active:scale-95 shadow-sm"
+                                                            className="text-[10px] md:text-[11px] font-[800] uppercase tracking-wider px-4 py-2 transition-all duration-300 border bg-black text-white border-black hover:bg-yellow-400 hover:text-black hover:border-yellow-400 rounded-sm active:scale-95 shadow-sm"
                                                             onClick={(e) => {
                                                                 e.stopPropagation();
                                                                 handleAddressSelect(addr.id);
@@ -842,7 +845,7 @@ const CheckoutPageUI: React.FC = () => {
                                                             {t("m.ship-here")}
                                                         </button>
                                                         <button
-                                                            className="text-[9px] font-black uppercase tracking-[0.15em] px-6 py-2 bg-white text-gray-500 border border-[#ebebeb] hover:bg-gray-50 hover:text-black hover:border-gray-300 transition-all duration-300 rounded-lg active:scale-95"
+                                                            className="text-[10px] md:text-[11px] font-[800] uppercase tracking-wider px-4 py-2 bg-white text-[#7f7f7f] border border-gray-200 hover:bg-gray-50 hover:text-black hover:border-gray-300 transition-all duration-300 rounded-sm active:scale-95"
                                                             onClick={(e) => {
                                                                 e.stopPropagation();
                                                                 router.push(lp(`/customer/address/edit/id/${addr.id}?redirect=/checkout`));
@@ -858,7 +861,7 @@ const CheckoutPageUI: React.FC = () => {
 
                                     {filteredAddresses.length === 0 && (
                                         <div className="text-center py-16 bg-white border border-dashed border-gray-200 rounded-sm">
-                                            <p className="text-gray-400 text-[11px] font-black uppercase tracking-widest">{t("common.noDataFound")}</p>
+                                            <p className="text-gray-400 text-label font-black uppercase tracking-widest">{t("common.noDataFound")}</p>
                                         </div>
                                     )}
                                 </div>
@@ -866,14 +869,13 @@ const CheckoutPageUI: React.FC = () => {
                         </div>
 
                         {/* 2. Customer PO Number */}
-                        <div className="bg-white border border-[#ebebeb] shadow-sm rounded-xl overflow-hidden transition-all duration-300 hover:shadow-md">
+                        <div className="bg-white border border-subtle shadow-sm rounded-sm transition-all duration-300 hover:shadow-md">
                             <SectionHeader title={t("m.po-number")} step={2} />
-                            <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
-                                <div className="space-y-1.5">
-                                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{t("m.po-number")}</label>
+                            <div className="p-4 sm:p-6 grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
+                                <div className="space-y-1.5 w-full">
                                     <input
                                         type="text"
-                                        className="w-full px-4 py-2.5 bg-gray-50/50 border border-[#ebebeb] rounded-xl outline-none text-[13px] font-medium transition-all placeholder:text-gray-400 focus:bg-white focus:border-yellow-400 focus:ring-4 focus:ring-yellow-400/10 shadow-sm"
+                                        className="w-full px-4 py-2.5 bg-gray-50/50 border border-subtle rounded-sm outline-none text-body font-medium transition-all placeholder:text-gray-400 focus:bg-white focus:border-yellow-400 focus:ring-4 focus:ring-yellow-400/10 shadow-sm"
                                         value={poNumber}
                                         onChange={(e) => setPoNumber(e.target.value)}
                                         onBlur={handlePoNumberBlur}
@@ -881,70 +883,75 @@ const CheckoutPageUI: React.FC = () => {
                                     />
                                     {uploadedPOs.length > 0 && (
                                         <div className="mt-3 flex flex-wrap gap-2">
-                                            {/* We will hide these as they are now shown in the Upload PO section as per image */}
+                                            {/* Hidden since it is listed next to/below the drop area */}
                                         </div>
                                     )}
                                 </div>
 
-                                <div className="border border-gray-200 rounded-sm mx-6 mb-6 overflow-hidden">
-                                    <div
-                                        className="bg-gray-50 px-5 py-3 flex items-center justify-between border-b border-gray-200 cursor-pointer hover:bg-white transition-colors"
-                                        onClick={() => setIsPoUploadOpen(!isPoUploadOpen)}
-                                    >
-                                        <span className="text-[14px] font-bold text-black capitalize">{t("m.upload-file")}</span>
-                                        <ChevronDown
-                                            size={18}
-                                            className={`text-gray-400 transition-transform duration-300 ${isPoUploadOpen ? "rotate-180" : ""}`}
-                                        />
-                                    </div>
-                                    {isPoUploadOpen && (
-                                        <div className="p-4 bg-white space-y-4">
-                                            {/* Drop Area */}
-                                            <div
-                                                className={`relative group p-8 border-2 border-dashed rounded-xl transition-all duration-300 flex flex-col items-center justify-center gap-4 cursor-pointer
-                                                    ${dragActive ? "border-yellow-400 bg-yellow-50/30 scale-[1.01]" : "border-[#ebebeb] bg-gray-50/30 hover:bg-white hover:border-gray-300"}`}
-                                                onDragEnter={handleDrag}
-                                                onDragLeave={handleDrag}
-                                                onDragOver={handleDrag}
-                                                onDrop={handleDrop}
-                                                onClick={() => poUploadRef.current?.click()}
-                                            >
-                                                <p className="text-[18px] text-black font-medium mb-4">{t("m.drop-files-here")}</p>
-                                                <p className="text-[14px] text-black">
-                                                    {t("m.allowed-file-types")} : <span className="text-gray-800">jpg,jpeg,png,zip,rar,docx,doc,pdf,xls,xlsx,csv,msg</span>
-                                                </p>
-                                                <input
-                                                    type="file"
-                                                    className="hidden"
-                                                    ref={poUploadRef}
-                                                    onChange={handleFileUpload}
-                                                    accept=".jpg,.jpeg,.png,.zip,.rar,.docx,.doc,.pdf,.xls,.xlsx,.csv,.msg"
-                                                    multiple
-                                                />
-                                            </div>
-
-                                            {/* Files List - Image Style */}
-                                            <div className="flex flex-wrap gap-x-4 gap-y-3">
-                                                {uploadedPOs.map((po, idx) => (
-                                                    <div key={idx} className="flex border border-[#ebebeb] rounded-xl overflow-hidden group shadow-sm bg-white">
-                                                        <div className="px-6 py-3 flex-1 flex items-center min-w-0">
-                                                            <span className="text-[13px] font-black text-black truncate ltr:mr-2 rtl:ml-2">
-                                                                {po.fileName}
-                                                            </span>
-                                                        </div>
-                                                        <button
-                                                            type="button"
-                                                            onClick={(e) => { e.stopPropagation(); handleDeletePo(po.fileName); }}
-                                                            className="bg-red-50 text-red-600 px-6 py-3 text-[11px] font-black uppercase tracking-widest transition-all hover:bg-red-600 hover:text-white border-l border-[#ebebeb] active:scale-95"
-                                                            disabled={isUploading}
-                                                        >
-                                                            {t("m.remove")}
-                                                        </button>
-                                                    </div>
-                                                ))}
-                                            </div>
+                                <div className="space-y-1.5 w-full relative">
+                                    {/* Transparent spacer label to match PO NUMBER label height and align tops of columns */}
+                                    <div className="absolute top-full left-0 right-0 z-50 border border-subtle rounded-sm bg-white shadow-lg">
+                                        <div
+                                            className={`bg-gray-50/50 px-4 py-2.5 flex items-center justify-between cursor-pointer hover:bg-white transition-colors rounded-t-sm ${isPoUploadOpen ? "border-b border-subtle" : "rounded-sm"}`}
+                                            onClick={() => setIsPoUploadOpen(!isPoUploadOpen)}
+                                        >
+                                            <span className="text-body font-bold text-black capitalize">{t("m.upload-file")}</span>
+                                            <ChevronDown
+                                                size={16}
+                                                className={`text-gray-400 transition-transform duration-300 ${isPoUploadOpen ? "rotate-180" : ""}`}
+                                            />
                                         </div>
-                                    )}
+                                        {isPoUploadOpen && (
+                                            <div className="p-4 bg-white space-y-4 rounded-b-sm">
+                                                {/* Drop Area */}
+                                                <div
+                                                    className={`relative group p-6 border-2 border-dashed rounded-sm transition-all duration-300 flex flex-col items-center justify-center gap-3 cursor-pointer
+                                                        ${dragActive ? "border-yellow-400 bg-yellow-50/30 scale-[1.01]" : "border-subtle bg-gray-50/30 hover:bg-white hover:border-gray-300"}`}
+                                                    onDragEnter={handleDrag}
+                                                    onDragLeave={handleDrag}
+                                                    onDragOver={handleDrag}
+                                                    onDrop={handleDrop}
+                                                    onClick={() => poUploadRef.current?.click()}
+                                                >
+                                                    <p className="text-body font-medium text-black">{t("m.drop-files-here")}</p>
+                                                    <p className="text-caption text-gray-400 text-center">
+                                                        {t("m.allowed-file-types")} : <span className="text-gray-600">jpg,jpeg,png,zip,rar,docx,doc,pdf,xls,xlsx,csv,msg</span>
+                                                    </p>
+                                                    <input
+                                                        type="file"
+                                                        className="hidden"
+                                                        ref={poUploadRef}
+                                                        onChange={handleFileUpload}
+                                                        accept=".jpg,.jpeg,.png,.zip,.rar,.docx,.doc,.pdf,.xls,.xlsx,.csv,.msg"
+                                                        multiple
+                                                    />
+                                                </div>
+
+                                                {/* Files List - Image Style */}
+                                                {uploadedPOs.length > 0 && (
+                                                    <div className="flex flex-wrap gap-x-4 gap-y-3">
+                                                        {uploadedPOs.map((po, idx) => (
+                                                            <div key={idx} className="flex border border-subtle rounded-sm overflow-hidden group shadow-sm bg-white">
+                                                                <div className="px-4 py-2 flex-1 flex items-center min-w-0">
+                                                                    <span className="text-body-sm font-black text-black truncate ltr:mr-2 rtl:ml-2">
+                                                                        {po.fileName}
+                                                                    </span>
+                                                                </div>
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={(e) => { e.stopPropagation(); handleDeletePo(po.fileName); }}
+                                                                    className="bg-red-50 text-red-600 px-4 py-2 text-caption font-black uppercase tracking-widest transition-all hover:bg-red-600 hover:text-white border-l border-subtle active:scale-95"
+                                                                    disabled={isUploading}
+                                                                >
+                                                                    {t("m.remove")}
+                                                                </button>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -954,9 +961,9 @@ const CheckoutPageUI: React.FC = () => {
                             <SectionHeader title={t("m.order-comment")} step={3} />
                             <div className="p-4 sm:p-5">
                                 <div className="space-y-1.5">
-                                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{t("checkout.additionalInformation")}</label>
+                                    <label className="text-caption font-black text-gray-400 uppercase tracking-widest">{t("checkout.additionalInformation")}</label>
                                     <textarea
-                                        className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl outline-none text-[13px] font-medium transition-all placeholder:text-gray-300 focus:bg-white focus:border-black min-h-[80px] resize-none"
+                                        className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl outline-none text-body font-medium transition-all placeholder:text-gray-300 focus:bg-white focus:border-black min-h-[80px] resize-none"
                                         value={comment}
                                         onChange={(e) => setComment(e.target.value)}
                                         onBlur={handleCommentBlur}
@@ -966,9 +973,9 @@ const CheckoutPageUI: React.FC = () => {
                             </div>
                         </div> */}
 
-                        <div className="bg-white border border-[#ebebeb] shadow-sm rounded-xl overflow-hidden" id="step-3">
+                        <div className="bg-white border border-subtle shadow-sm rounded-sm overflow-hidden" id="step-3">
                             <SectionHeader title={t("checkout.shippingMethod")} step={3} />
-                            <div className="p-6">
+                            <div className="p-4 sm:px-4 sm:py-6">
                                 <div className="space-y-6">
                                     {/* Delivery Option */}
                                     <div
@@ -980,12 +987,12 @@ const CheckoutPageUI: React.FC = () => {
                                                 <div className="w-2.5 h-2.5 bg-black rounded-full" />
                                             )}
                                         </div>
-                                        <span className={`text-[13px] font-bold transition-colors ${shippingType === "delivery" ? "text-black" : "text-[#555]"}`}>
+                                        <span className={`text-body font-bold transition-colors ${shippingType === "delivery" ? "text-black" : "text-[#555]"}`}>
                                             {t("m.delivery")}
                                         </span>
                                     </div>
 
-                                    <div className="border-t border-dashed border-gray-300 w-full" />
+                                    <div className="border-t border-dotted border-gray-300 w-full" />
 
                                     {/* Pickup Option */}
                                     <div className="space-y-5">
@@ -998,7 +1005,7 @@ const CheckoutPageUI: React.FC = () => {
                                                     <div className="w-2.5 h-2.5 bg-black rounded-full" />
                                                 )}
                                             </div>
-                                            <span className={`text-[13px] font-bold transition-colors ${shippingType === "pickup" ? "text-black" : "text-[#555]"}`}>
+                                            <span className={`text-body font-bold transition-colors ${shippingType === "pickup" ? "text-black" : "text-[#555]"}`}>
                                                 {t("m.pickup-from-warehouse")}
                                             </span>
                                         </div>
@@ -1007,7 +1014,7 @@ const CheckoutPageUI: React.FC = () => {
                                             <div className="ml-9 space-y-4">
                                                 <div className="flex flex-col items-start gap-4">
                                                     <button
-                                                        className="bg-[#F5B21B] text-black px-6 py-2.5 text-[11px] font-black uppercase tracking-widest hover:bg-black hover:text-white transition-all active:scale-95 border border-transparent shadow-sm"
+                                                        className="bg-brand-yellow text-black px-6 py-2.5 text-label font-black uppercase tracking-widest hover:bg-black hover:text-white transition-all active:scale-95 border border-transparent shadow-sm"
                                                         onClick={() => {
                                                             setIsWarehouseModalOpen(true);
                                                             setIsPickupFormOpen(!isPickupFormOpen);
@@ -1018,7 +1025,7 @@ const CheckoutPageUI: React.FC = () => {
 
                                                     {selectedWarehouse && (
                                                         <div className="flex items-center gap-2 px-3 py-1 bg-gray-100 rounded-sm">
-                                                            <span className="text-[12px] font-bold text-gray-800 uppercase tracking-widest">
+                                                            <span className="text-body-sm font-bold text-gray-800 uppercase tracking-widest">
                                                                 Selected: <span className="text-black">{selectedWarehouse}</span>
                                                             </span>
                                                             <button
@@ -1026,7 +1033,7 @@ const CheckoutPageUI: React.FC = () => {
                                                                     e.stopPropagation();
                                                                     setIsWarehouseModalOpen(true);
                                                                 }}
-                                                                className="text-[10px] text-blue-600 font-bold hover:underline"
+                                                                className="text-caption text-blue-600 font-bold hover:underline"
                                                             >
                                                                 Change
                                                             </button>
@@ -1036,7 +1043,7 @@ const CheckoutPageUI: React.FC = () => {
                                                                     e.stopPropagation();
                                                                     setIsPickupFormOpen(!isPickupFormOpen);
                                                                 }}
-                                                                className="text-[10px] text-black font-bold hover:underline"
+                                                                className="text-caption text-black font-bold hover:underline"
                                                             >
                                                                 {isPickupFormOpen ? t("m.close") : t("m.edit")} Details
                                                             </button>
@@ -1046,39 +1053,39 @@ const CheckoutPageUI: React.FC = () => {
 
                                                 {/* Pickup Details Form */}
                                                 {isPickupFormOpen && (
-                                                    <div className="p-6 bg-[#F8F9FA] border border-gray-200 rounded-sm space-y-4 animate-in slide-in-from-top-2 duration-300">
+                                                    <div className="p-4 bg-[#F8F9FA] border border-gray-200 rounded-sm space-y-4 animate-in slide-in-from-top-2 duration-300">
                                                         {/* Row 1: Name & ID */}
                                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                            <div className="flex items-center gap-3">
-                                                                <label className="text-[11px] font-black text-gray-400 uppercase tracking-widest whitespace-nowrap min-w-[110px]">Person Name *</label>
+                                                            <div className="flex flex-col w-full">
+                                                                <label className="text-label font-bold text-black uppercase tracking-[0.15em] mb-1.5">Person Name *</label>
                                                                 <input
                                                                     type="text"
                                                                     value={pickupName}
                                                                     onChange={(e) => setPickupName(e.target.value)}
-                                                                    className="flex-1 px-4 py-2 bg-white border border-gray-300 outline-none text-[14px] font-medium transition-all focus:border-black hover:border-gray-400 h-10"
+                                                                    className="w-full px-4 py-2 bg-white border border-gray-300 outline-none text-body font-medium transition-all focus:border-black hover:border-gray-400 h-11 rounded-none"
                                                                     placeholder={t("m.name")}
                                                                 />
                                                             </div>
-                                                            <div className="flex items-center gap-3">
-                                                                <label className="text-[11px] font-black text-gray-400 uppercase tracking-widest whitespace-nowrap min-w-[90px] md:min-w-[80px]">Person ID *</label>
+                                                            <div className="flex flex-col w-full">
+                                                                <label className="text-label font-bold text-black uppercase tracking-[0.15em] mb-1.5">Person ID *</label>
                                                                 <input
                                                                     type="text"
                                                                     value={pickupId}
                                                                     onChange={(e) => setPickupId(e.target.value)}
-                                                                    className="flex-1 px-4 py-2 bg-white border border-gray-300 outline-none text-[14px] font-medium transition-all focus:border-black hover:border-gray-400 h-10"
+                                                                    className="w-full px-4 py-2 bg-white border border-gray-300 outline-none text-body font-medium transition-all focus:border-black hover:border-gray-400 h-11 rounded-none"
                                                                     placeholder={t("m.id")}
                                                                 />
                                                             </div>
                                                         </div>
 
                                                         {/* Row 2: Mobile Number */}
-                                                        <div className="flex items-center gap-3">
-                                                            <label className="text-[11px] font-black text-gray-400 uppercase tracking-widest whitespace-nowrap min-w-[110px]">Mobile Number *</label>
+                                                        <div className="flex flex-col w-full">
+                                                            <label className="text-label font-bold text-black uppercase tracking-[0.15em] mb-1.5">Mobile Number *</label>
                                                             <input
                                                                 type="tel"
                                                                 value={pickupMobile}
                                                                 onChange={(e) => setPickupMobile(e.target.value)}
-                                                                className="flex-1 px-4 py-2 bg-white border border-gray-300 outline-none text-[14px] font-medium transition-all focus:border-black hover:border-gray-400 h-10"
+                                                                className="w-full px-4 py-2 bg-white border border-gray-300 outline-none text-body font-medium transition-all focus:border-black hover:border-gray-400 h-11 rounded-none"
                                                                 placeholder="Enter Mobile Number"
                                                             />
                                                         </div>
@@ -1086,9 +1093,9 @@ const CheckoutPageUI: React.FC = () => {
                                                         {/* Row 3: Date & Time */}
                                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                                             {/* Calendar Date Picker */}
-                                                            <div className="flex items-center gap-3">
-                                                                <label className="text-[11px] font-black text-gray-400 uppercase tracking-widest whitespace-nowrap min-w-[110px]">Pick Up Date *</label>
-                                                                <div className="relative flex-1 pickup-datepicker">
+                                                            <div className="flex flex-col w-full">
+                                                                <label className="text-label font-bold text-black uppercase tracking-[0.15em] mb-1.5">Pick Up Date *</label>
+                                                                <div className="relative w-full pickup-datepicker">
                                                                     <DatePicker
                                                                         ref={datePickerRef}
                                                                         selected={pickupDate}
@@ -1098,7 +1105,7 @@ const CheckoutPageUI: React.FC = () => {
                                                                         minDate={new Date()}
                                                                         dateFormat="MM/dd/yyyy"
                                                                         placeholderText={t("m.select")}
-                                                                        className="w-full h-10 px-4 py-2 bg-white border border-gray-300 outline-none text-[14px] font-medium transition-all cursor-pointer hover:border-gray-400 focus:border-black"
+                                                                        className="w-full h-11 px-4 py-2 bg-white border border-gray-300 outline-none text-body font-medium transition-all cursor-pointer hover:border-gray-400 focus:border-black rounded-none"
                                                                         calendarClassName="retro-datepicker"
                                                                         showPopperArrow={false}
                                                                         popperPlacement="bottom-start"
@@ -1118,7 +1125,7 @@ const CheckoutPageUI: React.FC = () => {
                                                                                 >
                                                                                     <ChevronLeft size={18} />
                                                                                 </button>
-                                                                                <span className="text-[13px] font-black uppercase tracking-widest text-black">
+                                                                                <span className="text-body font-black uppercase tracking-widest text-black">
                                                                                     {date.toLocaleString('default', { month: 'long', year: 'numeric' })}
                                                                                 </span>
                                                                                 <button
@@ -1136,19 +1143,19 @@ const CheckoutPageUI: React.FC = () => {
                                                             </div>
 
                                                             {/* Scrollable Time Picker */}
-                                                            <div className="flex items-center gap-3">
-                                                                <label className="text-[11px] font-black text-gray-400 uppercase tracking-widest whitespace-nowrap min-w-[90px] md:min-w-[80px]">Pick Up Time *</label>
-                                                                <div className="relative flex-1">
+                                                            <div className="flex flex-col w-full">
+                                                                <label className="text-label font-bold text-black uppercase tracking-[0.15em] mb-1.5">Pick Up Time *</label>
+                                                                <div className="relative w-full">
                                                                     {isLoadingTimeSlots ? (
-                                                                        <div className="w-full h-10 px-4 py-2 bg-white border border-gray-300 flex items-center gap-2">
-                                                                            <span className="text-[12px] text-gray-400">{t("common.loading")}</span>
+                                                                        <div className="w-full h-11 px-4 py-2 bg-white border border-gray-300 flex items-center gap-2">
+                                                                            <span className="text-body-sm text-gray-400">{t("common.loading")}</span>
                                                                         </div>
                                                                     ) : (
                                                                         <div ref={timeRef} className="relative">
                                                                             <button
                                                                                 type="button"
                                                                                 onClick={() => setIsTimeDropdownOpen((prev) => !prev)}
-                                                                                className={`w-full h-10 px-4 py-2 bg-white border outline-none text-[13px] font-medium transition-all cursor-pointer hover:border-gray-400 focus:border-black flex items-center justify-between ${isTimeDropdownOpen ? "border-[#f5a623]" : "border-gray-300"}`}
+                                                                                className={`w-full h-11 px-4 py-2 bg-white border outline-none text-body font-medium transition-all cursor-pointer hover:border-gray-400 focus:border-black flex items-center justify-between rounded-none ${isTimeDropdownOpen ? "border-brand-yellow" : "border-gray-300"}`}
                                                                             >
                                                                                 <span className={pickupTime ? "text-black" : "text-gray-400"}>
                                                                                     {pickupTime
@@ -1176,7 +1183,7 @@ const CheckoutPageUI: React.FC = () => {
                                                                                                 setPickupTime("");
                                                                                                 setIsTimeDropdownOpen(false);
                                                                                             }}
-                                                                                            className={`px-4 py-2 text-[13px] font-medium cursor-pointer transition-colors ${pickupTime === "" ? "bg-[#f5a623] text-white" : "hover:bg-gray-100 text-gray-400"}`}
+                                                                                            className={`px-4 py-2 text-body font-medium cursor-pointer transition-colors ${pickupTime === "" ? "bg-brand-yellow text-white" : "hover:bg-gray-100 text-gray-400"}`}
                                                                                         >
                                                                                             Select Time
                                                                                         </li>
@@ -1187,7 +1194,7 @@ const CheckoutPageUI: React.FC = () => {
                                                                                                     setPickupTime(slot.time || slot.label);
                                                                                                     setIsTimeDropdownOpen(false);
                                                                                                 }}
-                                                                                                className={`px-4 py-2 text-[13px] font-medium cursor-pointer transition-colors ${pickupTime === (slot.time || slot.label) ? "bg-[#f5a623] text-white" : "hover:bg-gray-100"}`}
+                                                                                                className={`px-4 py-2 text-body font-medium cursor-pointer transition-colors ${pickupTime === (slot.time || slot.label) ? "bg-brand-yellow text-white" : "hover:bg-gray-100"}`}
                                                                                             >
                                                                                                 {slot.label}
                                                                                             </li>
@@ -1211,95 +1218,151 @@ const CheckoutPageUI: React.FC = () => {
                             </div>
                         </div>
 
-                        <div className="bg-white border border-[#ebebeb] shadow-sm rounded-xl overflow-hidden">
+                        <div className="bg-white border border-subtle shadow-sm rounded-sm">
                             <SectionHeader title={t("checkout.paymentMethod")} step={4} />
 
                             <div className="p-5">
-                                <p className="text-[14px] font-bold text-black mb-4">{t("m.credit-account")}</p>
+                                {(() => {
+                                    // Exclusively render Credit Account and Bank Transfer
+                                    const methodsToRender = [
+                                        { code: "checkmo", title: "Credit Account" },
+                                    ];
 
-                                <div className="border border-gray-100 rounded-xl overflow-hidden">
-                                    {/* Collapsible Header */}
-                                    <div
-                                        className="bg-[#f8f8f8] px-5 py-4 flex items-center justify-between border-b border-gray-100 cursor-pointer group hover:bg-[#f2f2f2] transition-colors"
-                                        onClick={() => setIsPaymentCommitmentOpen(!isPaymentCommitmentOpen)}
-                                    >
-                                        <span className="text-[14px] font-bold text-black">{t("m.upload-file")}</span>
-                                        <ChevronDown
-                                            size={20}
-                                            className={`text-gray-500 transition-transform duration-300 ${isPaymentCommitmentOpen ? "rotate-180" : ""}`}
-                                        />
-                                    </div>
+                                    return (
+                                        <div className="space-y-4">
+                                            {methodsToRender.map((method) => {
+                                                const isSelected = paymentMethod === method.code;
+                                                const titleKey = `payment_method.${method.code}`;
+                                                const title = t(titleKey) !== titleKey ? t(titleKey) : method.title;
 
-                                    {/* Collapsible Content */}
-                                    {isPaymentCommitmentOpen && (
-                                        <div className="p-6 bg-white animate-in slide-in-from-top-2 duration-300">
-                                            {/* Dropzone with border and info as per image */}
-                                            <div
-                                                className={`w-full py-10 border-2 border-dashed border-gray-300 bg-gray-50/50 flex flex-col items-center justify-center cursor-pointer transition-all duration-300 hover:border-black hover:bg-white rounded-xl mb-6 ${dragActive ? "border-black bg-white" : ""}`}
-                                                onClick={() => paymentCommitmentRef.current?.click()}
-                                                onDragOver={(e) => { e.preventDefault(); setDragActive(true); }}
-                                                onDragLeave={() => setDragActive(false)}
-                                                onDrop={(e) => {
-                                                    e.preventDefault();
-                                                    setDragActive(false);
-                                                    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-                                                        addPaymentCommitmentFiles(Array.from(e.dataTransfer.files));
-                                                    }
-                                                }}
-                                            >
-                                                <div className="text-center px-6">
-                                                    <p className="text-[20px] text-black font-bold mb-3 tracking-tight">{t("m.drop-files-here")}</p>
-                                                    <p className="text-[14px] text-black/80 font-medium">
-                                                        {t("m.allowed-file-types")} : jpg,jpeg,png,zip,rar,docx,doc,pdf,xls,xlsx,csv,msg
-                                                    </p>
-                                                </div>
-                                                <input
-                                                    type="file"
-                                                    className="hidden"
-                                                    multiple
-                                                    ref={paymentCommitmentRef}
-                                                    onChange={handlePaymentCommitmentChange}
-                                                    accept=".jpg,.jpeg,.png,.zip,.rar,.docx,.doc,.pdf,.xls,.xlsx,.csv,.msg"
-                                                />
-                                            </div>
+                                                return (
+                                                    <div key={method.code} className="space-y-3">
+                                                        <label
+                                                            className="flex items-center gap-3 cursor-pointer py-1 group"
+                                                            onClick={() => {
+                                                                setPaymentMethod(method.code);
+                                                                if (method.code === "checkmo") {
+                                                                    setIsPaymentCommitmentOpen(true);
+                                                                } else {
+                                                                    setIsPaymentCommitmentOpen(false);
+                                                                }
+                                                            }}
+                                                        >
+                                                            <span className="relative flex items-center justify-center">
+                                                                <input
+                                                                    type="radio"
+                                                                    name="payment_method"
+                                                                    value={method.code}
+                                                                    checked={isSelected}
+                                                                    onChange={() => {
+                                                                        setPaymentMethod(method.code);
+                                                                        if (method.code === "checkmo") {
+                                                                            setIsPaymentCommitmentOpen(true);
+                                                                        } else {
+                                                                            setIsPaymentCommitmentOpen(false);
+                                                                        }
+                                                                    }}
+                                                                    className="appearance-none w-4 h-4 border-2 border-gray-300 rounded-full checked:border-black focus:outline-none transition-all cursor-pointer"
+                                                                />
+                                                                {isSelected && (
+                                                                    <span className="absolute w-2.5 h-2.5 bg-black rounded-full pointer-events-none" />
+                                                                )}
+                                                            </span>
+                                                            <span className="text-body font-bold transition-colors text-black">
+                                                                {title}
+                                                            </span>
+                                                        </label>
 
-                                            {/* File List — one row per uploaded file (supports multiple) */}
-                                            {paymentCommitmentNames.length > 0 && (
-                                                <div className="flex flex-wrap gap-x-4 gap-y-3">
-                                                    {paymentCommitmentNames.map((name) => (
-                                                        <div key={name} className="flex border border-[#ebebeb] rounded-xl overflow-hidden group shadow-sm bg-white">
-                                                            <div className="px-6 py-3 flex-1 flex items-center min-w-0">
-                                                                <span className="text-[13px] font-black text-black truncate ltr:mr-2 rtl:ml-2">
-                                                                    {name}
-                                                                </span>
+                                                        {method.code === "checkmo" && isSelected && (
+                                                            <div className="mt-3 relative">
+                                                                <div
+                                                                    className="w-full px-4 py-2.5 text-sm font-medium text-black bg-white border border-gray-200 rounded focus:border-primary focus:outline-none transition-all placeholder:text-black/40 placeholder:font-normal flex items-center justify-between cursor-pointer select-none"
+                                                                    onClick={() => setIsPaymentCommitmentOpen(!isPaymentCommitmentOpen)}
+                                                                >
+                                                                    <span className="text-body font-bold transition-colors text-black">
+                                                                        {t("multi.paymentCommitment")}
+                                                                    </span>
+                                                                    <ChevronDown
+                                                                        size={20}
+                                                                        className={`text-black/60 transition-transform duration-300 ${isPaymentCommitmentOpen ? "rotate-180" : ""}`}
+                                                                    />
+                                                                </div>
+
+                                                                {isPaymentCommitmentOpen && (
+                                                                    <div className="p-2 md:p-4 bg-white space-y-3 absolute left-0 top-full w-full border border-[#ddd] rounded-b-lg select-none z-[10]">
+                                                                        <div
+                                                                            className={`w-full py-6 md:py-10 border-2 border-dashed border-gray-300 bg-gray-50/50 flex flex-col items-center justify-center gap-2 cursor-pointer transition-all duration-300 hover:border-black hover:bg-white rounded-xl ${dragActive ? "border-black bg-white" : ""}`}
+                                                                            onClick={() => paymentCommitmentRef.current?.click()}
+                                                                            onDragOver={(e) => { e.preventDefault(); setDragActive(true); }}
+                                                                            onDragLeave={() => setDragActive(false)}
+                                                                            onDrop={(e) => {
+                                                                                e.preventDefault();
+                                                                                setDragActive(false);
+                                                                                if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                                                                                    addPaymentCommitmentFiles(Array.from(e.dataTransfer.files));
+                                                                                }
+                                                                            }}
+                                                                        >
+                                                                            <div className="text-center px-3 md:px-6">
+                                                                                <p className="text-h3 text-black font-bold mb-3 tracking-tight">{t("m.drop-files-here")}</p>
+                                                                                <p className="text-body-lg text-black/80 font-medium">
+                                                                                    {t("m.allowed-file-types")} : jpg,jpeg,png,zip,rar,docx,doc,pdf,xls,xlsx,csv,msg
+                                                                                </p>
+                                                                            </div>
+                                                                        </div>
+                                                                        <input
+                                                                            type="file"
+                                                                            className="hidden"
+                                                                            multiple
+                                                                            ref={paymentCommitmentRef}
+                                                                            onChange={handlePaymentCommitmentChange}
+                                                                            accept=".jpg,.jpeg,.png,.zip,.rar,.docx,.doc,.pdf,.xls,.xlsx,.csv,.msg"
+                                                                        />
+
+                                                                        {/* File List */}
+                                                                        {paymentCommitmentNames.length > 0 && (
+                                                                            <div className="flex flex-wrap gap-x-4 gap-y-3 pt-2">
+                                                                                {paymentCommitmentNames.map((name) => (
+                                                                                    <div key={name} className="flex border border-subtle rounded-sm overflow-hidden group shadow-sm bg-white">
+                                                                                        <div className="px-6 py-3 flex-1 flex items-center min-w-0">
+                                                                                            <span className="text-body font-black text-black truncate ltr:mr-2 rtl:ml-2">
+                                                                                                {name}
+                                                                                            </span>
+                                                                                        </div>
+                                                                                        <button
+                                                                                            type="button"
+                                                                                            onClick={(e) => { e.stopPropagation(); removePaymentCommitment(name); }}
+                                                                                            className="bg-red-50 text-red-600 px-6 py-3 text-label font-black uppercase tracking-widest transition-all hover:bg-red-600 hover:text-white border-l border-subtle active:scale-95"
+                                                                                        >
+                                                                                            {t("m.remove")}
+                                                                                        </button>
+                                                                                    </div>
+                                                                                ))}
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
+                                                                )}
                                                             </div>
-                                                            <button
-                                                                type="button"
-                                                                onClick={(e) => { e.stopPropagation(); removePaymentCommitment(name); }}
-                                                                className="bg-red-50 text-red-600 px-6 py-3 text-[11px] font-black uppercase tracking-widest transition-all hover:bg-red-600 hover:text-white border-l border-[#ebebeb] active:scale-95"
-                                                            >
-                                                                {t("m.remove")}
-                                                            </button>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            )}
+                                                        )}
+                                                    </div>
+                                                );
+                                            })}
                                         </div>
-                                    )}
-                                </div>
+                                    );
+                                })()}
                             </div>
                         </div>
                     </div>
 
                     {/* ═══════════ Right Column (Order Summary) ═══════════ */}
-                    <div className="lg:col-span-4 space-y-6">
-                        <div className="bg-white border border-[#ebebeb] shadow-lg rounded-xl sticky top-24 overflow-hidden transition-all duration-300">
+                    <div className="lg:col-span-4 xl:col-span-3 space-y-6">
+                        <div className="sticky top-24 overflow-hidden bg-white border border-[#ddd] rounded-sm transition-all duration-300">
                             {/* Header exactly as per image */}
-                            <div className="bg-gray-50 px-4 sm:px-6 py-3 sm:py-4 flex items-center gap-2 sm:gap-3 border-b border-[#ebebeb]">
+                            <div className="bg-gray-50/80 p-3 border-b border-[#ddd] flex items-center gap-2.5 h-[50px]">
                                 <div className="w-5 h-5 rounded-full bg-black flex items-center justify-center">
                                     <Check size={12} strokeWidth={4} className="text-white" />
                                 </div>
-                                <h3 className="text-[11px] font-black text-black text-center uppercase tracking-widest">
+                                <h3 className="text-label font-bold text-black uppercase tracking-[0.15em]">
                                     {t("m.order-summary")}
                                 </h3>
                             </div>
@@ -1307,10 +1370,10 @@ const CheckoutPageUI: React.FC = () => {
                             <div className="p-0">
                                 {/* Collapsible Item Count Header */}
                                 <div
-                                    className="px-5 py-3 flex items-center justify-between border-b border-gray-100 cursor-pointer hover:bg-gray-50 transition-colors"
+                                    className="px-4 py-3 flex items-center justify-between border-b border-gray-100 cursor-pointer hover:bg-gray-50 transition-colors"
                                     onClick={() => setIsItemsListOpen(!isItemsListOpen)}
                                 >
-                                    <span className="text-[13px] font-black text-black">
+                                    <span className="text-body font-bold text-black">
                                         {cart?.items_count || 0} {t("cart.itemsInCart")}
                                     </span>
                                     <ChevronDown
@@ -1324,10 +1387,10 @@ const CheckoutPageUI: React.FC = () => {
                                     className={`overflow-hidden transition-all duration-500 ease-in-out ${isItemsListOpen ? "max-height-none border-b border-gray-100" : "max-h-0"}`}
                                     style={{ maxHeight: isItemsListOpen ? "1000px" : "0" }}
                                 >
-                                    <div className="space-y-3 sm:space-y-4 md:space-y-6 p-4 sm:p-6">
+                                    <div className="space-y-3 sm:space-y-3 md:space-y-4 p-4">
                                         {cart?.items?.map((item) => (
-                                            <div key={item.item_id} className="flex gap-4 items-start pb-6 border-b border-gray-50 last:border-0 last:pb-0">
-                                                <div className="w-16 sm:w-20 h-16 sm:h-20 flex-shrink-0 border border-[#ebebeb] rounded-xl overflow-hidden bg-gray-50 p-2">
+                                            <div key={item.item_id} className="flex gap-4 items-start pb-3 border-b border-[#ddd] last:border-0 last:pb-0">
+                                                <div className="w-13 h-13 flex-shrink-0 border border-[#ddd] rounded-sm overflow-hidden bg-gray-50 p-1">
                                                     <img
                                                         src={item.image_url || "/images/tyre-sample.png"}
                                                         alt={item.name}
@@ -1335,24 +1398,28 @@ const CheckoutPageUI: React.FC = () => {
                                                     />
                                                 </div>
                                                 <div className="flex-1 min-w-0 pt-0.5">
-                                                    <h4 className="text-[13px] font-bold text-black leading-tight mb-1.5">
+                                                    <h4 className="text-body font-semibold text-black leading-tight mb-1.5 uppercase">
                                                         {item.name}
                                                     </h4>
-                                                    <div className="flex items-center gap-1 mb-1.5 text-[13px]">
-                                                        <span className="font-bold text-black">{t("m.qty")} :</span>
-                                                        <input
-                                                            type="number"
-                                                            min="1"
-                                                            value={item.qty}
-                                                            onChange={(e) => {
-                                                                const val = parseInt(e.target.value);
-                                                                if (val > 0) updateCartItem(item.item_id, val);
-                                                            }}
-                                                            className="w-10 h-7 border border-[#ebebeb] rounded-lg text-center text-[12px] font-black focus:outline-none focus:border-yellow-400 ml-1 bg-gray-50/50"
-                                                        />
-                                                    </div>
-                                                    <div className="text-[13px] font-black text-black price currency-riyal">
-                                                        <Price amount={item.row_total} />
+
+                                                    {/* Qty and Price side-by-side horizontally matching the reference image */}
+                                                    <div className="flex items-center gap-4 text-body mt-1">
+                                                        <div className="flex items-center gap-1.5">
+                                                            <span className="font-semibold text-black">{t("m.qty")} :</span>
+                                                            <input
+                                                                type="number"
+                                                                min="1"
+                                                                value={item.qty}
+                                                                onChange={(e) => {
+                                                                    const val = parseInt(e.target.value);
+                                                                    if (val > 0) updateCartItem(item.item_id, val);
+                                                                }}
+                                                                className="w-10 h-7 border border-subtle rounded-sm text-center text-body-sm font-semibold focus:outline-none focus:border-yellow-400 bg-gray-50/50"
+                                                            />
+                                                        </div>
+                                                        <div className="text-body font-semibold text-black price currency-riyal">
+                                                            <Price amount={item.row_total} />
+                                                        </div>
                                                     </div>
 
                                                 </div>
@@ -1362,61 +1429,74 @@ const CheckoutPageUI: React.FC = () => {
                                 </div>
 
                                 {/* Totals Section */}
-                                <div className="p-4 sm:p-5 space-y-2.5 sm:space-y-3">
-                                    <div className="flex justify-between items-center text-[14px]">
-                                        <span className="text-black font-medium">{t("cart.subtotal")}</span>
-                                        <span className="font-black text-black price currency-riyal">
+                                <div className="px-4 py-3 space-y-2.5 sm:space-y-3">
+                                    <div className="flex justify-between items-center text-body-lg">
+                                        <span className="text-body md:text-body-lg font-semibold text-black uppercase tracking-tight">{t("cart.subtotal")}</span>
+                                        <span className="text-body md:text-body-lg font-semibold text-black price">
                                             <Price amount={displayTotals.subtotal} />
                                         </span>
                                     </div>
 
-                                    <div className="flex justify-between items-center text-[14px]">
-                                        <span className="text-black font-medium">{t("cart.vat")}</span>
-                                        <span className="font-black text-black price currency-riyal">
+                                    {totals?.discount_amount && totals.discount_amount !== 0 ? (
+                                        <div className="flex justify-between items-center text-body-lg">
+                                            <span className="text-body md:text-body-lg font-semibold text-green-600 uppercase tracking-tight">{t("m.discount")}</span>
+                                            <span className="text-body md:text-body-lg font-semibold text-green-600">
+                                                - <Price amount={Math.abs(totals.discount_amount)} />
+                                            </span>
+                                        </div>
+                                    ) : null}
+
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-body md:text-body-lg font-semibold text-black uppercase tracking-tight">{t("cart.vat")}</span>
+                                        <span className="text-body md:text-body-lg font-semibold text-black">
                                             <Price amount={displayTotals.tax_amount} />
                                         </span>
                                     </div>
 
-                                    <div className="pt-3 border-t border-gray-200">
-                                        <div className="flex justify-between items-center">
-                                            <span className="text-[16px] font-black text-black">{t("common.grandTotal")}</span>
-                                            <span className="text-[18px] font-black text-black price currency-riyal">
-                                                <Price amount={displayTotals.grand_total} />
-                                            </span>
-                                        </div>
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-body md:text-body-lg font-semibold text-black uppercase tracking-tight">{t("m.shipping")}</span>
+                                        <span className="text-body md:text-body-lg font-semibold text-black">
+                                            <Price amount={displayTotals.shipping_amount} />
+                                        </span>
+                                    </div>
+
+                                    <div className="flex justify-between items-center pt-3 border-t border-[#ddd]">
+                                        <span className="text-body-lg md:text-h3-sm font-semibold text-black uppercase tracking-tight">{t("common.grandTotal")}</span>
+                                        <span className="text-body-lg md:text-h3-sm font-semibold text-black">
+                                            <Price amount={displayTotals.grand_total} />
+                                        </span>
                                     </div>
                                 </div>
 
                                 {/* Order Comment */}
-                                <div className="p-6 pt-0">
-                                    <div className="bg-[#f8f8f8] p-4 rounded-sm border border-gray-100">
+                                <div className="px-4 py-3 border-t border-[#ddd]">
+                                    <div className="space-y-1.5">
+                                        <label className="text-[11px] font-semibold text-black uppercase tracking-widest mb-2 block">
+                                            {t("m.order-comment")}
+                                        </label>
                                         <textarea
                                             placeholder={t("m.enter-your-comment")}
-                                            rows={4}
-                                            className="w-full p-4 border border-gray-200 bg-white focus:border-gray-400 outline-none text-[14px] font-medium resize-none transition-all"
+                                            className="w-full min-h-[70px] resize-none px-4 py-2.5 text-sm font-medium text-black bg-white border border-gray-200 rounded focus:border-primary focus:outline-none transition-all placeholder:text-black/40 placeholder:font-normal"
                                             onChange={(e) => setComment(e.target.value)}
                                         />
                                     </div>
                                 </div>
 
                                 {/* Place Order Button */}
-                                <div className="px-5 pb-6">
+                                <div className="px-4 pb-3">
                                     <button
                                         onClick={handlePlaceOrder}
-                                        className={`w-full py-4 text-[14px] font-black uppercase tracking-[0.2em] transition-all duration-300 flex items-center justify-center gap-2.5 rounded-xl shadow-lg ${isPlacingOrder
-                                            ? "bg-gray-100 text-gray-400 cursor-not-allowed border-[#ebebeb]"
+                                        className={`w-full px-2 py-3 xl:py-4 text-sm font-semibold uppercase tracking-normal xl:tracking-[0.2em] leading-tight transition-all duration-300 shadow-md rounded text-center border ${isPlacingOrder
+                                            ? "bg-gray-100 text-gray-400 cursor-not-allowed border-subtle"
                                             : "bg-yellow-400 text-black hover:bg-black hover:text-white border-yellow-400 hover:border-black active:scale-[0.98]"
                                             }`}
                                     >
                                         {isPlacingOrder ? (
-                                            <>
-                                                {t("common.loading")}
-                                            </>
+                                            t("common.loading")
                                         ) : (
                                             <>
                                                 {t("common.placeOrder")}
-                                                {/* <span className="text-lg leading-none opacity-50 select-none flex items-center">→</span> */}
-                                                <span className="opacity-50 leading-none">➜</span>
+                                                <span className="hidden xl:inline"> ➜</span>
                                             </>
                                         )}
                                     </button>
@@ -1435,35 +1515,37 @@ const CheckoutPageUI: React.FC = () => {
                         <div className="bg-black py-4 px-6 flex justify-end items-center">
                             <button
                                 onClick={() => setIsWarehouseModalOpen(false)}
-                                className="text-white hover:text-[#F5B21B] transition-colors"
+                                className="text-white hover:text-brand-yellow transition-colors"
                             >
                                 <Plus size={24} className="rotate-45" />
                             </button>
                         </div>
 
                         {/* Modal Body */}
-                        <div className="p-8 max-h-[70vh] overflow-y-auto space-y-4 bg-gray-50/30">
+                        <div className="p-2 sm:p-2 max-h-[70vh] overflow-y-auto space-y-3 bg-gray-50/30">
                             {stores.length > 0 ? (
                                 stores.map((wh) => (
                                     <div
                                         key={wh.id}
-                                        className={`p-6 border transition-all cursor-pointer bg-white group ${tempSelectedWarehouse?.id === wh.id ? "border-black ring-1 ring-black shadow-md" : "border-gray-200 hover:border-gray-400"}`}
+                                        className={`py-0 pr-0 pl-4 border transition-all cursor-pointer bg-white group ${tempSelectedWarehouse?.id === wh.id ? "border-black ring-1 ring-black shadow-md" : "border-gray-200 hover:border-gray-400"}`}
                                         onClick={() => setTempSelectedWarehouse({ id: wh.id, name: wh.name })}
                                     >
-                                        <h4 className="text-[16px] font-black text-black uppercase mb-3 tracking-wide">{wh.name}</h4>
-                                        <div className="space-y-1 text-[13px]">
+                                        <h4 className="text-h3-sm font-bold text-black uppercase mb-0 tracking-wide">{wh.name}</h4>
+                                        <div className="space-y-1 text-body tracking-[1px] pb-[2px]">
                                             <p className="flex items-start gap-2">
-                                                <span className="font-bold text-black min-w-[80px]">Address:</span>
+                                                <span className="font-bold text-black min-w-[66px] flex-shrink-0">Address:</span>
                                                 <span className="text-gray-700">{wh.address}</span>
                                             </p>
                                             <p className="flex items-start gap-2">
-                                                <span className="font-bold text-black min-w-[80px]">E-Mail:</span>
-                                                <a href={`mailto:${wh.email}`} className="text-[#3b82f6] hover:underline" onClick={(e) => e.stopPropagation()}>{wh.email}</a>
+                                                <span className="font-bold text-black min-w-[66px] flex-shrink-0">E-Mail:</span>
+                                                {wh.email && (
+                                                    <a href={`mailto:${wh.email}`} className="text-blue-600 hover:underline font-bold" onClick={(e) => e.stopPropagation()}>{wh.email}</a>
+                                                )}
                                             </p>
                                             <p className="flex items-start gap-2">
-                                                <span className="font-bold text-black min-w-[80px]">GPS Location:</span>
-                                                <a href={wh.gps_location} target="_blank" rel="noopener noreferrer" className="text-[#3b82f6] hover:underline flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-                                                    {wh.gps_location.startsWith('http') ? wh.gps_location.replace('https://', '').replace('http://', '') : 'View on Maps'}
+                                                <span className="font-bold text-black min-w-[66px] flex-shrink-0">GPS Location:</span>
+                                                <a href={wh.gps_location} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline font-bold" onClick={(e) => e.stopPropagation()}>
+                                                    {t("m.view-on-maps")}
                                                 </a>
                                             </p>
                                         </div>
@@ -1472,7 +1554,7 @@ const CheckoutPageUI: React.FC = () => {
                             ) : (
                                 <div className="py-6 space-y-3">
                                     {[0, 1, 2].map((i) => (
-                                        <div key={i} className="border border-[#ebebeb] rounded-lg p-4 space-y-2">
+                                        <div key={i} className="border border-subtle rounded-lg p-4 space-y-2">
                                             <div className="h-3.5 w-1/3 bg-gray-200 rounded animate-pulse" />
                                             <div className="h-3 w-2/3 bg-gray-200 rounded animate-pulse" />
                                         </div>
@@ -1484,7 +1566,7 @@ const CheckoutPageUI: React.FC = () => {
                         {/* Modal Footer */}
                         <div className="p-6 border-t border-gray-100 flex justify-end gap-3 bg-white">
                             <button
-                                className={`px-10 py-3 text-[13px] font-black uppercase tracking-widest transition-all ${tempSelectedWarehouse ? "bg-[#F5B21B] text-black hover:bg-black hover:text-white shadow-md" : "bg-gray-100 text-gray-400 cursor-not-allowed"}`}
+                                className={`px-10 py-3 text-body font-black uppercase tracking-widest transition-all ${tempSelectedWarehouse ? "bg-brand-yellow text-black hover:bg-black hover:text-white shadow-md" : "bg-gray-100 text-gray-400 cursor-not-allowed"}`}
                                 onClick={() => {
                                     if (tempSelectedWarehouse) {
                                         setSelectedWarehouse(tempSelectedWarehouse.name);
@@ -1499,7 +1581,7 @@ const CheckoutPageUI: React.FC = () => {
                                 {t("m.pick-up-here")}
                             </button>
                             <button
-                                className="px-10 py-3 bg-black text-white text-[13px] font-black uppercase tracking-widest hover:bg-gray-800 transition-all shadow-md"
+                                className="px-10 py-3 bg-black text-white text-body font-black uppercase tracking-widest hover:bg-gray-800 transition-all shadow-md"
                                 onClick={() => setIsWarehouseModalOpen(false)}
                             >
                                 {t("m.close")}

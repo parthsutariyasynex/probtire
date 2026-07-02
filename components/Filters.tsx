@@ -116,7 +116,7 @@
 //             <div className="flex flex-col md:flex-row gap-6 items-end">
 //                 {/* Status Dropdown */}
 //                 <div className="flex flex-col gap-1.5">
-//                     <label className="text-[14px] font-bold text-black uppercase tracking-tight">
+//                     <label className="text-body-lg font-bold text-black uppercase tracking-tight">
 //                         Filter By Status
 //                     </label>
 //                     <div className="relative" ref={statusRef}>
@@ -126,7 +126,7 @@
 //                                 setIsStatusOpen(!isStatusOpen);
 //                                 setIsOrderOpen(false);
 //                             }}
-//                             className="h-[42px] min-w-[180px] px-3 bg-[#f5a623] text-black text-[13px] font-bold flex items-center justify-between cursor-pointer focus:outline-none rounded-[1px]"
+//                             className="h-[42px] min-w-[180px] px-3 bg-brand-yellow text-black text-body font-bold flex items-center justify-between cursor-pointer focus:outline-none rounded-xs"
 //                         >
 //                             <span>{t(`data.${selectedStatusLabel}`) !== `data.${selectedStatusLabel}` ? t(`data.${selectedStatusLabel}`) : selectedStatusLabel}</span>
 //                             <svg className={`w-3.5 h-3.5 transition-transform duration-200 ${isStatusOpen ? "rotate-180" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -135,7 +135,7 @@
 //                         </button>
 
 //                         {isStatusOpen && (
-//                             <ul className="absolute top-full left-0 min-w-[180px] w-full bg-[#f5a623] z-[100] shadow-md max-h-[320px] overflow-y-auto border-t border-black/10">
+//                             <ul className="absolute top-full left-0 min-w-[180px] w-full bg-brand-yellow z-[100] shadow-md max-h-[320px] overflow-y-auto border-t border-black/10">
 //                                 {statusOptions.map((opt: any, idx: number) => {
 //                                     const optionLabel = typeof opt === 'string' ? opt : (opt.label || opt.name || opt.status || String(idx));
 //                                     const optionValue = typeof opt === 'string' ? opt : (opt.value || opt.id || optionLabel);
@@ -151,7 +151,7 @@
 //                                                     onStatusChange(optionValue);
 //                                                     setIsStatusOpen(false);
 //                                                 }}
-//                                                 className={`w-full text-left px-4 py-2 text-[14px] text-black hover:bg-[#1a73e8] hover:text-white transition-colors flex justify-between items-center ${status === optionValue ? "bg-[#1a73e8] text-white font-bold" : ""}`}
+//                                                 className={`w-full text-left px-4 py-2 text-body-lg text-black hover:bg-[#1a73e8] hover:text-white transition-colors flex justify-between items-center ${status === optionValue ? "bg-[#1a73e8] text-white font-bold" : ""}`}
 //                                             >
 //                                                 <span>{optionLabel}</span>
 //                                             </button>
@@ -165,7 +165,7 @@
 
 //                 {/* Search By Order # (Text Input) */}
 //                 <div className="flex-1 min-w-[220px]">
-//                     <label className="block text-[14px] font-bold text-black mb-1.5 uppercase tracking-tight">
+//                     <label className="block text-body-lg font-bold text-black mb-1.5 uppercase tracking-tight">
 //                         Filter By Order
 //                     </label>
 //                     <input
@@ -178,7 +178,7 @@
 //                             }
 //                         }}
 //                         placeholder="e.g. 000001"
-//                         className="w-full h-[42px] px-3 bg-[#f8f8f8] border border-gray-200 text-[14px] text-gray-700 focus:outline-none focus:border-[#f5a623] transition-colors rounded-[1px]"
+//                         className="w-full h-[42px] px-3 bg-surface-muted border border-gray-200 text-body-lg text-gray-700 focus:outline-none focus:border-brand-yellow transition-colors rounded-xs"
 //                     />
 //                 </div>
 
@@ -186,13 +186,13 @@
 //                 <div className="flex gap-2.5">
 //                     <button
 //                         onClick={onApplySearch}
-//                         className="h-[42px] px-8 bg-black text-white text-[13px] font-bold uppercase tracking-widest hover:bg-gray-800 transition-colors rounded-[1px]"
+//                         className="h-[42px] px-8 bg-black text-white text-body font-bold uppercase tracking-widest hover:bg-gray-800 transition-colors rounded-xs"
 //                     >
 //                         SEARCH
 //                     </button>
 //                     <button
 //                         onClick={onReset}
-//                         className="h-[42px] px-8 bg-black text-white text-[13px] font-bold uppercase tracking-widest hover:bg-gray-800 transition-colors rounded-[1px]"
+//                         className="h-[42px] px-8 bg-black text-white text-body font-bold uppercase tracking-widest hover:bg-gray-800 transition-colors rounded-xs"
 //                     >
 //                         RESET
 //                     </button>
@@ -321,11 +321,11 @@ const Filters: React.FC<FiltersProps> = ({
     }, [status, statusOptions]);
 
     return (
-        <div className="bg-white p-5 rounded-md shadow-sm border border-[#ebebeb] mb-8 mt-2 overflow-visible">
-            <div className="flex flex-col md:flex-row gap-5 items-end">
+        <div className="bg-white p-3 rounded-sm border border-[#ddd] mb-3 overflow-visible">
+            <div className="flex flex-col md:flex-row gap-3 md:gap-5 items-end">
                 {/* Status Dropdown */}
-                <div className="flex flex-col gap-1.5 min-w-[180px]">
-                    <label className="text-xs font-black text-black uppercase tracking-wide">
+                <div className="flex flex-col gap-1.5 min-w-full md:min-w-[180px]">
+                    <label className="text-xs font-bold text-black uppercase tracking-wide">
                         {t("common.filter")} {t("common.status")}
                     </label>
                     <div className="relative" ref={statusRef}>
@@ -374,7 +374,7 @@ const Filters: React.FC<FiltersProps> = ({
 
                 {/* Search By Order # (Text Input) */}
                 <div className="flex-1 min-w-[200px]">
-                    <label className="block text-xs font-black text-black mb-1.5 uppercase tracking-wide">
+                    <label className="block text-xs font-bold text-black mb-1.5 uppercase tracking-wide">
                         {t("common.filter")} {t("orders.orderId")}
                     </label>
                     <div className="relative">

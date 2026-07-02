@@ -65,15 +65,15 @@ export default function InquiryModal({ product, isOpen, onClose }: InquiryModalP
                                 <h3 className="font-bold text-gray-900 text-base mb-2 italic uppercase">{product.name || "Product Inquiry"}</h3>
                                 <div className="grid grid-cols-2 gap-x-4 gap-y-3">
                                     <div className="space-y-0.5">
-                                        <p className="text-[10px] text-gray-400 uppercase font-black tracking-widest">Brand</p>
+                                        <p className="text-caption text-gray-400 uppercase font-black tracking-widest">Brand</p>
                                         <p className="text-xs font-bold text-gray-700">{product?.name ? product.name.split(' ')[0] : "N/A"}</p>
                                     </div>
                                     <div className="space-y-0.5">
-                                        <p className="text-[10px] text-gray-400 uppercase font-black tracking-widest">Size</p>
+                                        <p className="text-caption text-gray-400 uppercase font-black tracking-widest">Size</p>
                                         <p dir="ltr" className="text-xs font-bold text-gray-700">{product.tyre_size}</p>
                                     </div>
                                     <div className="space-y-0.5">
-                                        <p className="text-[10px] text-gray-400 uppercase font-black tracking-widest">Pattern</p>
+                                        <p className="text-caption text-gray-400 uppercase font-black tracking-widest">Pattern</p>
                                         <p className="text-xs font-bold text-gray-700">{product.pattern || "N/A"}</p>
                                     </div>
                                     <div className="space-y-0.5">

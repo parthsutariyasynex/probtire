@@ -11,12 +11,12 @@ export default function PrivacyPolicyPage() {
                 dir={isRtl ? "rtl" : "ltr"}
             >
                 {/* Title */}
-                <h1 className="text-[20px] sm:text-[24px] md:text-[28px] lg:text-[32px] font-black text-black uppercase tracking-tight mb-8 sm:mb-10 md:mb-12 text-center">
+                <h1 className="text-h3 sm:text-h2 md:text-h1-sm lg:text-h1 font-black text-black uppercase tracking-tight mb-8 sm:mb-10 md:mb-12 text-center">
                     {t("privacy.title")}
                 </h1>
 
                 {/* Content */}
-                <div className={`text-[13px] sm:text-[14px] md:text-[15px] leading-[1.8] sm:leading-[1.9] text-gray-700 font-medium ${isRtl ? 'text-right' : 'text-left'}`}>
+                <div className={`text-body sm:text-body-lg md:text-body-xl leading-[1.8] sm:leading-[1.9] text-gray-700 font-medium ${isRtl ? 'text-right' : 'text-left'}`}>
                     {/* Intro */}
                     <p>{t("privacy.intro")}</p>
 
@@ -28,7 +28,7 @@ export default function PrivacyPolicyPage() {
                     </ul>
 
                     {/* Section: Information Collection */}
-                    <h2 className="text-[15px] sm:text-[17px] md:text-[19px] font-black text-black uppercase tracking-tight mt-8 sm:mt-10 mb-3 sm:mb-4">
+                    <h2 className="text-body-xl sm:text-h4 md:text-[19px] font-black text-black uppercase tracking-tight mt-8 sm:mt-10 mb-3 sm:mb-4">
                         {t("privacy.infoCollectionTitle")}
                     </h2>
                     <p>{t("privacy.infoCollectionText1")}</p>
@@ -36,7 +36,7 @@ export default function PrivacyPolicyPage() {
                     <p className="mt-4">{t("privacy.infoCollectionText3")}</p>
 
                     {/* Section: Access & Control */}
-                    <h2 className="text-[15px] sm:text-[17px] md:text-[19px] font-black text-black uppercase tracking-tight mt-8 sm:mt-10 mb-3 sm:mb-4">
+                    <h2 className="text-body-xl sm:text-h4 md:text-[19px] font-black text-black uppercase tracking-tight mt-8 sm:mt-10 mb-3 sm:mb-4">
                         {t("privacy.accessControlTitle")}
                     </h2>
                     <p>{t("privacy.accessControlText")}</p>

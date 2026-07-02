@@ -50,6 +50,7 @@ export interface CheckoutTotals {
     subtotal: number;
     tax_amount: number;
     shipping_amount?: number;
+    discount_amount?: number;
     grand_total: number;
     currency_code: string;
 }

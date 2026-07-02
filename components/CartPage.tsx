@@ -14,6 +14,7 @@ import toast from "react-hot-toast";
 import { useTranslation } from "@/hooks/useTranslation";
 import { useLocalePath } from "@/hooks/useLocalePath";
 import { CartPageSkeleton } from "@/components/skeletons";
+import { useLoadingOverlay } from "@/contexts/LoadingOverlayContext";
 
 const CartPage: React.FC = () => {
     const router = useRouter();
@@ -23,16 +24,16 @@ const CartPage: React.FC = () => {
     const { startMultiShipping } = useCheckout({ skipInitialFetch: true });
     const [pendingQtys, setPendingQtys] = React.useState<Record<number, number>>({});
     const [isStartingMultiShipping, setIsStartingMultiShipping] = React.useState(false);
-
+    const { showLoading, hideLoading } = useLoadingOverlay();
 
     const handleUpdateQty = (id: number, qty: number) => {
         setPendingQtys(prev => ({ ...prev, [id]: qty }));
     };
 
     const handleRemove = async (id: number) => {
+        showLoading("REMOVING ITEM...");
         try {
             await removeFromCart(id);
-            // Clear pending update for this item if any
             if (pendingQtys[id]) {
                 const newPending = { ...pendingQtys };
                 delete newPending[id];
@@ -41,62 +42,55 @@ const CartPage: React.FC = () => {
             toast.success(t("cart.itemRemoved"));
         } catch (err) {
             toast.error(t("cart.itemRemovalFailed"));
+        } finally {
+            hideLoading();
         }
     };
 
     const handleUpdateCart = async () => {
         const updateIds = Object.keys(pendingQtys);
-        if (updateIds.length === 0) {
-            await refetchCart();
-            toast.success(t("cart.updated"));
-            return;
-        }
-
-        const toastId = toast.loading(t("cart.updating") || "Updating cart...");
+        showLoading("UPDATING CART...");
         try {
-            // Process updates sequentially to avoid cart lock issues
+            if (updateIds.length === 0) {
+                await refetchCart();
+                toast.success(t("cart.updated"));
+                return;
+            }
             for (const id of updateIds) {
                 await updateCartItem(Number(id), pendingQtys[Number(id)]);
             }
             setPendingQtys({});
             await refetchCart();
-            toast.success(t("cart.updated"), { id: toastId });
+            toast.success(t("cart.updated"));
         } catch (err) {
-            toast.error(t("cart.updateFailed"), { id: toastId });
+            toast.error(t("cart.updateFailed"));
+        } finally {
+            hideLoading();
         }
     };
 
-
     const handleClearCart = async () => {
+        showLoading("CLEARING CART...");
         try {
             await clearCart();
-            toast.success(t("cart.cartCleared"), {
-                icon: '🗑️',
-                style: {
-                    borderRadius: '16px',
-                    background: '#000',
-                    color: '#fff',
-                    fontSize: '10px',
-                    fontWeight: 'bold',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.1em'
-                },
-            });
+            toast.success(t("cart.cartCleared"));
         } catch (err) {
             toast.error(t("cart.updateFailed"));
+        } finally {
+            hideLoading();
         }
     };
 
     const handleStartMultiShipping = async () => {
         if (!cart?.items || cart.items.length === 0) return;
-
+        showLoading("PROCESSING...");
         try {
             setIsStartingMultiShipping(true);
             await startMultiShipping();
         } catch (err: any) {
-            // Magento may reject with "at least two units" — proceed anyway,
-            // the assign step will handle the actual session setup
             console.warn("Multi-shipping start warning (proceeding):", err.message);
+        } finally {
+            hideLoading();
         }
         toast.success(t("cart.startingMultiLocation"));
         router.push(lp("/multi-location-delivery"));
@@ -139,10 +133,10 @@ const CartPage: React.FC = () => {
     return (
         <div className="min-h-screen bg-[#FDFDFD] pb-4 lg:pb-10">
             {/* Main Content Container */}
-            <div className="max-w-[1920px] mx-auto px-4 md:px-12 pt-8 md:pt-14">
+            <div className="w-full px-3 lg:px-12 pt-4 md:pt-8">
 
                 {/* Breadcrumbs & Title Section */}
-                <div className="mb-10 md:mb-14 text-center">
+                <div className="mb-4 md:mb-8 text-center">
                     <h1 className="text-xl md:text-2xl font-bold text-gray-900 uppercase tracking-tight mb-2">
                         {t("cart.title")}
                     </h1>
@@ -156,15 +150,15 @@ const CartPage: React.FC = () => {
 
                         <div className="flex flex-col h-full">
                             {/* Table Header (Sticky Top) */}
-                            <div className="hidden lg:flex sticky top-0 z-20 bg-white border border-gray-100 rounded-xl items-center py-4 px-10 mb-4 shadow-sm">
-                                <div className="w-[45%] text-[10px] font-bold text-black uppercase tracking-widest">{t("cart.itemDescription")}</div>
-                                <div className="w-[15%] text-[10px] font-bold text-black uppercase tracking-widest text-center">{t("cart.price")}</div>
-                                <div className="w-[20%] text-[10px] font-bold text-black uppercase tracking-widest text-center">{t("cart.qty")}</div>
-                                <div className="w-[20%] text-[10px] font-bold text-black uppercase tracking-widest text-right">{t("cart.total")}</div>
+                            <div className="hidden lg:flex sticky top-0 z-20 bg-white border border-[#ddd] rounded-sm items-center py-4 px-10 mb-3 shadow-sm">
+                                <div className="w-[45%] text-caption font-bold text-black uppercase tracking-widest">{t("cart.itemDescription")}</div>
+                                <div className="w-[15%] text-caption font-bold text-black uppercase tracking-widest text-center">{t("cart.price")}</div>
+                                <div className="w-[20%] text-caption font-bold text-black uppercase tracking-widest text-center">{t("cart.qty")}</div>
+                                <div className="w-[20%] text-caption font-bold text-black uppercase tracking-widest text-right">{t("cart.total")}</div>
                             </div>
 
                             {/* Scrollable Items Container */}
-                            <div className="flex-1 custom-scrollbar pr-2 space-y-4 pb-4">
+                            <div className="flex-1 custom-scrollbar space-y-3 pb-4">
                                 {cart.items.map((item) => (
                                     <CartItem
                                         key={item.item_id}
@@ -186,14 +180,14 @@ const CartPage: React.FC = () => {
                                     />
 
                                     {/* Multiple Address Section Bar */}
-                                    <div className="border border-[#FFC107] bg-white rounded-xl flex flex-col md:flex-row items-stretch justify-between overflow-hidden shadow-xl shadow-yellow-400/5">
+                                    <div className="border border-[#FFC107] bg-white rounded-sm flex flex-col md:flex-row items-stretch justify-between overflow-hidden shadow-xl shadow-yellow-400/5">
                                         <div className="px-6 py-4 flex items-center bg-gray-50/50 flex-1">
-                                            <h4 className="text-[10px] font-bold text-gray-900 uppercase tracking-wider">{t("cart.multiAddressShipping")}</h4>
+                                            <h4 className="text-caption font-bold text-gray-900 uppercase tracking-wider">{t("cart.multiAddressShipping")}</h4>
                                         </div>
                                         <button
                                             onClick={handleStartMultiShipping}
                                             disabled={isStartingMultiShipping}
-                                            className="bg-[#FFC107] text-black font-bold py-4 px-10 uppercase tracking-widest text-[10px] hover:bg-black hover:text-white transition-all duration-300 disabled:opacity-70 disabled:cursor-not-allowed w-full md:w-auto shadow-none"
+                                            className="bg-[#FFC107] text-black font-bold py-4 px-10 uppercase tracking-widest text-caption hover:bg-black hover:text-white transition-all duration-300 disabled:opacity-70 disabled:cursor-not-allowed w-full md:w-auto shadow-none"
                                         >
                                             {isStartingMultiShipping ? (
                                                 t("common.loading")

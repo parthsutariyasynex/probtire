@@ -80,6 +80,7 @@ export default function NotificationDrawer({ isOpen, onClose }: NotificationDraw
             isOpen={isOpen}
             onClose={onClose}
             title={`${t("nav.notifications")} (${unreadCount})`}
+            widthClassName="h-screen w-full md:w-[400px] overflow-x-hidden"
         >
             <div className="flex flex-col h-full bg-white" dir={isRtl ? "rtl" : "ltr"}>
                 {/* Notifications List */}
@@ -100,8 +101,8 @@ export default function NotificationDrawer({ isOpen, onClose }: NotificationDraw
                         <div className="flex flex-col items-center justify-center py-32 px-10 text-center animate-in zoom-in-95 duration-500">
                             <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mb-6 shadow-inner">
                                 <BellIcon />
-                            </div>
-                            <p className="text-[16px] font-black text-gray-900 uppercase tracking-tight">{t("notifications.empty")}</p>
+                             </div>
+                            <p className="text-h3-sm font-bold text-gray-900 uppercase tracking-tight">{t("notifications.empty")}</p>
                             <p className="text-xs text-gray-400 mt-2 font-medium tracking-widest uppercase">{t("notifications.upToDate")}</p>
                         </div>
                     ) : (
@@ -109,14 +110,14 @@ export default function NotificationDrawer({ isOpen, onClose }: NotificationDraw
                             {notifications.map((item, index) => (
                                 <div
                                     key={`${item.notification_id || index}-${index}`}
-                                    className={`p-6 flex flex-col gap-1 transition-all relative border-l-4 ${!item.is_read ? "bg-[#fcf8ec] border-[#f5b21a]" : "bg-white border-transparent"
+                                    className={`px-4 py-4 flex flex-col gap-1 transition-all relative border-l-4 ${!item.is_read ? "bg-[#fcf8ec] border-brand-yellow" : "bg-white border-transparent"
                                         }`}
                                 >
                                     {/* Header Row: Title & Remove */}
                                     <div className="flex justify-between items-start gap-4">
-                                        <h3 className={`text-[15px] leading-snug ltr:pr-6 rtl:pl-6 ${!item.is_read ? "font-black text-black" : "font-bold text-gray-700"}`}>
+                                        <h3 className={`text-sm leading-snug ltr:pr-6 rtl:pl-6 ${!item.is_read ? "font-bold text-black" : "font-semibold text-gray-700"}`}>
                                             {getOrderLink(item) ? (
-                                                <Link href={getOrderLink(item)!} onClick={onClose} className="hover:text-[#f5b21a] transition-colors hover:underline underline-offset-2">
+                                                <Link href={getOrderLink(item)!} onClick={onClose} className="hover:text-brand-yellow transition-colors hover:underline underline-offset-2">
                                                     {translateNotification(item.title)}
                                                 </Link>
                                             ) : translateNotification(item.title)}
@@ -135,14 +136,14 @@ export default function NotificationDrawer({ isOpen, onClose }: NotificationDraw
                                     </div>
 
                                     {/* Message */}
-                                    <p className={`text-[13px] leading-relaxed mt-1 ${!item.is_read ? "text-black/80 font-medium" : "text-gray-500"
+                                    <p className={`text-xs leading-relaxed mt-1 ${!item.is_read ? "text-gray-800 font-medium" : "text-gray-500"
                                         }`}>
                                         {translateNotification(item.description)}
                                     </p>
 
                                     {/* Footer: Date & Mark as Read */}
                                     <div className="flex justify-between items-center mt-3">
-                                        <p className="text-[11px] text-gray-400 font-black uppercase tracking-widest">
+                                        <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-widest">
                                             {isRtl ? formatNotificationDate(item.date_added || item.date_added_formatted) : item.date_added_formatted}
                                         </p>
 
@@ -152,7 +153,7 @@ export default function NotificationDrawer({ isOpen, onClose }: NotificationDraw
                                                     e.stopPropagation();
                                                     markAsRead(item.notification_id);
                                                 }}
-                                                className="text-[10px] font-black uppercase tracking-widest pointer-events-auto text-[#f5b21a] hover:text-black transition-colors"
+                                                className="text-[11px] font-semibold uppercase tracking-widest pointer-events-auto text-brand-yellow hover:text-black transition-colors"
                                             >
                                                 {t("notifications.markRead")}
                                             </button>
@@ -169,7 +170,7 @@ export default function NotificationDrawer({ isOpen, onClose }: NotificationDraw
                     <Link
                         href={lp("/customer/notifications")}
                         onClick={onClose}
-                        className="w-full h-[55px] bg-[#f5b21a] hover:bg-black text-black hover:text-white font-black rounded-sm transition-all duration-300 flex items-center justify-center shadow-lg hover:shadow-xl uppercase tracking-[0.2em] text-[12px]"
+                        className="w-full h-[55px] bg-brand-yellow hover:bg-black text-black hover:text-white font-black rounded-sm transition-all duration-300 flex items-center justify-center shadow-lg hover:shadow-xl uppercase tracking-[0.2em] text-body-sm"
                     >
                         {t("common.view")} {t("nav.notifications")}
                     </Link>

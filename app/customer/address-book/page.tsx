@@ -15,7 +15,7 @@ import { AddressBookSkeleton, SidebarSkeleton } from "@/components/skeletons";
 
 export default function AddressBookPage() {
     const router = useRouter();
-    const { t } = useTranslation();
+    const { t, isRtl } = useTranslation();
     const dispatch = useDispatch();
     const { data: session, status } = useSession();
     const { data: customer, loading } = useSelector((state: RootState) => state.customer);
@@ -35,32 +35,34 @@ export default function AddressBookPage() {
 
     if (status === "loading" || loading) {
         return (
-            <div className="flex flex-col lg:flex-row flex-1 min-h-0 w-full bg-[#fcfcfc] font-rubik">
+            <div className="flex flex-col lg:flex-row flex-1 min-h-0 w-full bg-white font-rubik">
                 <SidebarSkeleton />
-                <main className="flex-1 p-4 md:p-6 lg:p-8 bg-[#fcfcfc] min-h-0">
-                    <div className="max-w-[1200px]">
-                        <AddressBookSkeleton />
+                <main className="flex-1 w-full min-w-0 px-4 md:px-6 lg:px-8 py-4 md:py-6 lg:py-5 bg-white">
+                    <div className="flex items-center gap-4 mb-6">
+                        <h1 className="text-h3 md:text-h1-sm font-semibold text-black uppercase tracking-tight whitespace-nowrap">
+                            {t("addressBook.title")}
+                        </h1>
                     </div>
+                    <AddressBookSkeleton />
                 </main>
             </div>
         );
     }
 
     return (
-        <>
+        <div className="flex flex-col lg:flex-row flex-1 min-h-0 w-full">
+            {/* Left Sidebar */}
+            <Sidebar />
 
-
-            <div className="flex flex-col lg:flex-row flex-1 min-h-0 w-full">
-                {/* Left Sidebar */}
-                <Sidebar />
-
-                {/* Right Content */}
-                <main className="flex-1 p-4 md:p-6 lg:p-8 bg-[#fcfcfc] min-h-0">
-                    <div className="max-w-[1200px]">
-                        <Addresses />
-                    </div>
-                </main>
-            </div>
-        </>
+            {/* Right Content */}
+            <main className="flex-1 w-full min-w-0 px-4 md:px-6 lg:px-8 py-4 md:py-6 lg:py-5 bg-white" dir={isRtl ? "rtl" : "ltr"}>
+                <div className="flex items-center gap-4 mb-6">
+                    <h1 className="text-h3 md:text-h1-sm font-semibold text-black uppercase tracking-tight whitespace-nowrap">
+                        {t("addressBook.title")}
+                    </h1>
+                </div>
+                <Addresses />
+            </main>
+        </div>
     );
 }

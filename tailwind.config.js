@@ -1,27 +1,13 @@
+// All design tokens (colors, typography, border-radius, animations) live in
+// app/globals.css @theme — the single source of truth for the design system.
+// This file is kept minimal: only content paths and plugins belong here.
 export default {
   content: [
     "./app/**/*.{js,ts,jsx,tsx}",
     "./components/**/*.{js,ts,jsx,tsx}",
+    "./modules/**/*.{js,ts,jsx,tsx}",
+    "./hooks/**/*.{js,ts,jsx,tsx}",
+    "./lib/**/*.{js,ts,jsx,tsx}",
   ],
-  theme: {
-    extend: {
-      fontFamily: {
-        sans: ["var(--font-rubik)", "sans-serif"],
-        rubik: ["var(--font-rubik)", "sans-serif"],
-      },
-      colors: {
-        brandYellow: "#F5B21B",
-      },
-      keyframes: {
-        scaleIn: {
-          "0%": { transform: "scale(0.95)", opacity: "0" },
-          "100%": { transform: "scale(1)", opacity: "1" },
-        },
-      },
-      animation: {
-        "scale-in": "scaleIn 0.3s cubic-bezier(0.16, 1, 0.3, 1)",
-      },
-    },
-  },
   plugins: [],
 };

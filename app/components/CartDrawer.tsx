@@ -57,15 +57,16 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
                 isOpen={isOpen}
                 onClose={onClose}
                 title={`${cart?.items_count || 0} ${t("cart.itemsInCart")}`}
+                widthClassName="h-screen w-full md:w-[400px] overflow-x-hidden"
             >
                 <div className="flex flex-col h-full bg-white">
                     {/* Header Sub-info */}
                     <div className="px-6 py-4 bg-gray-50/50 border-b border-gray-100">
                         <div className="flex justify-between items-center">
-                            <span className="text-[11px] font-black text-gray-400 uppercase tracking-widest leading-none">
+                            <span className="text-sm font-semibold text-black uppercase tracking-widest leading-none">
                                 {t("cart.subtotal")}
                             </span>
-                            <span className="text-[17px] font-black text-black price currency-riyal">
+                            <span className="text-h4 font-black text-black price currency-riyal">
                                 <Price amount={cart?.subtotal || 0} />
                             </span>
                         </div>
@@ -94,11 +95,11 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
                                 <div className="bg-gray-50 w-20 h-20 rounded-full flex items-center justify-center mb-6 shadow-inner">
                                     <ShoppingCartIcon />
                                 </div>
-                                <p className="text-[16px] font-black text-gray-900 uppercase tracking-tight">{t("cart.yourCartIsEmpty")}</p>
+                                <p className="text-h3-sm font-black text-gray-900 uppercase tracking-tight">{t("cart.yourCartIsEmpty")}</p>
                                 <p className="text-xs text-gray-400 mt-2 font-medium">{t("cart.addItems")}</p>
                                 <button
                                     onClick={onClose}
-                                    className="mt-8 text-[11px] font-black text-[#f5b21a] uppercase tracking-[0.2em] hover:text-black transition-colors"
+                                    className="mt-8 text-label font-black text-brand-yellow uppercase tracking-[0.2em] hover:text-black transition-colors"
                                 >
                                     {t("multi.continueShopping")}
                                 </button>
@@ -106,9 +107,9 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
                         ) : (
                             <div className="divide-y divide-gray-100 pb-20">
                                 {cart?.items.map((item) => (
-                                    <div key={item.item_id} className="p-6 flex gap-6 hover:bg-gray-50/30 transition-all group">
+                                    <div key={item.item_id} className="px-4 py-2 flex gap-3 hover:bg-gray-50/30 transition-all group items-center border-b border-gray-100 last:border-b-0">
                                         {/* Left: Product Image */}
-                                        <div className="w-24 h-24 bg-white border border-gray-100 rounded-lg flex-shrink-0 p-2 flex items-center justify-center shadow-sm group-hover:shadow-md transition-all duration-300">
+                                        <div className="w-16 h-16 bg-white border border-[#ddd] rounded-sm flex-shrink-0 p-1 flex items-center justify-center shadow-sm group-hover:shadow-md transition-all duration-300">
                                             <img
                                                 src={item.image_url || "/images/tyre-sample.png"}
                                                 alt={item.name}
@@ -119,45 +120,44 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
                                             />
                                         </div>
 
-                                        {/* Center: Info */}
-                                        <div className="flex-1 min-w-0 flex flex-col justify-center">
-                                            <div>
-                                                <h3 className="text-sm font-black text-gray-900 leading-snug line-clamp-2 uppercase tracking-tight">
+                                        {/* Center & Right: Info */}
+                                        <div className="flex-1 min-w-0 flex flex-col justify-between py-0.5">
+                                            <div className="flex justify-between items-start gap-3">
+                                                <h3 className="text-sm font-semibold text-black leading-snug line-clamp-2 uppercase tracking-tight">
                                                     {item.name}
                                                 </h3>
-                                                <p className="text-[16px] font-black text-black mt-1.5 price currency-riyal">
-                                                    <Price amount={item.price} />
-                                                </p>
+                                                <button
+                                                    onClick={() => setConfirmId(item.item_id)}
+                                                    className="text-black hover:text-red-500 transition-colors p-1 flex-shrink-0"
+                                                    aria-label="Remove item"
+                                                >
+                                                    <Trash2 size={20} strokeWidth={2} />
+                                                </button>
                                             </div>
 
-                                            {/* Quantity & Actions */}
-                                            <div className="flex items-center justify-between mt-4">
-                                                <div className="flex items-center bg-gray-100 rounded-md p-0.5 border border-gray-200">
+                                            <div className="flex items-center justify-between mt-0">
+                                                <div className="text-body-xl font-bold text-black">
+                                                    <Price amount={item.price} className="font-bold text-black" />
+                                                </div>
+
+                                                <div className="flex items-center border border-[#ddd] bg-white rounded-lg focus-within:ring-1 focus-within:ring-primary transition-all">
                                                     <button
                                                         onClick={() => updateCartItem(item.item_id, item.qty - 1)}
-                                                        className="w-7 h-7 flex items-center justify-center hover:bg-white hover:shadow-sm rounded transition-all text-gray-600 disabled:opacity-30"
+                                                        className="w-7 h-7 flex items-center justify-center text-gray-400 hover:text-black transition-all disabled:opacity-30"
                                                         disabled={item.qty <= 1}
                                                     >
-                                                        <Minus size={12} strokeWidth={3} />
+                                                        <Minus size={12} strokeWidth={2.5} />
                                                     </button>
-                                                    <span className="w-10 text-center text-xs font-black text-gray-900 bg-transparent">
+                                                    <span className="w-8 text-center text-sm font-semibold text-black bg-transparent">
                                                         {item.qty}
                                                     </span>
                                                     <button
                                                         onClick={() => updateCartItem(item.item_id, item.qty + 1)}
-                                                        className="w-7 h-7 flex items-center justify-center hover:bg-white hover:shadow-sm rounded transition-all text-gray-600"
+                                                        className="w-7 h-7 flex items-center justify-center text-gray-400 hover:text-black transition-all"
                                                     >
-                                                        <Plus size={12} strokeWidth={3} />
+                                                        <Plus size={12} strokeWidth={2.5} />
                                                     </button>
                                                 </div>
-
-                                                <button
-                                                    onClick={() => setConfirmId(item.item_id)}
-                                                    className="w-9 h-9 flex items-center justify-center text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-full transition-all"
-                                                    aria-label="Remove item"
-                                                >
-                                                    <Trash2 size={18} strokeWidth={2.5} />
-                                                </button>
                                             </div>
                                         </div>
                                     </div>
@@ -171,7 +171,7 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
                         <Link
                             href={lp("/checkout/cart")}
                             onClick={onClose}
-                            className="w-full h-[55px] bg-[#f5b21a] hover:bg-black text-black hover:text-white font-black rounded-sm transition-all duration-300 flex items-center justify-center shadow-lg hover:shadow-xl uppercase tracking-[0.2em] text-[12px]"
+                            className="w-full h-[55px] bg-brand-yellow hover:bg-black text-black hover:text-white font-black rounded-sm transition-all duration-300 flex items-center justify-center shadow-lg hover:shadow-xl uppercase tracking-[0.2em] text-body-sm"
                         >
                             {t("cart.viewAndEditCart")}
                         </Link>
@@ -196,7 +196,7 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
                     </button>
 
                     <div className="p-8 pb-6">
-                        <p className="text-gray-900 text-[15px] font-medium leading-relaxed mt-2">
+                        <p className="text-gray-900 text-body-xl font-medium leading-relaxed mt-2">
                             {t("cart.confirmRemove")}
                         </p>
                     </div>
@@ -204,14 +204,14 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
                     <div className="border-t border-gray-100 p-6 pt-5 pb-5 flex justify-end gap-3 bg-white">
                         <button
                             onClick={() => setConfirmId(null)}
-                            className="px-8 py-2.5 bg-black text-white font-black uppercase tracking-widest text-[12px] hover:bg-gray-900 transition-all rounded-sm min-w-[120px]"
+                            className="px-8 py-2.5 bg-black text-white font-black uppercase tracking-widest text-body-sm hover:bg-gray-900 transition-all rounded-sm min-w-[120px]"
                         >
                             {t("common.cancel")}
                         </button>
                         <button
                             onClick={handleConfirmDelete}
                             disabled={isRemoving}
-                            className="px-10 py-2.5 bg-[#fdb913] text-black font-black uppercase tracking-widest text-[12px] hover:bg-[#e5a811] transition-all rounded-sm min-w-[100px] flex items-center justify-center gap-2"
+                            className="px-10 py-2.5 bg-[#fdb913] text-black font-black uppercase tracking-widest text-body-sm hover:bg-[#e5a811] transition-all rounded-sm min-w-[100px] flex items-center justify-center gap-2"
                         >
                             {isRemoving ? t("common.loading") : t("common.ok")}
                         </button>
