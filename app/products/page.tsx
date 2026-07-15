@@ -144,7 +144,7 @@ export default function ProductsPage() {
     const ROLE_CACHE = "altalayi_user_type_v1";
     const TOKEN_CACHE = "altalayi_role_token_v1";
     if (sessionStorage.getItem(TOKEN_CACHE) === authToken) {
-      setIsMultiCompany(sessionStorage.getItem(ROLE_CACHE) === "Multi Company");
+      setIsMultiCompany(sessionStorage.getItem(ROLE_CACHE) === "Multiple Company User");
       return;
     }
     fetch("/api/kleverapi/account-sidebar", {
@@ -153,7 +153,7 @@ export default function ProductsPage() {
       const type = data?.user_type || "Customer";
       sessionStorage.setItem(ROLE_CACHE, type);
       sessionStorage.setItem(TOKEN_CACHE, authToken);
-      setIsMultiCompany(type === "Multi Company");
+      setIsMultiCompany(type === "Multiple Company User");
     }).catch(() => { });
   }, [authToken]);
 
@@ -475,7 +475,7 @@ export default function ProductsPage() {
   const getStockBadge = (product: any) => {
     const label = product?.stock_label === "Available" ? t("stock.available") : product?.stock_label === "Not Available" ? t("stock.not_available") : product?.stock_label === "Limited" ? t("stock.limited") : product?.stock_label || (product?.is_in_stock ? t("stock.available") : t("stock.not_available"));
     const apiColor = product?.stock_color?.toLowerCase() || (product?.is_in_stock ? "green" : "red");
-    const colorClass = apiColor === "green" ? "bg-green-500" : apiColor === "yellow" ? "bg-yellow-400" : "bg-red-500";
+    const colorClass = apiColor === "green" ? "bg-green-500" : apiColor === "yellow" ? "bg-brand-yellow" : "bg-red-500";
     return (
       <div className="flex flex-col items-center justify-center text-center gap-1">
         <span className={`w-4 h-4 rounded-full border border-gray-100 shadow-sm ${colorClass}`} />
@@ -562,8 +562,8 @@ export default function ProductsPage() {
   // page has at least one product with is_action === "Yes". Otherwise the
   // whole column (header + cells + colgroup width + colSpan) is omitted.
   const showActionColumn = useMemo(
-    () => !shouldHideCartActions && products.some((p: any) => p?.is_action === "Yes"),
-    [products, shouldHideCartActions]
+    () => (!shouldHideCartActions || isSalesPerson) && products.some((p: any) => p?.is_action === "Yes"),
+    [products, shouldHideCartActions, isSalesPerson]
   );
   const headerKeys: readonly string[] = showActionColumn
     ? [...BASE_HEADER_KEYS, ACTION_HEADER_KEY]
@@ -602,7 +602,7 @@ export default function ProductsPage() {
     const isOutOfStock = product.stock_status === "Not Available" || Number(product?.stock_qty ?? 0) <= 0;
     const stockLabel = product?.stock_label === "Available" ? t("stock.available") : product?.stock_label === "Not Available" ? t("stock.not_available") : product?.stock_label === "Limited" ? t("stock.limited") : product?.stock_label || (product?.is_in_stock ? t("stock.available") : t("stock.not_available"));
     const stockColor = product?.stock_color?.toLowerCase() || (product?.is_in_stock ? "green" : "red");
-    const dotColor = stockColor === "green" ? "bg-green-500" : stockColor === "yellow" ? "bg-yellow-400" : "bg-red-500";
+    const dotColor = stockColor === "green" ? "bg-green-500" : stockColor === "yellow" ? "bg-brand-yellow" : "bg-red-500";
 
     return (
       <div key={index} className="relative bg-white rounded-lg border border-gray-100 shadow-sm p-2.5 sm:p-3 flex flex-col gap-1.5">
@@ -613,7 +613,7 @@ export default function ProductsPage() {
             <p className="text-body-sm md:text-body font-black text-gray-900 leading-tight mt-0.5 truncate">{product?.pattern || product?.name || "—"}</p>
             <div className="flex items-center gap-1.5 mt-1">
               <span dir="ltr" className="text-body-sm font-bold text-black">{product?.tyre_size || "—"}</span>
-              <div onClick={() => setSelectedProduct(product)} className="w-4 h-4 bg-gray-900 rounded-full flex items-center justify-center text-micro font-bold text-white cursor-pointer hover:bg-yellow-400 hover:text-black transition-all shadow-sm active:scale-95 flex-shrink-0">i</div>
+              <div onClick={() => setSelectedProduct(product)} className="w-4 h-4 bg-gray-900 rounded-full flex items-center justify-center text-micro font-bold text-white cursor-pointer hover:bg-brand-yellow hover:text-black transition-all shadow-sm active:scale-95 flex-shrink-0">i</div>
               {product?.origin && <span className="text-label text-gray-400 font-normal">{t(`data.${product.origin}`) !== `data.${product.origin}` ? t(`data.${product.origin}`) : product.origin}</span>}
               {product?.year && <span className="text-label text-gray-400 font-mono font-normal">{product.year}</span>}
             </div>
@@ -682,7 +682,7 @@ export default function ProductsPage() {
                 </button>
               )
             )}
-            {!shouldHideCartActions && (
+            {(!shouldHideCartActions || isSalesPerson) && (
               <button
                 onClick={() => toggleFavorite(product)}
                 disabled={loadingSkus.has(product.sku)}
@@ -782,7 +782,7 @@ export default function ProductsPage() {
           <div className="xl:hidden flex flex-col gap-2 mb-3">
             {/* Controls: 2 cols on mobile, 4 cols on tablet */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-              {!shouldHideCartActions && (
+              {(!shouldHideCartActions || isSalesPerson) && (
                 <button onClick={() => router.push(lp("/wishlist"))} className="h-[44px] bg-white border border-gray-200 rounded-xl flex items-center justify-center gap-2 text-label font-bold uppercase tracking-wider shadow-sm active:scale-95 cursor-pointer">
                   <Star className="w-4 h-4 fill-black text-black" /> {t("m.favourite-products")}
                 </button>
@@ -846,18 +846,21 @@ export default function ProductsPage() {
           <div className="xl:hidden">{renderPagination(true)}</div>
 
           {/* ── DESKTOP CONTROLS + TABLE ── */}
-          <div className="hidden xl:flex flex-col bg-white rounded-none md:rounded-r-2xl shadow-sm border border-gray-200 border-l-0 overflow-hidden">
+          <div className="hidden xl:flex flex-col bg-white rounded-none md:rounded-r-lg shadow-sm border border-gray-200 border-l-0 overflow-hidden">
             {/* Desktop header */}
             <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center gap-4 min-h-[60px]">
               <div className="flex items-center gap-4">
-                {!shouldHideCartActions && (
-                  <button onClick={() => router.push(lp("/wishlist"))} className="bg-gray-50 border border-gray-200 text-black px-4 py-2 rounded-sm flex items-center gap-2 shadow-sm text-xs font-semibold active:scale-95 cursor-pointer uppercase tracking-wider">
-                    <Star className="w-5 h-5 fill-black text-black" /> {t("sidebar.favoriteProducts")}
+                {(!shouldHideCartActions || isSalesPerson) && (
+                  <button
+                    onClick={() => router.push(lp("/wishlist"))}
+                    className="h-10 px-4 bg-white border border-gray-200 text-black flex items-center justify-center gap-2 text-xs font-bold uppercase tracking-wider hover:bg-gray-50 hover:border-gray-300 transition-all active:scale-95 cursor-pointer rounded-md shadow-sm"
+                  >
+                    <Star className="w-4 h-4 fill-black text-black" /> {t("sidebar.favoriteProducts")}
                   </button>
                 )}
                 <div className="flex flex-1 items-center gap-2 overflow-x-auto custom-scrollbar-hide max-w-[800px]">
                   {isFavorite && (
-                    <div className="flex items-center gap-1.5 bg-yellow-400 border border-yellow-500 px-3 py-1.5 rounded-full text-body-sm font-bold text-black shadow-sm flex-shrink-0">
+                    <div className="flex items-center gap-1.5 bg-brand-yellow border border-brand-yellow-dark px-3 py-1.5 rounded-full text-body-sm font-bold text-black shadow-sm flex-shrink-0">
                       {t("sidebar.favoriteProducts")} <button onClick={() => setIsFavorite(false)} className="hover:text-red-700"><X size={14} /></button>
                     </div>
                   )}
@@ -875,7 +878,7 @@ export default function ProductsPage() {
                 value={sortBy}
                 onChange={setSortBy}
                 options={[{ label: t("products.sortByDefault"), value: "none" }, { label: t("products.sortByLowToHigh"), value: "price-asc" }, { label: t("products.sortByHighToLow"), value: "price-desc" }]}
-                buttonClassName="bg-gray-50 px-4 py-2 rounded-md border border-gray-200 text-xs font-medium text-gray-800 shadow-sm hover:border-gray-300 whitespace-nowrap"
+                buttonClassName="h-10 px-4 bg-white border border-gray-200 text-black flex items-center justify-between gap-6 text-xs font-bold hover:bg-gray-50 hover:border-gray-300 transition-all cursor-pointer rounded-md shadow-sm whitespace-nowrap"
                 minWidth={180}
               />
             </div>
@@ -978,29 +981,33 @@ export default function ProductsPage() {
                                 ) : (
                                   <div className="flex flex-row items-center justify-center gap-1.5">
                                     {/* Col 1: Qty */}
-                                    {!isOutOfStock ? (
-                                      <input
-                                        type="text"
-                                        value={productQtys[product.sku] || 1}
-                                        onChange={(e) => {
-                                          const val = e.target.value.replace(/\D/g, "");
-                                          handleQtyChange(product.sku, parseInt(val) || 0);
-                                        }}
-                                        className="w-10 h-8 flex-shrink-0 border border-gray-300 rounded-sm text-label font-semibold text-black bg-white shadow-sm text-center outline-none focus:border-brand-yellow transition-colors"
-                                        onFocus={(e) => { const t = e.target; setTimeout(() => t.select(), 0); }}
-                                        onClick={(e) => (e.target as HTMLInputElement).select()}
-                                        onKeyDown={(e) => { if (e.key === "Enter") handleAddToCart(product); }}
-                                      />
-                                    ) : (
-                                      <div className="w-10 h-8 flex-shrink-0" />
+                                    {!shouldHideCartActions && (
+                                      !isOutOfStock ? (
+                                        <input
+                                          type="text"
+                                          value={productQtys[product.sku] || 1}
+                                          onChange={(e) => {
+                                            const val = e.target.value.replace(/\D/g, "");
+                                            handleQtyChange(product.sku, parseInt(val) || 0);
+                                          }}
+                                          className="w-10 h-8 flex-shrink-0 border border-gray-300 rounded-sm text-label font-semibold text-black bg-white shadow-sm text-center outline-none focus:border-brand-yellow transition-colors"
+                                          onFocus={(e) => { const t = e.target; setTimeout(() => t.select(), 0); }}
+                                          onClick={(e) => (e.target as HTMLInputElement).select()}
+                                          onKeyDown={(e) => { if (e.key === "Enter") handleAddToCart(product); }}
+                                        />
+                                      ) : (
+                                        <div className="w-10 h-8 flex-shrink-0" />
+                                      )
                                     )}
                                     {/* Col 2: Cart or Enquiry */}
-                                    {!isOutOfStock ? (
-                                      <button onClick={() => handleAddToCart(product)} disabled={loadingSkus.has(product.sku)} className={`w-9 h-8 flex-shrink-0 rounded-sm flex items-center justify-center shadow-md transition-all cursor-pointer ${justAdded === product.sku ? "bg-green-500 text-white" : "bg-brand-yellow hover:bg-yellow-500 text-black"}`}>
-                                        {justAdded === product.sku ? <Check size={15} strokeWidth={3} /> : <ShoppingCart size={15} strokeWidth={2.5} />}
-                                      </button>
-                                    ) : (
-                                      <button onClick={() => { setInquiryProduct(product); setIsInquiryModalOpen(true); }} className="w-9 h-8 flex-shrink-0 bg-brand-yellow hover:bg-yellow-500 text-black rounded-sm flex items-center justify-center shadow-md active:scale-95 cursor-pointer"><Info size={15} strokeWidth={2.5} /></button>
+                                    {!shouldHideCartActions && (
+                                      !isOutOfStock ? (
+                                        <button onClick={() => handleAddToCart(product)} disabled={loadingSkus.has(product.sku)} className={`w-9 h-8 flex-shrink-0 rounded-sm flex items-center justify-center shadow-md transition-all cursor-pointer ${justAdded === product.sku ? "bg-green-500 text-white" : "bg-brand-yellow hover:bg-brand-yellow-dark text-black"}`}>
+                                          {justAdded === product.sku ? <Check size={15} strokeWidth={3} /> : <ShoppingCart size={15} strokeWidth={2.5} />}
+                                        </button>
+                                      ) : (
+                                        <button onClick={() => { setInquiryProduct(product); setIsInquiryModalOpen(true); }} className="w-9 h-8 flex-shrink-0 bg-brand-yellow hover:bg-brand-yellow-dark text-black rounded-sm flex items-center justify-center shadow-md active:scale-95 cursor-pointer"><Info size={15} strokeWidth={2.5} /></button>
+                                      )
                                     )}
                                     {/* Col 3: Wishlist */}
                                     <button onClick={() => toggleFavorite(product)} disabled={loadingSkus.has(product.sku)} className={`w-9 h-8 flex-shrink-0 rounded-sm flex items-center justify-center shadow-md cursor-pointer ${favIds.includes(product.product_id) ? "bg-brand-yellow text-black" : "bg-white text-black/50 border border-[#ddd]"}`}>
@@ -1023,9 +1030,8 @@ export default function ProductsPage() {
         </div>
 
         {/* Desktop bottom search bar */}
-        <div className={`hidden xl:flex fixed bottom-0 left-0 right-0 z-[40] bg-white border-t-[4px] border-brand-yellow shadow-[0_-10px_30px_rgba(0,0,0,0.12)] h-[90px] items-center transition-transform duration-300 ${isFooterVisible ? "translate-y-[110px]" : "translate-y-0"}`}>
-
-          <div className={`w-full transition-all duration-300 ${isSidebarCollapsed ? "pl-[50px]" : "pl-[300px]"}`}>
+        <div className={`hidden xl:flex fixed bottom-0 z-[40] bg-white border-t-[4px] border-brand-yellow shadow-[0_-10px_30px_rgba(0,0,0,0.12)] h-[90px] items-center transition-all duration-300 ${isFooterVisible ? "translate-y-[110px]" : "translate-y-0"} ${isRtl ? (isSidebarCollapsed ? "left-0 right-[50px]" : "left-0 right-[300px]") : (isSidebarCollapsed ? "left-[50px] right-0" : "left-[300px] right-0")}`}>
+          <div className="w-full">
             <div className="w-full max-w-[1400px] mx-auto px-4">
               <HorizontalFilter onSearch={handleHorizontalSearch} initialValues={{ width: debouncedFilters["width"]?.[0] || "", height: debouncedFilters["height"]?.[0] || "", rim: debouncedFilters["rim"]?.[0] || "" }} />
             </div>

@@ -281,7 +281,7 @@ export default function Navbar() {
   }, [(session as any)?.accessToken]);
 
   // shouldHideCartActions: driven by account-sidebar user_type (the only reliable source).
-  // "Sales Person" and "Multi Company" → hide Cart, Search, Notifications.
+  // "Sales Person" and "Multiple Company User" → hide Cart, Search, Notifications.
   // "Master Company" and "Sub Company" → always visible (even though utypid may also be 3).
   const [shouldHideCartActions, setShouldHideCartActions] = useState(false);
   useEffect(() => {
@@ -292,16 +292,18 @@ export default function Navbar() {
     const TOKEN_CACHE = "altalayi_role_token_v1";
     if (sessionStorage.getItem(TOKEN_CACHE) === token) {
       const type = sessionStorage.getItem(ROLE_CACHE) || "Customer";
-      setShouldHideCartActions(type === "Sales Person" || type === "Multi Company");
+      setShouldHideCartActions(type === "Sales Person" || type === "Multiple Company User");
       return;
     }
     fetch("/api/kleverapi/account-sidebar", {
       headers: { Authorization: `Bearer ${token}` },
     }).then(r => r.json()).then(data => {
       const type = data?.user_type || "Customer";
-      sessionStorage.setItem(ROLE_CACHE, type);
-      sessionStorage.setItem(TOKEN_CACHE, token);
-      setShouldHideCartActions(type === "Sales Person" || type === "Multi Company");
+      if (type !== "Guest") {
+        sessionStorage.setItem(ROLE_CACHE, type);
+        sessionStorage.setItem(TOKEN_CACHE, token);
+      }
+      setShouldHideCartActions(type === "Sales Person" || type === "Multiple Company User");
     }).catch(() => {});
   }, [(session as any)?.accessToken]);
 

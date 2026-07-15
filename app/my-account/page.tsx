@@ -2,7 +2,7 @@
 import { useTranslation } from "@/hooks/useTranslation";
 import { useLocalePath } from "@/hooks/useLocalePath";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { useSelector, useDispatch } from "react-redux";
 import { RootState, AppDispatch } from "@/store/store";
@@ -48,16 +48,33 @@ export default function MyAccountPage() {
     const { data: customer, loading } = useSelector((state: RootState) => state.customer);
     const token = useSelector((state: RootState) => state.auth.token);
 
-    // Decode utypid from Magento JWT — utypid === 3 = Sales Person.
-    // Business Overview, Sales Data, Targets, and Customer Behavior are
-    // customer-account sections irrelevant to a Sales Person.
-    const isSalesPerson = useMemo(() => {
-        const accessToken = (session as any)?.accessToken;
-        if (!accessToken) return false;
-        try {
-            const payload = JSON.parse(atob(accessToken.split(".")[1]));
-            return payload.utypid === 3;
-        } catch { return false; }
+    // isSalesPerson / isMultiCompany: driven by account-sidebar user_type.
+    // Uses the same sessionStorage cache written by Navbar to avoid a redundant API call.
+    const [isSalesPerson, setIsSalesPerson] = useState(false);
+    const [isMultiCompany, setIsMultiCompany] = useState(false);
+    useEffect(() => {
+        const accessToken = (session as any)?.accessToken as string | undefined;
+        if (!accessToken) { setIsSalesPerson(false); setIsMultiCompany(false); return; }
+        if (typeof sessionStorage === "undefined") return;
+        const ROLE_CACHE = "altalayi_user_type_v1";
+        const TOKEN_CACHE = "altalayi_role_token_v1";
+        if (sessionStorage.getItem(TOKEN_CACHE) === accessToken) {
+            const type = sessionStorage.getItem(ROLE_CACHE) || "Customer";
+            setIsSalesPerson(type === "Sales Person");
+            setIsMultiCompany(type === "Multiple Company User");
+            return;
+        }
+        fetch("/api/kleverapi/account-sidebar", {
+            headers: { Authorization: `Bearer ${accessToken}` },
+        }).then(r => r.json()).then(data => {
+            const type = data?.user_type || "Customer";
+            if (type !== "Guest") {
+                sessionStorage.setItem(ROLE_CACHE, type);
+                sessionStorage.setItem(TOKEN_CACHE, accessToken);
+            }
+            setIsSalesPerson(type === "Sales Person");
+            setIsMultiCompany(type === "Multiple Company User");
+        }).catch(() => {});
     }, [(session as any)?.accessToken]);
 
     const [isSubAccountSession, setIsSubAccountSession] = useState(false);
@@ -274,10 +291,10 @@ export default function MyAccountPage() {
                                             <p>{t("account.contactName")}: {(customer as any).firstname} {(customer as any).lastname}</p>
                                             <p>{t("account.email")}: {(customer as any).email}</p>
                                             {customerMobile !== "N/A" && <p>{t("account.customerMobile")}: {customerMobile}</p>}
-                                            {!isSalesPerson && customerCompany !== "N/A" && <p>{t("account.companyName")}: {customerCompany}</p>}
-                                            {!isSalesPerson && customerCode !== "N/A" && <p>{t("account.customerCode")}: {customerCode}</p>}
-                                            {!isSalesPerson && customerIndustry !== "N/A" && <p>{t("m.industry")}: {customerIndustry}</p>}
-                                            {!isSalesPerson && customerLocation !== "N/A" && <p>{t("m.location")}: {customerLocation}</p>}
+                                            {!isSalesPerson && !isMultiCompany && customerCompany !== "N/A" && <p>{t("account.companyName")}: {customerCompany}</p>}
+                                            {!isSalesPerson && !isMultiCompany && customerCode !== "N/A" && <p>{t("account.customerCode")}: {customerCode}</p>}
+                                            {!isSalesPerson && !isMultiCompany && customerIndustry !== "N/A" && <p>{t("m.industry")}: {customerIndustry}</p>}
+                                            {!isSalesPerson && !isMultiCompany && customerLocation !== "N/A" && <p>{t("m.location")}: {customerLocation}</p>}
                                             <p>{t("account.contactInformation")}: {(customer as any).email} ,{customerMobile !== "N/A" ? customerMobile : ""}</p>
 
                                             <div className="flex flex-col md:flex-row gap-3 pt-4 md:pt-6">
@@ -292,7 +309,7 @@ export default function MyAccountPage() {
                                     </div>
 
                                     {/* Business Overview — hidden for Sales Person */}
-                                    {!isSalesPerson && (
+                                    {!isSalesPerson && !isMultiCompany && (
                                         <div className={`${cardBase} md:col-span-1 lg:col-span-2`}>
                                             <div className={sectionHeader + " flex justify-between items-center"}>
                                                 <span>{t("dashboard.businessOverview")}</span>
@@ -312,7 +329,7 @@ export default function MyAccountPage() {
                                     )}
 
                                     {/* Sales Data (Qty) — hidden for Sales Person */}
-                                    {!isSalesPerson && (
+                                    {!isSalesPerson && !isMultiCompany && (
                                         <div className={`${cardBase} md:col-span-1 lg:col-span-2`}>
                                             <div className={sectionHeader}>
                                                 {t("m.sales-data-qty")}
@@ -325,25 +342,31 @@ export default function MyAccountPage() {
                                     )}
 
                                     {/* Targets & Achievements — hidden for Sales Person */}
-                                    {!isSalesPerson && (
+                                    {!isSalesPerson && !isMultiCompany && (
                                         <div className={`${cardBase} md:col-span-1 lg:col-span-3`}>
                                             <div className={sectionHeader + " flex justify-between items-center"}>
                                                 <span>{t("m.targets-and-achievements")}</span>
-                                                <select className="border border-gray-300 rounded-sm text-[12px] px-2 py-1 bg-white outline-none">
-                                                    <option>2023</option>
-                                                    <option>2024</option>
+                                                <select
+                                                    className="border border-gray-300 rounded-sm text-[12px] px-2 py-1 bg-white outline-none"
+                                                    value={selectedYear}
+                                                    onChange={e => setSelectedYear(e.target.value)}
+                                                >
+                                                    {availableYears.length > 0
+                                                        ? availableYears.map(y => <option key={y} value={y}>{y}</option>)
+                                                        : <option value={selectedYear}>{selectedYear}</option>
+                                                    }
                                                 </select>
                                             </div>
                                             <div className="p-3 md:p-5 text-body text-gray-700 space-y-2.5 font-medium leading-relaxed">
-                                                <p>{t("m.sales-targets")}: {getAttr("sales_targets")}</p>
-                                                <p>{t("m.achievements")}: {getAttr("achievements")}</p>
-                                                <p>{t("m.incentive")}: SAR {formatCurrency(getAttr("incentive"))}</p>
+                                                <p>{t("m.sales-targets")}: {targets?.sales_target ?? "N/A"}</p>
+                                                <p>{t("m.achievements")}: {targets?.achievement ?? "N/A"}</p>
+                                                <p>{t("m.incentive")}: SAR {formatCurrency(String(targets?.incentive ?? "0"))}</p>
                                             </div>
                                         </div>
                                     )}
 
                                     {/* Customer Behavior — hidden for Sales Person */}
-                                    {!isSalesPerson && (
+                                    {!isSalesPerson && !isMultiCompany && (
                                         <div className={`${cardBase} md:col-span-2 lg:col-span-3`}>
                                             <div className={sectionHeader}>
                                                 {t("m.customer-behavior")}
@@ -363,7 +386,7 @@ export default function MyAccountPage() {
 
                             {/* ADDRESS BOOK — hidden for Sales Person */}
 
-                            {!isSalesPerson && <div>
+                            {!isSalesPerson && !isMultiCompany && <div>
                                 <h2 className="text-body-lg md:text-h3-sm font-bold text-black uppercase mb-3">{t("addressBook.title")}</h2>
                                 <hr className="border-gray-200 mb-6" />
 

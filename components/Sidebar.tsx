@@ -193,9 +193,27 @@ const SIDEBAR_ROUTES: Record<string, { href: string; match: string[] }> = {
 // Strip a leading /en or /ar locale segment + trailing slash for route comparison.
 const stripLocale = (p: string): string => (p.replace(/^\/(en|ar)(?=\/|$)/, "").replace(/\/$/, "") || "/");
 
+// Maps API item code → local translation key so labels render in the active locale
+// regardless of whether Magento has store-view translations configured.
+const SIDEBAR_LABEL_KEYS: Record<string, string> = {
+    my_account: "sidebar.myAccount",
+    my_statement: "sidebar.myStatement",
+    manage_subaccounts: "sidebar.manageAccounts",
+    my_orders: "sidebar.myOrders",
+    my_order_attachments: "sidebar.myOrderAttachments",
+    favourite_products: "sidebar.favoriteProducts",
+    address_book: "sidebar.addressBook",
+    dashboard: "sidebar.dashboard",
+    my_forecast: "sidebar.myForecast",
+    notifications: "sidebar.notifications",
+    sign_out: "nav.signOut",
+    logout: "nav.signOut",
+    customer_logout: "nav.signOut",
+};
+
 const Sidebar = () => {
     const pathname = usePathname();
-    const { t } = useTranslation();
+    const { t, locale } = useTranslation();
     const lp = useLocalePath();
     const [sidebarData, setSidebarData] = useState<SidebarResponse | null>(null);
     const [loading, setLoading] = useState(true);
@@ -226,7 +244,7 @@ const Sidebar = () => {
 
         fetchSidebar();
         return () => { isMounted = false; };
-    }, []);
+    }, [locale]);
 
     // Graceful loading state
     if (loading) {
@@ -244,10 +262,9 @@ const Sidebar = () => {
         );
     }
 
-    // Sales Person and Multi Company must not see Manage Accounts.
-    // Master Company and Sub Company see it regardless of Magento's is_visible flag.
-    const restrictedRole =
-        sidebarData.user_type === "Sales Person" || sidebarData.user_type === "Multi Company";
+    // Multi Company must not see Manage Accounts.
+    // All other roles (including Sales Person) trust the backend is_visible flag.
+    const restrictedRole = sidebarData.user_type === "Multiple Company User";
 
     const visibleItems = sidebarData.items
         .filter(item => {
@@ -325,7 +342,7 @@ const Sidebar = () => {
                                         onClick={() => signOut({ callbackUrl: `${window.location.origin}${lp("/login")}` })}
                                         className="block w-full ltr:text-left rtl:text-right py-3 px-6 lg:px-4 text-black/70 hover:text-black hover:bg-gray-100 transition-all duration-200 border-b-[3px] lg:border-b-0 ltr:lg:border-l-4 rtl:lg:border-r-4 border-transparent whitespace-nowrap font-bold uppercase text-body-sm"
                                     >
-                                        {item.label}
+                                        {t(SIDEBAR_LABEL_KEYS[item.code] ?? "") || item.label}
                                     </button>
                                 </li>
                             );
@@ -340,7 +357,7 @@ const Sidebar = () => {
                                         : "text-black/70 hover:text-black hover:bg-gray-100 border-b-[3px] lg:border-b-0 ltr:lg:border-l-4 rtl:lg:border-r-4 border-transparent"
                                         }`}
                                 >
-                                    {item.label}
+                                    {t(SIDEBAR_LABEL_KEYS[item.code] ?? "") || item.label}
                                 </Link>
                             </li>
                         );

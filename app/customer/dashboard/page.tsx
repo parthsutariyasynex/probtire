@@ -33,6 +33,7 @@ export default function DashboardPage() {
     const token = useSelector((state: RootState) => state.auth.token);
 
     const [isSubAccountSession, setIsSubAccountSession] = useState(false);
+    const [isMultiCompany, setIsMultiCompany] = useState(false);
     const [dashboardData, setDashboardData] = useState<any>(null);
     const [loadingDashboard, setLoadingDashboard] = useState(true);
 
@@ -57,6 +58,28 @@ export default function DashboardPage() {
             setIsSubAccountSession(localStorage.getItem("isSubAccount") === "true");
         }
     }, [pathname]);
+
+    useEffect(() => {
+        const accessToken = (session as any)?.accessToken as string | undefined;
+        if (!accessToken) { setIsMultiCompany(false); return; }
+        if (typeof sessionStorage === "undefined") return;
+        const ROLE_CACHE = "altalayi_user_type_v1";
+        const TOKEN_CACHE = "altalayi_role_token_v1";
+        if (sessionStorage.getItem(TOKEN_CACHE) === accessToken) {
+            setIsMultiCompany(sessionStorage.getItem(ROLE_CACHE) === "Multiple Company User");
+            return;
+        }
+        fetch("/api/kleverapi/account-sidebar", {
+            headers: { Authorization: `Bearer ${accessToken}` },
+        }).then(r => r.json()).then(data => {
+            const type = data?.user_type || "Customer";
+            if (type !== "Guest") {
+                sessionStorage.setItem(ROLE_CACHE, type);
+                sessionStorage.setItem(TOKEN_CACHE, accessToken);
+            }
+            setIsMultiCompany(type === "Multiple Company User");
+        }).catch(() => {});
+    }, [(session as any)?.accessToken]);
 
     useEffect(() => {
         if (status === "unauthenticated") {
@@ -175,7 +198,7 @@ export default function DashboardPage() {
                         </h1>
                     </div>
 
-                    {/* COMPARE SECTION */}
+                    {/* COMPARE SECTION — visible for all roles */}
                     <section className="bg-white w-full xl:w-[475px] border border-subtle rounded-sm mb-6 overflow-hidden">
                         {/* Header Section */}
                         <div className="bg-gray-50/80 px-4 py-3 border-b border-subtle flex items-center gap-4">
@@ -236,7 +259,7 @@ export default function DashboardPage() {
                     </section>
 
                     {/* Summary Sections - Hide when comparing */}
-                    {!isCompare && (
+                    {!isMultiCompany && !isCompare && (
                         <div className="space-y-3 animate-in fade-in duration-700">
                             {/* TOTAL ORDER QTY SECTION */}
                             <section>
@@ -344,7 +367,7 @@ export default function DashboardPage() {
                     )}
 
                     {/* COMPARISON DETAILS SECTION (Chart & Table) */}
-                    {isCompare && (
+                    {!isMultiCompany && isCompare && (
                         <section className="bg-white overflow-hidden animate-in fade-in slide-in-from-bottom duration-500 mb-0">
                             <div className="py-3 border-b border-[#ddd] bg-gray-50/50">
                                 <h2 className="text-lg md:text-xl font-bold text-black uppercase tracking-tight ltr:text-left rtl:text-right">
@@ -376,7 +399,7 @@ export default function DashboardPage() {
 
                             <div className="p-3 border border-[#ddd]">
                                 {/* Chart Implementation */}
-                                <div className="w-full aspect-[16/9]">
+                                <div className="w-full h-[320px]">
                                     <ResponsiveContainer width="100%" height="100%">
                                         <BarChart
                                             data={activeTab === 'quarterly' ?
@@ -416,7 +439,7 @@ export default function DashboardPage() {
                                                 iconType="circle"
                                                 wrapperStyle={{ paddingBottom: '40px', fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em' }}
                                             />
-                                            <Bar dataKey={searchYear} fill="#f5a623" radius={[4, 4, 0, 0]} barSize={32} name={searchYear.toString()} />
+                                            <Bar dataKey={searchYear} fill="#F5B21B" radius={[4, 4, 0, 0]} barSize={32} name={searchYear.toString()} />
                                             <Bar dataKey={compareYear} fill="#111827" radius={[4, 4, 0, 0]} barSize={32} name={compareYear.toString()} />
                                         </BarChart>
                                     </ResponsiveContainer>
