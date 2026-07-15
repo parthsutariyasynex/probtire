@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { CUSTOMER_ADDRESSES_QUERY } from '@/src/graphql/queries';
 import { UPDATE_CUSTOMER_ADDRESS_MUTATION, DELETE_CUSTOMER_ADDRESS_MUTATION } from '@/src/graphql/mutations';
 
-const MAGENTO_GRAPHQL = (process.env.NEXT_PUBLIC_MAGENTO_BASE_URL || "https://altalayi-demo.btire.com") + "/graphql";
+const MAGENTO_GRAPHQL = (process.env.NEXT_PUBLIC_MAGENTO_BASE_URL || "https://altalayi-live.btire.com") + "/graphql";
 
 // Local helpers (mirrors the list route) — Next.js route files can't import non-handler exports
 // from another route, and must not export extra names, so these are duplicated locally.

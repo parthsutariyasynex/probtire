@@ -4,7 +4,7 @@ import { getRequestToken } from "@/lib/api/auth-helper";
 import { KLEVER_MULTISHIPPING_SHIPPING_METHODS_QUERY } from "@/src/graphql/queries";
 import { KLEVER_MULTISHIPPING_SET_SHIPPING_METHODS_MUTATION } from "@/src/graphql/mutations";
 
-const MAGENTO_GRAPHQL = (process.env.NEXT_PUBLIC_MAGENTO_BASE_URL || "https://altalayi-demo.btire.com") + "/graphql";
+const MAGENTO_GRAPHQL = (process.env.NEXT_PUBLIC_MAGENTO_BASE_URL || "https://altalayi-live.btire.com") + "/graphql";
 
 // GET — per-address shipping methods (GraphQL: kleverMultishippingShippingMethods).
 // No args. Returns { addresses[{ quote_address_id, customer_address_id, street, city,

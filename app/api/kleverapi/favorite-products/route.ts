@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { CUSTOMER_WISHLIST_QUERY, PRODUCT_ATTRIBUTE_OPTIONS_QUERY } from '@/src/graphql/queries';
 import { ADD_PRODUCTS_TO_WISHLIST_MUTATION } from '@/src/graphql/mutations';
 
-const MAGENTO_GRAPHQL = (process.env.NEXT_PUBLIC_MAGENTO_BASE_URL || "https://altalayi-demo.btire.com") + "/graphql";
+const MAGENTO_GRAPHQL = (process.env.NEXT_PUBLIC_MAGENTO_BASE_URL || "https://altalayi-live.btire.com") + "/graphql";
 
 // Native product images come back as a /cache/<hash>/ path that 404s; the un-cached path works.
 function fixImageUrl(url?: string | null): string | null {

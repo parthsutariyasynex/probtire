@@ -125,7 +125,7 @@ const MultiShippingBillingPage: React.FC = () => {
             router.push(lp('/multi-location-delivery/review'));
         } catch (err: any) {
             console.error("Billing update error:", err);
-            toast.error(err.message || "Failed to save billing information.");
+            toast.error(err.message || t("multi.billingSaveFailed"));
         } finally {
             setIsSubmitting(false);
         }

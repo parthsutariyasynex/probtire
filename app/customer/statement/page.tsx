@@ -149,7 +149,7 @@ export default function MyStatementPage() {
             }
         } catch (err: any) {
             setError(err.message || "Failed to fetch statement");
-            toast.error(err.message || "Download failed", { id: "statement-download" });
+            toast.error(err.message || t("statement.downloadFailed"), { id: "statement-download" });
         } finally {
             setIsDownloading(false);
         }

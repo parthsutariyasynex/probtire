@@ -10,7 +10,7 @@ import { CUSTOMER_QUERY } from "@/src/graphql/queries";
 function getMagentoGraphqlUrl(): string {
     const domain =
         process.env.NEXT_PUBLIC_MAGENTO_BASE_URL ||
-        "https://altalayi-demo.btire.com";
+        "https://altalayi-live.btire.com";
     return `${domain}/graphql`;
 }
 
@@ -41,7 +41,7 @@ export const authOptions: NextAuthOptions = {
                 email: { label: "Email", type: "text" },
                 password: { label: "Password", type: "password" },
             },
-            async authorize(credentials) {
+            async authorize(credentials, req) {
                 if (!credentials) return null;
 
                 const isOtp = !!(credentials as any).otp;
@@ -50,15 +50,22 @@ export const authOptions: NextAuthOptions = {
                 const locale: Locale = credLocale && isValidLocale(credLocale) ? credLocale : defaultLocale;
                 const magentoBase = getMagentoBaseUrl(locale);
 
+                // Forward browser cookies (especially cf_clearance) so Cloudflare WAF
+                // treats server-side Magento requests as coming from a verified browser.
+                const browserCookies = (req as any)?.headers?.cookie || "";
+
                 // ── Password login → GraphQL generateCustomerToken ──
-                // The host's WAF blocks server-side REST (/login/email returns a 403 HTML
-                // challenge), but the GraphQL endpoint is reachable. generateCustomerToken
-                // returns the same customer bearer token, so we use it for password auth.
+                // The host's WAF may block server-side requests. Forwarding the user's
+                // browser cookies (cf_clearance) bypasses the Cloudflare challenge.
                 if (!isOtp) {
                     try {
                         const res = await fetch(getMagentoGraphqlUrl(), {
                             method: "POST",
-                            headers: { "Content-Type": "application/json", Store: locale },
+                            headers: {
+                                "Content-Type": "application/json",
+                                Store: locale,
+                                ...(browserCookies ? { Cookie: browserCookies } : {}),
+                            },
                             body: JSON.stringify({
                                 query: GENERATE_CUSTOMER_TOKEN_MUTATION,
                                 variables: {
@@ -67,7 +74,14 @@ export const authOptions: NextAuthOptions = {
                                 },
                             }),
                         });
-                        const json = await res.json();
+                        const rawText = await res.text();
+                        let json: any;
+                        try {
+                            json = JSON.parse(rawText);
+                        } catch {
+                            console.error("Auth: non-JSON response from Magento:", res.status, rawText.slice(0, 300));
+                            return null;
+                        }
                         if (Array.isArray(json?.errors) && json.errors.length > 0) {
                             console.error("Auth (GraphQL) error:", JSON.stringify(json.errors).slice(0, 150));
                             return null;
@@ -85,10 +99,16 @@ export const authOptions: NextAuthOptions = {
                         try {
                             const meRes = await fetch(getMagentoGraphqlUrl(), {
                                 method: "POST",
-                                headers: { "Content-Type": "application/json", Store: locale, Authorization: `Bearer ${token}` },
+                                headers: {
+                                    "Content-Type": "application/json",
+                                    Store: locale,
+                                    Authorization: `Bearer ${token}`,
+                                    ...(browserCookies ? { Cookie: browserCookies } : {}),
+                                },
                                 body: JSON.stringify({ query: CUSTOMER_QUERY }),
                             });
-                            const meJson = await meRes.json();
+                            const meText = await meRes.text();
+                            const meJson = JSON.parse(meText);
                             const c = meJson?.data?.customer;
                             const full = `${c?.firstname || ""} ${c?.lastname || ""}`.trim();
                             if (full) displayName = full;
@@ -117,7 +137,11 @@ export const authOptions: NextAuthOptions = {
                 try {
                     const res = await fetch(url, {
                         method: "POST",
-                        headers: { "Content-Type": "application/json", platform: "web" },
+                        headers: {
+                            "Content-Type": "application/json",
+                            platform: "web",
+                            ...(browserCookies ? { Cookie: browserCookies } : {}),
+                        },
                         body: JSON.stringify(body),
                     });
 
@@ -155,6 +179,8 @@ export const authOptions: NextAuthOptions = {
     ],
     callbacks: {
         async redirect({ url, baseUrl }) {
+            console.log("NEXTAUTH REDIRECT:", url);
+
             if (url.startsWith("/")) return `${baseUrl}${url}`;
             try {
                 const parsed = new URL(url);
@@ -181,9 +207,7 @@ export const authOptions: NextAuthOptions = {
             if (token.magentoTokenExp) {
                 const now = Math.floor(Date.now() / 1000);
                 if (now >= (token.magentoTokenExp as number)) {
-                    // Magento token expired — force user to re-login
-                    // Clear the token so the session becomes invalid
-                    console.warn("Magento token expired, forcing re-login");
+                    console.warn(`[JWT] MagentoTokenExpired — now=${now} exp=${token.magentoTokenExp} delta=${now - (token.magentoTokenExp as number)}s`);
                     token.accessToken = undefined;
                     token.error = "MagentoTokenExpired";
                 }
@@ -195,6 +219,11 @@ export const authOptions: NextAuthOptions = {
             (session as any).accessToken = token.accessToken;
             (session as any).error = token.error;
             return session;
+        },
+    },
+    events: {
+        signOut: async ({ token }: any) => {
+            console.warn(`[SIGNOUT EVENT] accessToken=${!!token?.accessToken} error=${token?.error} exp=${token?.magentoTokenExp}`);
         },
     },
     pages: {

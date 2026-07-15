@@ -125,6 +125,42 @@ export default function ProductsPage() {
   const authToken =
     (session as any)?.accessToken ||
     (typeof window !== "undefined" ? localStorage.getItem("token") : null);
+
+  // Decode utypid from the Magento JWT — utypid === 3 = Sales Person.
+  const isSalesPerson = useMemo(() => {
+    if (!authToken) return false;
+    try {
+      const payload = JSON.parse(atob(authToken.split(".")[1]));
+      return payload.utypid === 3;
+    } catch { return false; }
+  }, [authToken]);
+
+  // isMultiCompany: read from sessionStorage cache (set by Navbar's account-sidebar fetch).
+  // Falls back to its own fetch if the cache isn't populated yet.
+  const [isMultiCompany, setIsMultiCompany] = useState(false);
+  useEffect(() => {
+    if (!authToken) { setIsMultiCompany(false); return; }
+    if (typeof sessionStorage === "undefined") return;
+    const ROLE_CACHE = "altalayi_user_type_v1";
+    const TOKEN_CACHE = "altalayi_role_token_v1";
+    if (sessionStorage.getItem(TOKEN_CACHE) === authToken) {
+      setIsMultiCompany(sessionStorage.getItem(ROLE_CACHE) === "Multi Company");
+      return;
+    }
+    fetch("/api/kleverapi/account-sidebar", {
+      headers: { Authorization: `Bearer ${authToken}` },
+    }).then(r => r.json()).then(data => {
+      const type = data?.user_type || "Customer";
+      sessionStorage.setItem(ROLE_CACHE, type);
+      sessionStorage.setItem(TOKEN_CACHE, authToken);
+      setIsMultiCompany(type === "Multi Company");
+    }).catch(() => { });
+  }, [authToken]);
+
+  // shouldHideCartActions: true for Sales Person and Multi Company.
+  // Master Company and Sub Company are unaffected — they see Cart, Actions, and Favourites.
+  const shouldHideCartActions = isSalesPerson || isMultiCompany;
+
   const [searchParams, setSearchParamsState] = useState<URLSearchParams | null>(null);
   const handleParams = useCallback((sp: URLSearchParams) => setSearchParamsState(sp), []);
   const { cart, addToCart } = useCart();
@@ -241,7 +277,7 @@ export default function ProductsPage() {
           toast.success(t("favorites.cartAdded"));
         } catch (err) {
           console.error("API favorite add error:", err);
-          toast.error("Could not sync favorites");
+          toast.error(t("favorites.syncFailed"));
         } finally {
           loadingRef.current.delete(productSku);
           setLoadingSkus(new Set(loadingRef.current));
@@ -425,7 +461,9 @@ export default function ProductsPage() {
         localStorage.removeItem("token");
         router.replace(lp("/login"));
       } else {
-        toast.error("Failed to add to cart");
+        const msg = err instanceof Error ? err.message : t("cart.updateFailed");
+        toast.error(msg);
+        console.error("[AddToCart]", msg);
       }
     } finally {
       loadingRef.current.delete(sku);
@@ -524,8 +562,8 @@ export default function ProductsPage() {
   // page has at least one product with is_action === "Yes". Otherwise the
   // whole column (header + cells + colgroup width + colSpan) is omitted.
   const showActionColumn = useMemo(
-    () => products.some((p: any) => p?.is_action === "Yes"),
-    [products]
+    () => !shouldHideCartActions && products.some((p: any) => p?.is_action === "Yes"),
+    [products, shouldHideCartActions]
   );
   const headerKeys: readonly string[] = showActionColumn
     ? [...BASE_HEADER_KEYS, ACTION_HEADER_KEY]
@@ -613,7 +651,7 @@ export default function ProductsPage() {
             </div>
           </div>
           <div className="flex items-center gap-1 flex-shrink-0">
-            {String(product?.is_action).toLowerCase() === "yes" && (
+            {!shouldHideCartActions && String(product?.is_action).toLowerCase() === "yes" && (
               !isOutOfStock ? (
                 <>
                   <input
@@ -644,13 +682,15 @@ export default function ProductsPage() {
                 </button>
               )
             )}
-            <button
-              onClick={() => toggleFavorite(product)}
-              disabled={loadingSkus.has(product.sku)}
-              className={`w-9 h-9 rounded-none flex items-center justify-center active:scale-95 cursor-pointer flex-shrink-0 ${favIds.includes(product.product_id) ? "bg-brand-yellow text-black" : "bg-gray-100 text-gray-400"}`}
-            >
-              <Star size={16} fill={favIds.includes(product.product_id) ? "currentColor" : "none"} strokeWidth={2.5} />
-            </button>
+            {!shouldHideCartActions && (
+              <button
+                onClick={() => toggleFavorite(product)}
+                disabled={loadingSkus.has(product.sku)}
+                className={`w-9 h-9 rounded-none flex items-center justify-center active:scale-95 cursor-pointer flex-shrink-0 ${favIds.includes(product.product_id) ? "bg-brand-yellow text-black" : "bg-gray-100 text-gray-400"}`}
+              >
+                <Star size={16} fill={favIds.includes(product.product_id) ? "currentColor" : "none"} strokeWidth={2.5} />
+              </button>
+            )}
           </div>
         </div>
         {loadingSkus.has(product.sku) && (
@@ -742,9 +782,11 @@ export default function ProductsPage() {
           <div className="xl:hidden flex flex-col gap-2 mb-3">
             {/* Controls: 2 cols on mobile, 4 cols on tablet */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-              <button onClick={() => router.push(lp("/wishlist"))} className="h-[44px] bg-white border border-gray-200 rounded-xl flex items-center justify-center gap-2 text-label font-bold uppercase tracking-wider shadow-sm active:scale-95 cursor-pointer">
-                <Star className="w-4 h-4 fill-black text-black" /> {t("m.favourite-products")}
-              </button>
+              {!shouldHideCartActions && (
+                <button onClick={() => router.push(lp("/wishlist"))} className="h-[44px] bg-white border border-gray-200 rounded-xl flex items-center justify-center gap-2 text-label font-bold uppercase tracking-wider shadow-sm active:scale-95 cursor-pointer">
+                  <Star className="w-4 h-4 fill-black text-black" /> {t("m.favourite-products")}
+                </button>
+              )}
               <button onClick={() => setIsMobileSearchOpen(true)} className="h-[44px] bg-brand-yellow rounded-xl flex items-center justify-center gap-2 text-label font-bold uppercase tracking-wider shadow-sm active:scale-95 cursor-pointer">
                 <Search className="w-4 h-4" /> {t("m.search")}
               </button>
@@ -808,9 +850,11 @@ export default function ProductsPage() {
             {/* Desktop header */}
             <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center gap-4 min-h-[60px]">
               <div className="flex items-center gap-4">
-                <button onClick={() => router.push(lp("/wishlist"))} className="bg-gray-50 border border-gray-200 text-black px-4 py-2 rounded-sm flex items-center gap-2 shadow-sm text-xs font-semibold active:scale-95 cursor-pointer uppercase tracking-wider">
-                  <Star className="w-5 h-5 fill-black text-black" /> {t("sidebar.favoriteProducts")}
-                </button>
+                {!shouldHideCartActions && (
+                  <button onClick={() => router.push(lp("/wishlist"))} className="bg-gray-50 border border-gray-200 text-black px-4 py-2 rounded-sm flex items-center gap-2 shadow-sm text-xs font-semibold active:scale-95 cursor-pointer uppercase tracking-wider">
+                    <Star className="w-5 h-5 fill-black text-black" /> {t("sidebar.favoriteProducts")}
+                  </button>
+                )}
                 <div className="flex flex-1 items-center gap-2 overflow-x-auto custom-scrollbar-hide max-w-[800px]">
                   {isFavorite && (
                     <div className="flex items-center gap-1.5 bg-yellow-400 border border-yellow-500 px-3 py-1.5 rounded-full text-body-sm font-bold text-black shadow-sm flex-shrink-0">

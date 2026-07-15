@@ -94,7 +94,7 @@ export default function ProductEnquiryModal({
             });
         } catch (error: any) {
             console.error("Enquiry submission error:", error);
-            toast.error(error.message || "Failed to submit enquiry.");
+            toast.error(error.message || t("inquiry.failed"));
         } finally {
             setIsSubmitting(false);
         }

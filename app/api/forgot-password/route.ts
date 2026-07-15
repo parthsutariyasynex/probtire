@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getLocaleFromRequest } from "@/lib/api/magento-url";
 import { REQUEST_PASSWORD_RESET_EMAIL_MUTATION } from "@/src/graphql/mutations";
 
-const MAGENTO_GRAPHQL = (process.env.NEXT_PUBLIC_MAGENTO_BASE_URL || "https://altalayi-demo.btire.com") + "/graphql";
+const MAGENTO_GRAPHQL = (process.env.NEXT_PUBLIC_MAGENTO_BASE_URL || "https://altalayi-live.btire.com") + "/graphql";
 
 // POST — email password reset (GraphQL: requestPasswordResetEmail → Boolean). Public.
 // Caller checks res.ok (success) and data.message (error). true → 200, otherwise 400.

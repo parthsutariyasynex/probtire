@@ -58,7 +58,7 @@ async function getDefaultLandingPath(request: NextRequest, locale: string): Prom
     if (cached && cached.expires > Date.now()) return cached.path;
 
     try {
-        const domain = process.env.NEXT_PUBLIC_MAGENTO_BASE_URL || "https://altalayi-demo.btire.com";
+        const domain = process.env.NEXT_PUBLIC_MAGENTO_BASE_URL || "https://altalayi-live.btire.com";
         const res = await fetch(`${domain}/graphql`, {
             method: "POST",
             headers: { "Content-Type": "application/json", Store: locale },
@@ -163,7 +163,7 @@ async function resolveMagentoUrl(slugPath: string): Promise<ResolvedUrl> {
     }
 
     // 2. GraphQL urlResolver — handles category URLs dynamically (no hardcoding).
-    const domain = process.env.NEXT_PUBLIC_MAGENTO_BASE_URL || "https://altalayi-demo.btire.com";
+    const domain = process.env.NEXT_PUBLIC_MAGENTO_BASE_URL || "https://altalayi-live.btire.com";
     // urlResolver expects `.html` for category URLs; CMS pages may resolve without.
     const queryUrl = slugPath.endsWith(".html") ? slugPath : `${slugPath}.html`;
     try {
@@ -306,10 +306,8 @@ export async function middleware(request: NextRequest) {
         if (!isAuthenticated) {
             redirectUrl.pathname = `/${locale}/login`;
         } else {
-            // Pull the first category URL dynamically from the Magento menu.
-            // No hardcoded path — falls back to /login if nothing resolves.
             const landing = await getDefaultLandingPath(request, locale);
-            redirectUrl.pathname = landing ?? `/${locale}/login`;
+            redirectUrl.pathname = landing ?? `/${locale}/products`;
         }
         return NextResponse.redirect(redirectUrl);
     }
@@ -349,14 +347,17 @@ export async function middleware(request: NextRequest) {
         const response = NextResponse.rewrite(url, { request: { headers: requestHeaders } });
         setLocaleCookie(response);
 
-        const isAuthenticated = await checkAuth(request);
-        if (!isAuthenticated) {
-            const loginUrl = request.nextUrl.clone();
-            loginUrl.pathname = `/${locale}/login`;
-            loginUrl.search = "";
-            loginUrl.searchParams.set("callbackUrl", `${pathname}${request.nextUrl.search}`);
-            return NextResponse.redirect(loginUrl);
-        }
+        // Category pages are publicly accessible — no auth required.
+        // Authenticated users land here directly; unauthenticated users can browse freely.
+        // const isAuthenticated = await checkAuth(request);
+        // if (!isAuthenticated) {
+        //     const loginUrl = request.nextUrl.clone();
+        //     loginUrl.pathname = `/${locale}/login`;
+        //     loginUrl.search = "";
+        //     loginUrl.searchParams.set("callbackUrl", `${pathname}${request.nextUrl.search}`);
+        //     console.log("[REDIRECT SOURCE: CATEGORY ROUTE]", { path: pathname, locale, isAuthenticated, callbackUrl: `${pathname}${request.nextUrl.search}` });
+        //     return NextResponse.redirect(loginUrl);
+        // }
         return response;
     }
 
@@ -397,21 +398,88 @@ export async function middleware(request: NextRequest) {
     return response;
 }
 
+// async function checkAuth(request: NextRequest): Promise<boolean> {
+//     try {
+//         const cookieNames = Array.from(request.cookies.getAll()).map(c => c.name);
+//         console.log("[checkAuth]", request.nextUrl.pathname, "cookies:", cookieNames.join(", "));
+
+//         const token = await getToken({
+//             req: request,
+//             secret: process.env.NEXTAUTH_SECRET || "yoursecret",
+//             secureCookie: process.env.NODE_ENV === "production",
+//         });
+
+//         console.log("[checkAuth] token exists:", !!token, "accessToken:", !!token?.accessToken, "error:", token?.error, "exp:", token?.magentoTokenExp);
+
+//         if (!token?.accessToken || token?.error === "MagentoTokenExpired") return false;
+//         if (token.magentoTokenExp) {
+//             const now = Math.floor(Date.now() / 1000);
+//             if (now >= (token.magentoTokenExp as number)) {
+//                 console.log("[checkAuth] Magento token expired. now:", now, "exp:", token.magentoTokenExp);
+//                 return false;
+//             }
+//         }
+//         return true;
+//     } catch (err) {
+//         console.error("[checkAuth] error:", err);
+//     }
+//     return false;
+// }
+
+// Previous verbose checkAuth (replaced with labeled debug version below):
+// async function checkAuth_verbose(request: NextRequest): Promise<boolean> {
+//     console.log("========== MIDDLEWARE ==========");
+//     console.log("Path:", request.nextUrl.pathname);
+//     console.log("URL :", request.nextUrl.href);
+//     const cookieNames = request.cookies.getAll();
+//     console.log("Cookies:", cookieNames.map(c => `${c.name}=${c.value.substring(0, 20)}...`));
+//     const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET, secureCookie: process.env.NODE_ENV === "production" });
+//     console.log("Decoded Token:", token);
+//     if (!token?.accessToken) return false;
+//     if (token.error === "MagentoTokenExpired") return false;
+//     if (token.magentoTokenExp) { const now = Math.floor(Date.now() / 1000); if (now >= Number(token.magentoTokenExp)) return false; }
+//     return true;
+// }
+
 async function checkAuth(request: NextRequest): Promise<boolean> {
     try {
+        const cookieNames = request.cookies.getAll().map(c => c.name);
+
+        // NextAuth uses __Secure- prefix when NEXTAUTH_URL is https or NODE_ENV=production.
+        // When NEXTAUTH_URL is not set the server may fall back to the plain cookie name.
+        // Accept either variant so the check never incorrectly blocks a logged-in user.
+        const SECURE_COOKIE = "__Secure-next-auth.session-token";
+        const PLAIN_COOKIE  = "next-auth.session-token";
+        const hasSecureCookie = cookieNames.includes(SECURE_COOKIE);
+        const hasPlainCookie  = cookieNames.includes(PLAIN_COOKIE);
+        const hasSessionCookie = hasSecureCookie || hasPlainCookie;
+
+        if (!hasSessionCookie) {
+            return false;
+        }
+
+        // Pass secureCookie that matches which cookie the browser actually sent.
+        // If both exist (possible during cookie-name migration) prefer the secure one.
         const token = await getToken({
             req: request,
-            secret: process.env.NEXTAUTH_SECRET || "yoursecret",
-            secureCookie: process.env.NODE_ENV === "production",
+            secret: process.env.NEXTAUTH_SECRET,
+            secureCookie: hasSecureCookie,
         });
-        if (!token?.accessToken || token?.error === "MagentoTokenExpired") return false;
+
+        if (!token?.accessToken) return false;
+        if (token.error === "MagentoTokenExpired") return false;
+
         if (token.magentoTokenExp) {
             const now = Math.floor(Date.now() / 1000);
-            if (now >= (token.magentoTokenExp as number)) return false;
+            if (now >= Number(token.magentoTokenExp)) return false;
         }
+
         return true;
-    } catch { }
-    return false;
+
+    } catch (err) {
+        console.error("[checkAuth] EXCEPTION:", err);
+        return false;
+    }
 }
 
 export const config = {

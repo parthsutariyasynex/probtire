@@ -20,14 +20,14 @@ const DEFAULT_LOCALE = "en";
  *
  * @param request - The incoming Request object (available in API route handlers)
  * @returns The Magento base URL with the correct store code, e.g.:
- *   - `https://altalayi-demo.btire.com/rest/en/V1/kleverapi`
- *   - `https://altalayi-demo.btire.com/rest/ar/V1/kleverapi`
+ *   - `https://altalayi-live.btire.com/rest/en/V1/kleverapi`
+ *   - `https://altalayi-live.btire.com/rest/ar/V1/kleverapi`
  */
 export function getBaseUrl(request: Request): string {
     const locale = getLocaleFromRequest(request);
     const domain =
         process.env.NEXT_PUBLIC_MAGENTO_BASE_URL ||
-        "https://altalayi-demo.btire.com";
+        "https://altalayi-live.btire.com";
     return `${domain}/rest/${locale}/V1/kleverapi`;
 }
 
@@ -72,6 +72,6 @@ export function getAuthUrl(request: Request): string {
     const locale = getLocaleFromRequest(request);
     const domain =
         process.env.NEXT_PUBLIC_MAGENTO_BASE_URL ||
-        "https://altalayi-demo.btire.com";
+        "https://altalayi-live.btire.com";
     return `${domain}/rest/${locale}/V1/integration/customer/token`;
 }

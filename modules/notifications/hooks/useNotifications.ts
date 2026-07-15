@@ -4,9 +4,11 @@ import { useState, useCallback, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { NotificationsResponse, NotificationItem } from "../types";
 import toast from "react-hot-toast";
+import { useTranslation } from "@/hooks/useTranslation";
 
 export function useNotifications() {
     const { data: session } = useSession();
+    const { t } = useTranslation();
     const [notifications, setNotifications] = useState<NotificationItem[]>([]);
     const [unreadCount, setUnreadCount] = useState(0);
     const [totalCount, setTotalCount] = useState(0);
@@ -28,15 +30,11 @@ export function useNotifications() {
                 },
             });
 
-            if (response.status === 401) {
-                console.warn("[useNotifications] Received 401, signing out...");
-                const { signOut } = await import("next-auth/react");
-                signOut({ callbackUrl: "/login" });
-                return;
-            }
-
             if (!response.ok) {
-                // Backend down or server error — fail silently
+                // 401/502/500 — fail silently. Session termination is handled
+                // centrally by the MagentoTokenExpired check in ProtectedLayout
+                // and Navbar; calling signOut here on a transient 401 would nuke
+                // the session cookie for ALL tabs.
                 return;
             }
 
@@ -94,15 +92,15 @@ export function useNotifications() {
 
                 // Sync navbar bell icon
                 window.dispatchEvent(new CustomEvent("notifications-updated"));
-                toast.success(resData?.message || "Notification marked as read");
+                toast.success(resData?.message || t("notifications.markedReadSuccess"));
                 return true;
             } else {
                 console.warn("[markAsRead] Failed for ID:", notificationId, resData);
-                toast.error(resData?.message || "Failed to mark as read");
+                toast.error(resData?.message || t("notifications.markedReadFailed"));
             }
         } catch (err) {
             console.error("Error marking notification as read:", err);
-            toast.error("An error occurred");
+            toast.error(t("notifications.errorOccurred"));
         }
         return false;
     }, [session]);
@@ -138,14 +136,14 @@ export function useNotifications() {
 
                 // Sync navbar bell icon
                 window.dispatchEvent(new CustomEvent("notifications-updated"));
-                toast.success(resData?.message || "Notification deleted successfully");
+                toast.success(resData?.message || t("notifications.deletedSuccess"));
             } else {
                 console.warn("Server-side removal failed for notification:", notificationId, resData);
-                toast.error(resData?.message || "Failed to delete notification");
+                toast.error(resData?.message || t("notifications.deletedFailed"));
             }
         } catch (err) {
             console.error("Error removing notification:", err);
-            toast.error("An error occurred during deletion");
+            toast.error(t("notifications.errorDeletion"));
         } finally {
             setDeletingIds(prev => prev.filter(id => id !== notificationId));
         }

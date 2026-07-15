@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { getLocaleFromRequest } from '@/lib/api/magento-url';
 import { KLEVER_FORECAST_FILE_QUERY } from '@/src/graphql/queries';
 
-const MAGENTO_GRAPHQL = (process.env.NEXT_PUBLIC_MAGENTO_BASE_URL || "https://altalayi-demo.btire.com") + "/graphql";
+const MAGENTO_GRAPHQL = (process.env.NEXT_PUBLIC_MAGENTO_BASE_URL || "https://altalayi-live.btire.com") + "/graphql";
 
 // GET — download a forecast file. Pure GraphQL: kleverForecastFile(forecastId) returns
 // { success, filename, mime_type, base64 }; we decode the base64 and stream it as an attachment

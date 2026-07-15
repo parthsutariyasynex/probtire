@@ -45,6 +45,7 @@ export default function ProtectedLayout({ children }: ProtectedLayoutProps) {
 
       // Check if Magento token has expired (set by auth-options.ts JWT callback)
       if ((session as any)?.error === 'MagentoTokenExpired') {
+        console.warn('[ProtectedLayout] MagentoTokenExpired detected — calling handleGlobalLogout. path:', pathname);
         handleGlobalLogout(`${window.location.origin}/${locale}/login`);
         return;
       }
@@ -78,8 +79,12 @@ export default function ProtectedLayout({ children }: ProtectedLayoutProps) {
     if (status === 'loading') return;
     if (status === 'unauthenticated' && !isPublicPage && !redirectedRef.current) {
       redirectedRef.current = true;
+      // Use the real browser URL — not usePathname() which returns the middleware-rewritten
+      // path (e.g. /products) instead of the original SEO URL (e.g. /en/all-tyres/car-tyres.html).
+      const browserUrl = `${window.location.pathname}${window.location.search}`;
+      console.warn('[ProtectedLayout] unauthenticated on protected page — redirecting to login. path:', browserUrl);
       localStorage.removeItem('token');
-      const loginUrl = `/${locale}/login?callbackUrl=${encodeURIComponent(pathname)}`;
+      const loginUrl = `/${locale}/login?callbackUrl=${encodeURIComponent(browserUrl)}`;
       router.replace(loginUrl);
     }
     // Reset the guard once the user is authenticated again (e.g. after login).

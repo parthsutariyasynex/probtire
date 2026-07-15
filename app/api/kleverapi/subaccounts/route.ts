@@ -1,14 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getLocaleFromRequest } from "@/lib/api/magento-url";
 import { getRequestToken } from "@/lib/api/auth-helper";
-// KLEVER_SUBACCOUNTS_QUERY omits the buggy `permissions` field — see the note on
-// the const in src/graphql/queries.ts (backend types it [Int] but returns strings).
-import { KLEVER_SUBACCOUNTS_QUERY } from "@/src/graphql/queries";
+import { KLEVER_SALESPERSON_ACCOUNTS_QUERY } from "@/src/graphql/queries";
 import { KLEVER_CREATE_SUBACCOUNT_MUTATION } from "@/src/graphql/mutations";
 
-const MAGENTO_GRAPHQL = (process.env.NEXT_PUBLIC_MAGENTO_BASE_URL || "https://altalayi-demo.btire.com") + "/graphql";
+const MAGENTO_GRAPHQL = (process.env.NEXT_PUBLIC_MAGENTO_BASE_URL || "https://altalayi-live.btire.com") + "/graphql";
 
-// GET — list subaccounts (GraphQL: kleverSubaccounts)
+// GET — list accounts assigned to the logged-in Sales Person (GraphQL: kleverSalespersonAccounts).
+// `kleverSubaccounts` is for parent-customer sub-accounts; Sales Person accounts use
+// the separate `kleverSalespersonAccounts` query.
 export async function GET(request: NextRequest) {
     try {
         const token = await getRequestToken(request);
@@ -23,23 +23,31 @@ export async function GET(request: NextRequest) {
                 Store: getLocaleFromRequest(request),
                 Authorization: `Bearer ${token}`,
             },
-            body: JSON.stringify({ query: KLEVER_SUBACCOUNTS_QUERY }),
+            body: JSON.stringify({ query: KLEVER_SALESPERSON_ACCOUNTS_QUERY }),
             cache: "no-store",
         });
 
-        const json = await res.json();
+        let json: any;
+        try {
+            const text = await res.text();
+            json = JSON.parse(text);
+        } catch {
+            console.error("[subaccounts] Magento non-JSON response — status:", res.status);
+            return NextResponse.json({ message: "Magento returned a non-JSON response.", items: [] }, { status: 502 });
+        }
+
         if (Array.isArray(json?.errors) && json.errors.length > 0) {
             console.error("[subaccounts] GraphQL error:", JSON.stringify(json.errors).slice(0, 300));
             return NextResponse.json({ message: "Magento GraphQL error", details: json.errors }, { status: 502 });
         }
 
-        const r = json?.data?.kleverSubaccounts;
-        // Preserve the existing REST shape: { items, total_count }.
+        const r = json?.data?.kleverSalespersonAccounts;
         return NextResponse.json({
             items: Array.isArray(r?.items) ? r.items : [],
             total_count: r?.total_count ?? 0,
         });
     } catch (error: any) {
+        console.error("[subaccounts] error:", error.message);
         return NextResponse.json({ message: error.message || "Server-side error fetching sub accounts." }, { status: 500 });
     }
 }

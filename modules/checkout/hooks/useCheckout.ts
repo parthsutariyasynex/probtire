@@ -287,9 +287,7 @@ export function useCheckout(options: UseCheckoutOptions = {}) {
             });
 
             if (res.status === 401) {
-                console.warn("[useCheckout] 401 Unauthorized for pickup stores");
-                const { signOut } = await import("next-auth/react");
-                signOut({ callbackUrl: "/login" });
+                console.warn("[useCheckout] 401 Unauthorized for pickup stores — skipping (session managed by ProtectedLayout)");
                 return;
             }
 

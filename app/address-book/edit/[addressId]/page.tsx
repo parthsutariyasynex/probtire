@@ -54,7 +54,7 @@ export default function EditAddressPage() {
                     telephone: data.telephone || "",
                 });
             } catch (err: any) {
-                toast.error(err || "Failed to fetch address details");
+                toast.error(err || t("addressBook.addressFetchFailed"));
                 console.error(err);
             } finally {
                 setLoading(false);
@@ -86,7 +86,7 @@ export default function EditAddressPage() {
         const newErrors = {
             firstname: !formData.firstname.trim() ? t("addressBook.firstNameRequired") : "",
             lastname: !formData.lastname.trim() ? t("addressBook.lastNameRequired") : "",
-            telephone: !formData.telephone.trim() ? "Phone Number is required" : ""
+            telephone: !formData.telephone.trim() ? t("addressBook.phoneRequired") : ""
         };
 
         setErrors(newErrors);
@@ -110,10 +110,10 @@ export default function EditAddressPage() {
             };
 
             await api.put(`/kleverapi/addresses/${addressId}`, updatePayload);
-            toast.success("Address updated successfully!");
+            toast.success(t("addressBook.addressUpdated"));
             router.push(lp("/customer/address"));
         } catch (err: any) {
-            toast.error(err || "Failed to update address");
+            toast.error(err || t("addressBook.addressUpdateFailed"));
             console.error(err);
         } finally {
             setSaving(false);
@@ -145,14 +145,14 @@ export default function EditAddressPage() {
                 <main className="flex-1 p-4 md:p-8 bg-white min-h-screen">
                     <div className="max-w-[760px]">
                         <h1 className="text-h3 sm:text-h2 md:text-h1-sm font-bold text-black uppercase tracking-tight mb-4 md:mb-6">
-                            EDIT ADDRESS
+                            {t("addressBook.editAddress")}
                         </h1>
 
                         <div className="border border-gray-200 rounded-sm overflow-hidden">
                             {/* Section Header */}
                             <div className="bg-surface px-4 md:px-6 py-3 border-b border-gray-200">
                                 <h2 className="text-h4 font-bold text-black uppercase tracking-wide">
-                                    CONTACT INFORMATION
+                                    {t("addressBook.contactInformation")}
                                 </h2>
                             </div>
 
@@ -161,7 +161,7 @@ export default function EditAddressPage() {
                                     {/* First Name */}
                                     <div>
                                         <label className="block text-body-lg font-bold text-[#333] mb-2">
-                                            First Name <span className="text-red-600 font-bold">*</span>
+                                            {t("addressBook.firstName")} <span className="text-red-600 font-bold">*</span>
                                         </label>
                                         <input
                                             name="firstname"
@@ -175,11 +175,11 @@ export default function EditAddressPage() {
                                             <p className="mt-1 text-xs text-red-500">{errors.firstname}</p>
                                         )}
                                     </div>
-
+ 
                                     {/* Last Name */}
                                     <div>
                                         <label className="block text-body-lg font-bold text-[#333] mb-2">
-                                            Last Name <span className="text-red-600 font-bold">*</span>
+                                            {t("addressBook.lastName")} <span className="text-red-600 font-bold">*</span>
                                         </label>
                                         <input
                                             name="lastname"
@@ -193,11 +193,11 @@ export default function EditAddressPage() {
                                             <p className="mt-1 text-xs text-red-500">{errors.lastname}</p>
                                         )}
                                     </div>
-
+ 
                                     {/* Phone Number */}
                                     <div>
                                         <label className="block text-body-lg font-bold text-[#333] mb-2">
-                                            Phone Number <span className="text-red-600 font-bold">*</span>
+                                            {t("addressBook.phoneNumber")} <span className="text-red-600 font-bold">*</span>
                                         </label>
                                         <input
                                             name="telephone"
@@ -222,7 +222,7 @@ export default function EditAddressPage() {
                                             {saving ? (
                                                 t("common.loading")
                                             ) : (
-                                                "SAVE ADDRESS"
+                                                t("addressBook.saveAddress")
                                             )}
                                         </button>
                                     </div>

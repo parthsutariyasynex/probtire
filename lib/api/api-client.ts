@@ -152,13 +152,16 @@ async function apiClient(
         }
 
         // Final 401 after retries — redirect to login
+        // if (response.status === 401) {
+        //     if (typeof window !== "undefined") {
+        //         localStorage.removeItem("token");
+        //         const locale = window.location.pathname.startsWith("/ar") ? "ar" : "en";
+        //         window.location.href = `/${locale}/login`;
+        //     }
+        //     throw new Error("Session expired. Please login again.");
+        // }
         if (response.status === 401) {
-            if (typeof window !== "undefined") {
-                localStorage.removeItem("token");
-                const locale = window.location.pathname.startsWith("/ar") ? "ar" : "en";
-                window.location.href = `/${locale}/login`;
-            }
-            throw new Error("Session expired. Please login again.");
+            throw new Error("Unauthorized");
         }
 
         throw new Error(data?.message || `API Error ${response.status}: ${response.statusText}`);

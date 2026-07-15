@@ -8,7 +8,7 @@ import {
   useCallback,
   ReactNode,
 } from "react";
-import { signOut, useSession } from "next-auth/react";
+import { useSession } from "next-auth/react";
 import { getAuthToken } from "@/lib/api/api-client";
 
 export interface CartItem {
@@ -58,8 +58,10 @@ function isAuthError(status: number): boolean {
 }
 
 function handleAuthError() {
-  console.warn("Cart: token expired or unauthorized — signing out");
-  signOut({ callbackUrl: "/login" });
+  // Don't call signOut() here — a transient 401 from one API call should
+  // NOT nuke the session cookie for all tabs. Session termination is handled
+  // centrally by the MagentoTokenExpired check in ProtectedLayout / Navbar.
+  console.warn("Cart: token expired or unauthorized — clearing cart (session managed elsewhere)");
 }
 
 export function CartProvider({ children }: { children: ReactNode }) {

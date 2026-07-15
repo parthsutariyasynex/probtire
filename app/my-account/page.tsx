@@ -2,7 +2,7 @@
 import { useTranslation } from "@/hooks/useTranslation";
 import { useLocalePath } from "@/hooks/useLocalePath";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { useSelector, useDispatch } from "react-redux";
 import { RootState, AppDispatch } from "@/store/store";
@@ -47,6 +47,18 @@ export default function MyAccountPage() {
     const { data: session, status } = useSession();
     const { data: customer, loading } = useSelector((state: RootState) => state.customer);
     const token = useSelector((state: RootState) => state.auth.token);
+
+    // Decode utypid from Magento JWT — utypid === 3 = Sales Person.
+    // Business Overview, Sales Data, Targets, and Customer Behavior are
+    // customer-account sections irrelevant to a Sales Person.
+    const isSalesPerson = useMemo(() => {
+        const accessToken = (session as any)?.accessToken;
+        if (!accessToken) return false;
+        try {
+            const payload = JSON.parse(atob(accessToken.split(".")[1]));
+            return payload.utypid === 3;
+        } catch { return false; }
+    }, [(session as any)?.accessToken]);
 
     const [isSubAccountSession, setIsSubAccountSession] = useState(false);
 
@@ -204,13 +216,14 @@ export default function MyAccountPage() {
         || (addresses?.[0]?.[field] as string | undefined)
         || undefined;
 
-    // All mapped from native GraphQL fields only — no REST, no hardcoded/fake values.
-    const customerMobile = pickAddr("telephone") || "N/A";                 // address.telephone
-    const customerCompany = pickAddr("company") || "N/A";                  // address.company
+    // customer_mobile comes from GraphQL custom_attributes (normalized to attribute_code).
+    const customerMobile = getAttr("customer_mobile") !== "N/A"
+        ? getAttr("customer_mobile")
+        : pickAddr("telephone") || "N/A";
+    const customerCompany = pickAddr("company") || "N/A";
     const addrCity = pickAddr("city");
     const addrCountry = pickAddr("country_code") || pickAddr("country_id") || "SA";
-    const customerLocation = addrCity ? `${addrCity} ,${addrCountry}` : "N/A"; // city + country_code
-    // Customer Code & Industry: native GraphQL does NOT expose these → stay N/A (no fake data).
+    const customerLocation = addrCity ? `${addrCity} ,${addrCountry}` : "N/A";
     const customerCode = getAttr("customer_code");
     const customerIndustry = getAttr("industry");
 
@@ -260,12 +273,12 @@ export default function MyAccountPage() {
                                         <div className="p-3 md:p-5 text-body text-gray-700 space-y-2.5 font-medium leading-relaxed">
                                             <p>{t("account.contactName")}: {(customer as any).firstname} {(customer as any).lastname}</p>
                                             <p>{t("account.email")}: {(customer as any).email}</p>
-                                            <p>{t("account.customerMobile")}: {customerMobile}</p>
-                                            <p>{t("account.companyName")}: {customerCompany}</p>
-                                            <p>{t("account.customerCode")}: {customerCode}</p>
-                                            <p>{t("m.industry")}: {customerIndustry}</p>
-                                            <p>{t("m.location")}: {customerLocation}</p>
-                                            <p>{t("account.contactInformation")}: {(customer as any).email} ,{customerMobile}</p>
+                                            {customerMobile !== "N/A" && <p>{t("account.customerMobile")}: {customerMobile}</p>}
+                                            {!isSalesPerson && customerCompany !== "N/A" && <p>{t("account.companyName")}: {customerCompany}</p>}
+                                            {!isSalesPerson && customerCode !== "N/A" && <p>{t("account.customerCode")}: {customerCode}</p>}
+                                            {!isSalesPerson && customerIndustry !== "N/A" && <p>{t("m.industry")}: {customerIndustry}</p>}
+                                            {!isSalesPerson && customerLocation !== "N/A" && <p>{t("m.location")}: {customerLocation}</p>}
+                                            <p>{t("account.contactInformation")}: {(customer as any).email} ,{customerMobile !== "N/A" ? customerMobile : ""}</p>
 
                                             <div className="flex flex-col md:flex-row gap-3 pt-4 md:pt-6">
                                                 <Link href={lp("/customer/account/edit")} className="w-full md:w-auto text-center bg-brand-yellow hover:bg-brand-yellow-dark text-black text-body-sm font-bold px-6 py-2 uppercase transition-all rounded-sm">
@@ -278,71 +291,79 @@ export default function MyAccountPage() {
                                         </div>
                                     </div>
 
-                                    {/* Business Overview */}
-                                    <div className={`${cardBase} md:col-span-1 lg:col-span-2`}>
-                                        <div className={sectionHeader + " flex justify-between items-center"}>
-                                            <span>{t("dashboard.businessOverview")}</span>
-                                            <button
-                                                onClick={() => setIsEditModalOpen(true)}
-                                                className="bg-brand-yellow hover:bg-black hover:text-white text-black text-caption font-bold px-4 py-1.5 uppercase transition-all rounded-sm shadow-sm"
-                                            >
-                                                {t("m.edit")}
-                                            </button>
+                                    {/* Business Overview — hidden for Sales Person */}
+                                    {!isSalesPerson && (
+                                        <div className={`${cardBase} md:col-span-1 lg:col-span-2`}>
+                                            <div className={sectionHeader + " flex justify-between items-center"}>
+                                                <span>{t("dashboard.businessOverview")}</span>
+                                                <button
+                                                    onClick={() => setIsEditModalOpen(true)}
+                                                    className="bg-brand-yellow hover:bg-black hover:text-white text-black text-caption font-bold px-4 py-1.5 uppercase transition-all rounded-sm shadow-sm"
+                                                >
+                                                    {t("m.edit")}
+                                                </button>
+                                            </div>
+                                            <div className="p-3 md:p-5 text-body text-gray-700 space-y-2.5 font-medium leading-relaxed">
+                                                <p>{t("m.company-size")}: {getOverviewAttr("total_employees")} {t("account.employees")}, {getOverviewAttr("trucks")} {t("account.trucks")}, {getOverviewAttr("annual_revenue")} {t("account.annualRevenue")}</p>
+                                                <p>{t("m.business-model")}: {getOverviewAttr("business_model")}</p>
+                                                <p>{t("m.products-services-offered")}: {getOverviewAttr("products_offered")}</p>
+                                            </div>
                                         </div>
-                                        <div className="p-3 md:p-5 text-body text-gray-700 space-y-2.5 font-medium leading-relaxed">
-                                            <p>{t("m.company-size")}: {getOverviewAttr("total_employees")} {t("account.employees")}, {getOverviewAttr("trucks")} {t("account.trucks")}, {getOverviewAttr("annual_revenue")} {t("account.annualRevenue")}</p>
-                                            <p>{t("m.business-model")}: {getOverviewAttr("business_model")}</p>
-                                            <p>{t("m.products-services-offered")}: {getOverviewAttr("products_offered")}</p>
-                                        </div>
-                                    </div>
+                                    )}
 
-                                    {/* Sales Data (Qty) */}
-                                    <div className={`${cardBase} md:col-span-1 lg:col-span-2`}>
-                                        <div className={sectionHeader}>
-                                            {t("m.sales-data-qty")}
+                                    {/* Sales Data (Qty) — hidden for Sales Person */}
+                                    {!isSalesPerson && (
+                                        <div className={`${cardBase} md:col-span-1 lg:col-span-2`}>
+                                            <div className={sectionHeader}>
+                                                {t("m.sales-data-qty")}
+                                            </div>
+                                            <div className="p-3 md:p-5 text-body text-gray-700 space-y-2.5 font-medium leading-relaxed">
+                                                <p>{t("m.total-sales-qty")}: {getAttr("total_sales_qty", "0")}</p>
+                                                <p>{t("m.order-frequency")}: {getAttr("order_frequency", "0")} {t("account.ordersPerMonth")}</p>
+                                            </div>
                                         </div>
-                                        <div className="p-3 md:p-5 text-body text-gray-700 space-y-2.5 font-medium leading-relaxed">
-                                            <p>{t("m.total-sales-qty")}: {getAttr("total_sales_qty", "0")}</p>
-                                            <p>{t("m.order-frequency")}: {getAttr("order_frequency", "0")} {t("account.ordersPerMonth")}</p>
-                                        </div>
-                                    </div>
+                                    )}
 
-                                    {/* Targets & Achievements */}
-                                    <div className={`${cardBase} md:col-span-1 lg:col-span-3`}>
-                                        <div className={sectionHeader + " flex justify-between items-center"}>
-                                            <span>{t("m.targets-and-achievements")}</span>
-                                            <select className="border border-gray-300 rounded-sm text-[12px] px-2 py-1 bg-white outline-none">
-                                                <option>2023</option>
-                                                <option>2024</option>
-                                            </select>
+                                    {/* Targets & Achievements — hidden for Sales Person */}
+                                    {!isSalesPerson && (
+                                        <div className={`${cardBase} md:col-span-1 lg:col-span-3`}>
+                                            <div className={sectionHeader + " flex justify-between items-center"}>
+                                                <span>{t("m.targets-and-achievements")}</span>
+                                                <select className="border border-gray-300 rounded-sm text-[12px] px-2 py-1 bg-white outline-none">
+                                                    <option>2023</option>
+                                                    <option>2024</option>
+                                                </select>
+                                            </div>
+                                            <div className="p-3 md:p-5 text-body text-gray-700 space-y-2.5 font-medium leading-relaxed">
+                                                <p>{t("m.sales-targets")}: {getAttr("sales_targets")}</p>
+                                                <p>{t("m.achievements")}: {getAttr("achievements")}</p>
+                                                <p>{t("m.incentive")}: SAR {formatCurrency(getAttr("incentive"))}</p>
+                                            </div>
                                         </div>
-                                        <div className="p-3 md:p-5 text-body text-gray-700 space-y-2.5 font-medium leading-relaxed">
-                                            <p>{t("m.sales-targets")}: {getAttr("sales_targets")}</p>
-                                            <p>{t("m.achievements")}: {getAttr("achievements")}</p>
-                                            <p>{t("m.incentive")}: SAR {formatCurrency(getAttr("incentive"))}</p>
-                                        </div>
-                                    </div>
+                                    )}
 
-                                    {/* Customer Behavior */}
-                                    <div className={`${cardBase} md:col-span-2 lg:col-span-3`}>
-                                        <div className={sectionHeader}>
-                                            {t("m.customer-behavior")}
+                                    {/* Customer Behavior — hidden for Sales Person */}
+                                    {!isSalesPerson && (
+                                        <div className={`${cardBase} md:col-span-2 lg:col-span-3`}>
+                                            <div className={sectionHeader}>
+                                                {t("m.customer-behavior")}
+                                            </div>
+                                            <div className="p-3 md:p-5 text-body text-gray-700 space-y-2.5 font-medium leading-relaxed">
+                                                <p>{t("m.payment-historydso")}: {getAttr("payment_history")}</p>
+                                                <p>{t("m.credit-limit")}: SAR {formatCurrency(getAttr("total_credit_limit"))}</p>
+                                                <p>{t("m.credit-period")}: {getAttr("credit_period")} {t("account.days")}</p>
+                                            </div>
                                         </div>
-                                        <div className="p-3 md:p-5 text-body text-gray-700 space-y-2.5 font-medium leading-relaxed">
-                                            <p>{t("m.payment-historydso")}: {getAttr("payment_history")}</p>
-                                            <p>{t("m.credit-limit")}: SAR {formatCurrency(getAttr("total_credit_limit"))}</p>
-                                            <p>{t("m.credit-period")}: {getAttr("credit_period")} {t("account.days")}</p>
-                                        </div>
-                                    </div>
+                                    )}
                                 </div>
                             </div>
 
                             {/* CREDIT ACCOUNT INFORMATION */}
                             <CreditLimit />
 
-                            {/* ADDRESS BOOK */}
+                            {/* ADDRESS BOOK — hidden for Sales Person */}
 
-                            <div>
+                            {!isSalesPerson && <div>
                                 <h2 className="text-body-lg md:text-h3-sm font-bold text-black uppercase mb-3">{t("addressBook.title")}</h2>
                                 <hr className="border-gray-200 mb-6" />
 
@@ -401,7 +422,7 @@ export default function MyAccountPage() {
                                         </div>
                                     </div>
                                 </div>
-                            </div>
+                            </div>}
                         </div>
                     </main>
                 </div>

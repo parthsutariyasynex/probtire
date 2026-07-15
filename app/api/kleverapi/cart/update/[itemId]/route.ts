@@ -4,7 +4,7 @@ import { getRequestToken } from "@/lib/api/auth-helper";
 import { getCustomerCartId } from "@/lib/api/customer-cart";
 import { UPDATE_CART_ITEMS_MUTATION } from "@/src/graphql/mutations";
 
-const MAGENTO_GRAPHQL = (process.env.NEXT_PUBLIC_MAGENTO_BASE_URL || "https://altalayi-demo.btire.com") + "/graphql";
+const MAGENTO_GRAPHQL = (process.env.NEXT_PUBLIC_MAGENTO_BASE_URL || "https://altalayi-live.btire.com") + "/graphql";
 
 // PUT — update a cart item's quantity (GraphQL: updateCartItems). The numeric
 // item_id from the path maps directly to cart_item_id (no uid encoding needed).

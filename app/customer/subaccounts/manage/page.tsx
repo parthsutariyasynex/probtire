@@ -16,7 +16,7 @@ type SubAccount = {
     firstname: string;
     lastname: string;
     email: string;
-    is_active?: boolean;
+    is_active?: boolean | number;
     [key: string]: any;
 };
 
@@ -80,13 +80,11 @@ export default function ManageSubAccountsPage() {
         fetchSubAccounts();
     }, [token]);
 
-    // Login as sub-account
+    // Login as a salesperson-assigned company account
     const handleLoginAsSubAccount = async (subAccount: SubAccount) => {
         if (!token) return;
 
-        // Try multiple possible ID field names
-        const subAccountId = subAccount.entity_id || subAccount.id || subAccount.customer_id || subAccount.sub_account_id;
-        console.log("[ManageSubAccounts] Login as sub-account, ID:", subAccountId, "Full data:", JSON.stringify(subAccount));
+        const subAccountId = subAccount.customer_id || subAccount.entity_id || subAccount.id || subAccount.sub_account_id;
 
         if (!subAccountId) {
             alert(t("common.error"));
@@ -95,7 +93,6 @@ export default function ManageSubAccountsPage() {
         setLoggingInId(subAccountId);
 
         try {
-            // Call POST /api/kleverapi/subaccounts/{id}/login
             const res = await fetch(`/api/kleverapi/subaccounts/${subAccountId}/login`, {
                 method: "POST",
                 headers: {
@@ -112,17 +109,22 @@ export default function ManageSubAccountsPage() {
                 return;
             }
 
-            // Set sub-account session in localStorage
+            // Store account session — include customer fields so subaccount/my-account can
+            // display the contact info without a separate fetch.
             localStorage.setItem("isSubAccount", "true");
-            localStorage.setItem("subAccountName", `${subAccount.firstname} ${subAccount.lastname}`);
+            localStorage.setItem("subAccountName", `${subAccount.firstname || ""} ${subAccount.lastname || ""}`.trim());
             localStorage.setItem("subAccountId", String(subAccountId));
+            localStorage.setItem("subAccountData", JSON.stringify({
+                token: data.token,
+                customer: {
+                    email: subAccount.email,
+                    firstname: subAccount.firstname,
+                    lastname: subAccount.lastname,
+                    customer_code: (subAccount as any).customer_code,
+                    company_name: (subAccount as any).company_name,
+                },
+            }));
 
-            // Store sub-account data if returned
-            if (data) {
-                localStorage.setItem("subAccountData", JSON.stringify(data));
-            }
-
-            // Redirect to sub-account my-account page
             router.push(lp("/subaccount/my-account"));
         } catch (err: any) {
             alert(err.message || t("common.failed"));
@@ -169,20 +171,21 @@ export default function ManageSubAccountsPage() {
                             {/* Mobile Card View */}
                             <div className="md:hidden space-y-3">
                                 {subAccounts.map((account, idx) => {
-                                    const accountId = account.entity_id || account.id || account.customer_id || account.sub_account_id;
+                                    const accountId = account.customer_id || account.entity_id || account.id || account.sub_account_id;
+                                    const displayName = (account as any).name || `${account.firstname || ""} ${account.lastname || ""}`.trim() || "N/A";
+                                    const customerCode = (account as any).customer_code;
+                                    const companyName = (account as any).company_name;
                                     return (
                                         <div key={accountId || idx} className="bg-white border border-[#ddd] rounded-sm p-4">
                                             <div className="flex items-start justify-between gap-3 mb-3">
                                                 <div className="min-w-0">
-                                                    <p className="text-body font-bold text-black uppercase">
-                                                        {account.firstname || account.name || "N/A"} {account.lastname || ""}
-                                                    </p>
-                                                    <p className="text-body-sm text-gray-500 font-medium mt-1 break-all">
-                                                        {account.email || "N/A"}
-                                                    </p>
+                                                    <p className="text-body font-bold text-black uppercase">{displayName}</p>
+                                                    {customerCode && <p className="text-caption text-gray-400 font-medium">{customerCode}</p>}
+                                                    {companyName && <p className="text-body-sm text-gray-600 font-medium">{companyName}</p>}
+                                                    <p className="text-body-sm text-gray-500 font-medium mt-1 break-all">{account.email || "N/A"}</p>
                                                 </div>
-                                                <span className={`px-2 py-1 text-caption font-bold uppercase rounded-md flex-shrink-0 ${account.is_active !== false ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
-                                                    {account.is_active !== false ? t("m.active") : t("m.inactive")}
+                                                <span className={`px-2 py-1 text-caption font-bold uppercase rounded-md flex-shrink-0 ${account.is_active !== false && account.is_active !== 0 ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
+                                                    {account.is_active !== false && account.is_active !== 0 ? t("m.active") : t("m.inactive")}
                                                 </span>
                                             </div>
                                             <button
@@ -200,7 +203,7 @@ export default function ManageSubAccountsPage() {
                             {/* Desktop Table */}
                             <div className="hidden md:block overflow-x-auto">
                                 <table className="w-full text-body text-left border-collapse border border-[#ddd]">
-                                    <thead className="bg-gray-50 border-b border-gray-200">
+                                    <thead>
                                         <tr className="bg-brand-yellow text-label uppercase font-bold tracking-widest text-black">
                                             <th className="px-2 xl:px-4 py-2 border border-[#ddd]">{t("m.name")}</th>
                                             <th className="px-2 xl:px-4 py-2 border border-[#ddd]">{t("m.email")}</th>
@@ -210,18 +213,23 @@ export default function ManageSubAccountsPage() {
                                     </thead>
                                     <tbody>
                                         {subAccounts.map((account, idx) => {
-                                            const accountId = account.entity_id || account.id || account.customer_id || account.sub_account_id;
+                                            const accountId = account.customer_id || account.entity_id || account.id || account.sub_account_id;
+                                            const displayName = (account as any).name || `${account.firstname || ""} ${account.lastname || ""}`.trim() || "N/A";
+                                            const customerCode = (account as any).customer_code;
+                                            const companyName = (account as any).company_name;
                                             return (
                                                 <tr key={accountId || idx} className={`${idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'} border-b border-[#ddd] hover:bg-yellow-50/30 transition-colors`}>
-                                                    <td className="px-2 xl:px-4 py-2 border border-[#ddd] text-body font-bold text-black uppercase">
-                                                        {account.firstname || account.name || "N/A"} {account.lastname || ""}
+                                                    <td className="px-2 xl:px-4 py-2 border border-[#ddd]">
+                                                        <p className="text-body font-bold text-black uppercase">{displayName}</p>
+                                                        {customerCode && <p className="text-caption text-gray-400">{customerCode}</p>}
+                                                        {companyName && <p className="text-body-sm text-gray-600">{companyName}</p>}
                                                     </td>
                                                     <td className="px-2 xl:px-4 py-2 border border-[#ddd] text-body-sm font-medium text-gray-600">
                                                         {account.email || "N/A"}
                                                     </td>
                                                     <td className="px-2 xl:px-4 py-2 border border-[#ddd]">
-                                                        <span className={`px-2 py-1 text-caption font-bold uppercase rounded-md ${account.is_active !== false ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
-                                                            {account.is_active !== false ? t("m.active") : t("m.inactive")}
+                                                        <span className={`px-2 py-1 text-caption font-bold uppercase rounded-md ${account.is_active !== false && account.is_active !== 0 ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
+                                                            {account.is_active !== false && account.is_active !== 0 ? t("m.active") : t("m.inactive")}
                                                         </span>
                                                     </td>
                                                     <td className="px-2 xl:px-4 py-2 border border-[#ddd] text-center">

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getRequestToken } from "@/lib/api/auth-helper";
 import { CUSTOMER_ORDERS_QUERY, KLEVER_ORDER_FILTER_OPTIONS_QUERY } from "@/src/graphql/queries";
 
-const MAGENTO_GRAPHQL = (process.env.NEXT_PUBLIC_MAGENTO_BASE_URL || "https://altalayi-demo.btire.com") + "/graphql";
+const MAGENTO_GRAPHQL = (process.env.NEXT_PUBLIC_MAGENTO_BASE_URL || "https://altalayi-live.btire.com") + "/graphql";
 
 // native customer.orders.status returns the status LABEL ("Check Pending"); the filter dropdown
 // + counts use status CODES ("approval_pending"). Build the label→code map DYNAMICALLY from the

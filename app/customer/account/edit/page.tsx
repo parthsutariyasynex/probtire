@@ -76,12 +76,12 @@ function EditAccountPageContent() {
 
     const handleSave = async () => {
         if (!firstName || !lastName) {
-            toast.error("Required fields are missing");
+            toast.error(t("account.requiredFieldsMissing"));
             return;
         }
 
         setIsSaving(true);
-        const toastId = toast.loading("Saving changes...");
+        const toastId = toast.loading(t("account.savingChanges"));
 
         try {
             // 1. Update Profile (Name/Email)
@@ -98,12 +98,12 @@ function EditAccountPageContent() {
 
             await api.post("/kleverapi/my-account", profilePayload);
 
-            toast.success("Account information updated successfully", { id: toastId });
+            toast.success(t("account.updateSuccess"), { id: toastId });
             dispatch(fetchCustomerInfo());
             router.push(lp("/customer/account"));
         } catch (error: any) {
             console.error("Save Error:", error);
-            toast.error(error.message || "Failed to update account", { id: toastId });
+            toast.error((typeof error === "string" ? error : error?.message) || t("account.updateFailed"), { id: toastId });
         } finally {
             setIsSaving(false);
         }
@@ -133,20 +133,20 @@ function EditAccountPageContent() {
             <main className="flex-1 p-6 md:p-12 min-h-0 bg-[#FDFDFD]">
                 <div className="w-full">
                     <h1 className="text-h3 sm:text-h2 md:text-h1-sm font-black text-black mb-6 md:mb-10 uppercase tracking-tight">
-                        Edit Account Information
+                        {t("account.editAccountInformation")}
                     </h1>
 
                     <div className="space-y-6 md:space-y-10">
                         {/* ACCOUNT INFORMATION SECTION - MATCHING SCREENSHOT */}
                         <div className="bg-white border border-gray-200 shadow-sm rounded-sm overflow-hidden">
                             <div className={sectionHeader}>
-                                ACCOUNT INFORMATION
+                                {t("account.accountInformation")}
                             </div>
 
                             <div className="p-8 space-y-6">
                                 <div className="space-y-2">
                                     <label className={labelClass}>
-                                        First Name <span className="text-red-500">*</span>
+                                        {t("addressBook.firstName")} <span className="text-red-500">*</span>
                                     </label>
                                     <input
                                         type="text"
@@ -155,10 +155,10 @@ function EditAccountPageContent() {
                                         onChange={(e) => setFirstName(e.target.value)}
                                     />
                                 </div>
-
+ 
                                 <div className="space-y-2">
                                     <label className={labelClass}>
-                                        Last Name <span className="text-red-500">*</span>
+                                        {t("addressBook.lastName")} <span className="text-red-500">*</span>
                                     </label>
                                     <input
                                         type="text"
@@ -179,11 +179,11 @@ function EditAccountPageContent() {
                                                 onChange={(e) => setChangeEmail(e.target.checked)}
                                             />
                                             <span className="text-body-lg font-bold text-gray-700 group-hover:text-black transition-colors select-none">
-                                                Change Email
+                                                {t("account.changeEmail")}
                                             </span>
                                         </label>
                                     </div>
-
+ 
                                     {/* Change Password Toggle */}
                                     <div className="space-y-4">
                                         <label className="flex items-center gap-3 cursor-pointer group">
@@ -194,7 +194,7 @@ function EditAccountPageContent() {
                                                 onChange={(e) => setChangePassword(e.target.checked)}
                                             />
                                             <span className="text-body-lg font-bold text-gray-700 group-hover:text-black transition-colors select-none">
-                                                Change Password
+                                                {t("account.changePassword")}
                                             </span>
                                         </label>
                                     </div>
@@ -206,13 +206,13 @@ function EditAccountPageContent() {
                         {changeEmail && (
                             <div className="bg-white border border-gray-200 shadow-sm rounded-sm overflow-hidden animate-in fade-in slide-in-from-top-4 duration-300">
                                 <div className={sectionHeader}>
-                                    CHANGE EMAIL
+                                    {t("account.changeEmail")}
                                 </div>
 
                                 <div className="p-4 md:p-8 space-y-4 md:space-y-6">
                                     <div className="space-y-2">
                                         <label className={labelClass}>
-                                            Email <span className="text-red-500">*</span>
+                                            {t("account.email")} <span className="text-red-500">*</span>
                                         </label>
                                         <input
                                             type="email"
@@ -225,7 +225,7 @@ function EditAccountPageContent() {
 
                                     <div className="space-y-2">
                                         <label className={labelClass}>
-                                            Current Password <span className="text-red-500">*</span>
+                                            {t("changePassword.currentPassword")} <span className="text-red-500">*</span>
                                         </label>
                                         <input
                                             type="password"
@@ -241,13 +241,13 @@ function EditAccountPageContent() {
                         {changePassword && (
                             <div className="bg-white border border-gray-200 shadow-sm rounded-sm overflow-hidden animate-in fade-in slide-in-from-top-4 duration-300">
                                 <div className={sectionHeader}>
-                                    CHANGE PASSWORD
+                                    {t("account.changePassword")}
                                 </div>
 
                                 <div className="p-4 md:p-8 space-y-4 md:space-y-6">
                                     <div className="space-y-2">
                                         <label className={labelClass}>
-                                            Current Password <span className="text-red-500">*</span>
+                                            {t("changePassword.currentPassword")} <span className="text-red-500">*</span>
                                         </label>
                                         <input
                                             type="password"
@@ -258,7 +258,7 @@ function EditAccountPageContent() {
 
                                     <div className="space-y-2">
                                         <label className={labelClass}>
-                                            New Password <span className="text-red-500">*</span>
+                                            {t("changePassword.newPassword")} <span className="text-red-500">*</span>
                                         </label>
                                         <input
                                             type="password"
@@ -266,13 +266,13 @@ function EditAccountPageContent() {
                                             placeholder={t("changePassword.newPassword")}
                                         />
                                         <div className="bg-canvas px-4 py-2 text-body-sm font-bold text-gray-600 border border-gray-100 italic">
-                                            Password Strength: No Password
+                                            {t("changePassword.passwordStrength")}: {t("changePassword.noPassword")}
                                         </div>
                                     </div>
 
                                     <div className="space-y-2">
                                         <label className={labelClass}>
-                                            Confirm New Password <span className="text-red-500">*</span>
+                                            {t("changePassword.confirmNewPassword")} <span className="text-red-500">*</span>
                                         </label>
                                         <input
                                             type="password"
@@ -291,7 +291,7 @@ function EditAccountPageContent() {
                                 disabled={isSaving}
                                 className="bg-brand-yellow hover:bg-black hover:text-white text-black text-body md:text-body-xl font-black px-8 md:px-12 py-3 md:py-3.5 uppercase transition-all rounded-sm shadow-md tracking-wider active:scale-95 w-full sm:w-auto"
                             >
-                                {isSaving ? "Saving..." : "Save"}
+                                {isSaving ? t("common.loading") : t("common.save")}
                             </button>
                         </div>
                     </div>

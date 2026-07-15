@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { CUSTOMER_ADDRESSES_QUERY } from '@/src/graphql/queries';
 import { CREATE_CUSTOMER_ADDRESS_MUTATION } from '@/src/graphql/mutations';
 
-const MAGENTO_GRAPHQL = (process.env.NEXT_PUBLIC_MAGENTO_BASE_URL || "https://altalayi-demo.btire.com") + "/graphql";
+const MAGENTO_GRAPHQL = (process.env.NEXT_PUBLIC_MAGENTO_BASE_URL || "https://altalayi-live.btire.com") + "/graphql";
 
 // Map a native GraphQL CustomerAddress → the REST-ish shape the address-book UI consumes
 // (adds entity_id, country_id, top-level region_id, and a custom_attributes default).

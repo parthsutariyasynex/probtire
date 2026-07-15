@@ -4,7 +4,7 @@ import { getRequestToken } from '@/lib/api/auth-helper';
 import { CUSTOMER_QUERY } from '@/src/graphql/queries';
 import { UPDATE_CUSTOMER_MUTATION } from '@/src/graphql/mutations';
 
-const MAGENTO_GRAPHQL = (process.env.NEXT_PUBLIC_MAGENTO_BASE_URL || "https://altalayi-demo.btire.com") + "/graphql";
+const MAGENTO_GRAPHQL = (process.env.NEXT_PUBLIC_MAGENTO_BASE_URL || "https://altalayi-live.btire.com") + "/graphql";
 
 // Pure GraphQL — no REST. The native `customer` query backs GET; `updateCustomer` backs POST.
 // Klever-only fields the old REST /my-account returned (group_id, custom_attributes,
@@ -48,8 +48,16 @@ export async function GET(request: NextRequest) {
             return NextResponse.json({ message: 'Customer profile not available.' }, { status: 404 });
         }
 
-        // Preserve the old top-level shape; add safe defaults for the fields GraphQL can't provide.
-        return NextResponse.json({ ...SAFE_DEFAULTS, ...customer });
+        // GraphQL returns custom_attributes as { code, value } but the frontend's getAttr()
+        // looks for { attribute_code, value } — normalize to keep both consumers compatible.
+        const customAttributes = Array.isArray(customer.custom_attributes)
+            ? customer.custom_attributes.map((a: any) => ({
+                attribute_code: a.code,
+                value: a.value ?? null,
+              }))
+            : [];
+
+        return NextResponse.json({ ...SAFE_DEFAULTS, ...customer, custom_attributes: customAttributes });
     } catch (error: any) {
         console.error('[my-account GET] error:', error.message);
         return NextResponse.json(

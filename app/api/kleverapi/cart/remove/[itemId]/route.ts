@@ -4,7 +4,7 @@ import { getRequestToken } from "@/lib/api/auth-helper";
 import { getCustomerCartId } from "@/lib/api/customer-cart";
 import { REMOVE_ITEM_FROM_CART_MUTATION } from "@/src/graphql/mutations";
 
-const MAGENTO_GRAPHQL = (process.env.NEXT_PUBLIC_MAGENTO_BASE_URL || "https://altalayi-demo.btire.com") + "/graphql";
+const MAGENTO_GRAPHQL = (process.env.NEXT_PUBLIC_MAGENTO_BASE_URL || "https://altalayi-live.btire.com") + "/graphql";
 
 // DELETE — remove a cart item (GraphQL: removeItemFromCart). The numeric item_id
 // from the path maps directly to cart_item_id (no uid encoding needed).

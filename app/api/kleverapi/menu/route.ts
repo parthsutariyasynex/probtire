@@ -3,7 +3,7 @@ import { getLocaleFromRequest } from "@/lib/api/magento-url";
 import { getRequestToken } from "@/lib/api/auth-helper";
 import { KLEVER_MENU_ITEMS_QUERY } from "@/src/graphql/queries";
 
-const MAGENTO_GRAPHQL = (process.env.NEXT_PUBLIC_MAGENTO_BASE_URL || "https://altalayi-demo.btire.com") + "/graphql";
+const MAGENTO_GRAPHQL = (process.env.NEXT_PUBLIC_MAGENTO_BASE_URL || "https://altalayi-live.btire.com") + "/graphql";
 
 // Returns the Magento URL's pathname + search as-is, preserving `.html` and the CMS slug,
 // so the navbar links to SEO URLs the middleware resolves without changing the browser URL.
@@ -20,6 +20,19 @@ function magentoUrlToPath(url: string): string {
 // ── Caches ───────────────────────────────────────────────────────────────────
 const menuCache = new Map<string, { items: any[]; expires: number }>();
 const MENU_CACHE_TTL_MS = 60 * 60 * 1000; // 60 min
+
+// Quick check for Sales Person tokens (utypid === 3) to use a separate cache key.
+// quick_order menu item is is_visible=true only for Sales Persons — mixing cache
+// keys would cause the guest menu to hide Quick Order for Sales Persons.
+function isSalesPersonJwt(token: string | null): boolean {
+    if (!token) return false;
+    try {
+        const payload = JSON.parse(Buffer.from(token.split(".")[1], "base64url").toString());
+        return payload?.utypid === 3;
+    } catch {
+        return false;
+    }
+}
 
 async function getPersistentCachePath(locale: string): Promise<string> {
     const os = await import("node:os");
@@ -53,7 +66,12 @@ export async function GET(request: NextRequest) {
     const locale = request.headers.get("x-locale") || getLocaleFromRequest(request);
     try {
         const now = Date.now();
-        const cached = menuCache.get(locale);
+        const token = await getRequestToken(request);
+        // Use a separate cache slot for Sales Person tokens — quick_order is
+        // is_visible=true only for Sales Persons, so their menu must not be
+        // served from (or stored into) the guest/regular-customer cache slot.
+        const cacheKey = isSalesPersonJwt(token) ? `${locale}_sp` : locale;
+        const cached = menuCache.get(cacheKey);
         if (cached && cached.expires > now) {
             return new Response(JSON.stringify(cached.items), {
                 headers: { "Content-Type": "application/json", "Cache-Control": "no-store", "X-Cache": "HIT" },
@@ -62,7 +80,6 @@ export async function GET(request: NextRequest) {
 
         // Pass the customer token when present (menu may include account-specific items),
         // but the query also works for guests.
-        const token = await getRequestToken(request);
 
         const res = await fetch(MAGENTO_GRAPHQL, {
             method: "POST",
@@ -86,7 +103,7 @@ export async function GET(request: NextRequest) {
 
         const raw = Array.isArray(json?.data?.kleverMenuItems) ? json.data.kleverMenuItems : [];
         const items = raw
-            .filter((m: any) => m?.is_visible !== false)
+            .filter((m: any) => m?.is_visible !== false && m?.code !== "quick_order")
             .map((m: any) => ({
                 code: m.code,
                 label: m.label,
@@ -98,7 +115,7 @@ export async function GET(request: NextRequest) {
             .sort((a: any, b: any) => a.sort_order - b.sort_order);
 
         if (items.length > 0) {
-            menuCache.set(locale, { items, expires: now + MENU_CACHE_TTL_MS });
+            menuCache.set(cacheKey, { items, expires: now + MENU_CACHE_TTL_MS });
             void writePersistentMenu(locale, items);
         }
 

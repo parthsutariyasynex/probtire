@@ -184,7 +184,7 @@ import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useSelector, useDispatch } from "react-redux";
 import { RootState } from "@/store/store";
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import {
   ShoppingCart,
   UserCircle,
@@ -252,6 +252,7 @@ export default function Navbar() {
   const isAuthenticated = status === "authenticated";
   const { cart, refetchCart } = useCart();
   const [navLinks, setNavLinks] = useState<NavLink[]>([]);
+  const navLinksRef = useRef<NavLink[]>([]);
   const [navLoading, setNavLoading] = useState(true);
   const [storeDropOpen, setStoreDropOpen] = useState(false);
   const storeDropRef = useRef<HTMLDivElement>(null);
@@ -268,6 +269,41 @@ export default function Navbar() {
       ? `${(customerData as any).firstname} ${(customerData as any).lastname || ""}`.trim()
       : (session?.user?.name || session?.user?.email || "My Account");
 
+  // utypid === 3 is shared by Sales Person AND Master Company — cannot use it alone for UI.
+  // Kept only for the navbar menu cache key (both roles get the same Magento menu).
+  const isSalesPerson = useMemo(() => {
+    const token = (session as any)?.accessToken;
+    if (!token) return false;
+    try {
+      const payload = JSON.parse(atob(token.split(".")[1]));
+      return payload.utypid === 3;
+    } catch { return false; }
+  }, [(session as any)?.accessToken]);
+
+  // shouldHideCartActions: driven by account-sidebar user_type (the only reliable source).
+  // "Sales Person" and "Multi Company" → hide Cart, Search, Notifications.
+  // "Master Company" and "Sub Company" → always visible (even though utypid may also be 3).
+  const [shouldHideCartActions, setShouldHideCartActions] = useState(false);
+  useEffect(() => {
+    const token = (session as any)?.accessToken as string | undefined;
+    if (!token) { setShouldHideCartActions(false); return; }
+    if (typeof sessionStorage === "undefined") return;
+    const ROLE_CACHE = "altalayi_user_type_v1";
+    const TOKEN_CACHE = "altalayi_role_token_v1";
+    if (sessionStorage.getItem(TOKEN_CACHE) === token) {
+      const type = sessionStorage.getItem(ROLE_CACHE) || "Customer";
+      setShouldHideCartActions(type === "Sales Person" || type === "Multi Company");
+      return;
+    }
+    fetch("/api/kleverapi/account-sidebar", {
+      headers: { Authorization: `Bearer ${token}` },
+    }).then(r => r.json()).then(data => {
+      const type = data?.user_type || "Customer";
+      sessionStorage.setItem(ROLE_CACHE, type);
+      sessionStorage.setItem(TOKEN_CACHE, token);
+      setShouldHideCartActions(type === "Sales Person" || type === "Multi Company");
+    }).catch(() => {});
+  }, [(session as any)?.accessToken]);
 
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -305,6 +341,7 @@ export default function Navbar() {
       const sess = session as any;
       if (sess?.error === "MagentoTokenExpired" && !logoutCalledRef.current) {
         logoutCalledRef.current = true;
+        console.warn('[Navbar] MagentoTokenExpired detected — calling handleLogout');
         handleLogout();
       }
     }
@@ -366,24 +403,29 @@ export default function Navbar() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // Fetch dynamic menu from API (re-fetches when locale changes)
+  // Fetch dynamic menu from API (re-fetches when locale or user type changes).
+  // Sales Persons see a different menu (quick_order is_visible=true), so we use
+  // a separate cache key to prevent the guest menu from masking Quick Order.
   useEffect(() => {
     let cancelled = false;
 
-    const CACHE_KEY = `navmenu_v4_${locale}`;
+    const CACHE_KEY = `navmenu_v5_${isSalesPerson ? "sp_" : ""}${locale}`;
     const CACHE_TTL = 24 * 60 * 60 * 1000; // 24 h
 
     const toLinks = (raw: any[]): NavLink[] =>
-      raw.map((item: any) => ({
-        label: item.label,
-        href: item.href,
-        code: item.code,
-        magentoUrl: item.magentoUrl,
-        categoryId: item.categoryId ?? null,
-        children: item.children && item.children.length > 0 ? item.children : undefined,
-      }));
+      raw
+        .filter((item: any) => item?.code !== "quick_order" && item?.code !== "quick-order")
+        .map((item: any) => ({
+          label: item.label,
+          href: item.href,
+          code: item.code,
+          magentoUrl: item.magentoUrl,
+          categoryId: item.categoryId ?? null,
+          children: item.children && item.children.length > 0 ? item.children : undefined,
+        }));
 
     const applyLinks = (links: NavLink[]) => {
+      navLinksRef.current = links;
       setNavLinks(links);
       const firstCat = links.find((l) => l.categoryId);
       if (firstCat?.categoryId && typeof sessionStorage !== "undefined") {
@@ -403,12 +445,15 @@ export default function Navbar() {
     };
 
     const fetchMenu = async () => {
-      // Immediately show cached data so menu appears before API responds
+      // Immediately show cached data so menu appears before API responds.
+      // Only show loading skeleton when there are no links to show at all —
+      // on re-runs (isSalesPerson just became true) keep existing links visible
+      // while the sp_ cache is being populated.
       const localCached = readLocalCache();
       if (localCached) {
         applyLinks(localCached);
         setNavLoading(false);
-      } else {
+      } else if (navLinksRef.current.length === 0) {
         setNavLoading(true);
       }
 
@@ -458,7 +503,7 @@ export default function Navbar() {
 
     fetchMenu();
     return () => { cancelled = true; };
-  }, [locale]);
+  }, [locale, isSalesPerson]); // eslint-disable-line react-hooks/exhaustive-deps
 
 
   // Resolve the display label for a menu item in the following precedence:
@@ -568,7 +613,7 @@ export default function Navbar() {
 
 
             {/* Search Icon */}
-            {isAuthenticated && pathname !== "/login" && (
+            {isAuthenticated && !shouldHideCartActions && pathname !== "/login" && (
               <button
                 onClick={() => setIsSearchOpen(true)}
                 className="hidden lg:flex relative cursor-pointer hover:opacity-70 transition-opacity items-center justify-center -mb-1 focus:outline-none"
@@ -582,8 +627,7 @@ export default function Navbar() {
 
 
             {/* Notification Bell */}
-            {isAuthenticated && pathname !== "/login" && (
-
+            {isAuthenticated && !shouldHideCartActions && pathname !== "/login" && (
               <button
                 className="hidden lg:flex relative cursor-pointer items-center justify-center"
                 onClick={() => setIsNotificationOpen(true)}
@@ -599,7 +643,7 @@ export default function Navbar() {
             )}
 
             {/* Cart */}
-            {isAuthenticated && pathname !== "/login" && (
+            {isAuthenticated && !shouldHideCartActions && pathname !== "/login" && (
               <button
                 onClick={() => setIsCartOpen(true)}
                 className="relative text-black cursor-pointer pr-2 md:pr-0"
@@ -707,21 +751,24 @@ export default function Navbar() {
 
               {isAuthenticated && pathname !== "/login" && (
                 <>
-                  <button
-                    onClick={() => { setIsSearchOpen(true); setIsMenuOpen(false); }}
-                    className="py-2.5 text-body-sm font-bold text-gray-700 flex items-center gap-3 w-full text-start"
-                  >
-                    <Search size={16} /> {t("nav.searchProducts") || "Search Products"}
-                  </button>
+                  {!shouldHideCartActions && (
+                    <button
+                      onClick={() => { setIsSearchOpen(true); setIsMenuOpen(false); }}
+                      className="py-2.5 text-body-sm font-bold text-gray-700 flex items-center gap-3 w-full text-start"
+                    >
+                      <Search size={16} /> {t("nav.searchProducts") || "Search Products"}
+                    </button>
+                  )}
 
-                  <button
-                    onClick={() => { setIsNotificationOpen(true); setIsMenuOpen(false); }}
-                    className="py-2.5 text-body-sm font-bold text-gray-700 flex items-center gap-3 w-full"
-                  >
-                    <Bell size={16} /> {t("nav.notifications")} ({unreadCount})
-                  </button>
+                  {!shouldHideCartActions && (
+                    <button
+                      onClick={() => { setIsNotificationOpen(true); setIsMenuOpen(false); }}
+                      className="py-2.5 text-body-sm font-bold text-gray-700 flex items-center gap-3 w-full"
+                    >
+                      <Bell size={16} /> {t("nav.notifications")} ({unreadCount})
+                    </button>
+                  )}
                   <Link href={lp("/customer/account")} className="py-2.5 text-body-sm font-bold text-gray-700 flex items-center gap-3" onClick={() => setIsMenuOpen(false)}>
-
                     <UserCircle size={16} /> {t("nav.myAccount")}
                   </Link>
                 </>

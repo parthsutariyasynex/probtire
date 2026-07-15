@@ -87,6 +87,12 @@ export const CUSTOMER_QUERY = /* GraphQL */ `
       created_at
       default_billing
       default_shipping
+      custom_attributes {
+        code
+        ... on AttributeValue {
+          value
+        }
+      }
       addresses {
         id
         firstname
@@ -286,6 +292,29 @@ export const KLEVER_STATEMENT_TYPES_QUERY = /* GraphQL */ `
   }
 `;
 
+// Sales Person account list — the correct query for Sales Person role (utypid=3).
+// `kleverSubaccounts` returns the sub-accounts of a *parent* customer; for a Sales Person
+// the relevant query is `kleverSalespersonAccounts` which returns the company/customer
+// accounts assigned to that sales person.
+export const KLEVER_SALESPERSON_ACCOUNTS_QUERY = /* GraphQL */ `
+  query KleverSalespersonAccounts {
+    kleverSalespersonAccounts {
+      total_count
+      items {
+        customer_id
+        email
+        name
+        firstname
+        lastname
+        customer_code
+        company_name
+        is_active
+        login_type
+      }
+    }
+  }
+`;
+
 // NOTE: two fields removed from this query because they break against the live schema:
 //   - `permissions`: schema types it [Int] but the resolver returns string permission
 //     codes (e.g. "account_data_modification_permission") → "Expected a value of type Int".
@@ -479,6 +508,7 @@ export const KLEVER_CATEGORY_FILTER_OPTIONS_FROM_PRODUCTS_QUERY = /* GraphQL */ 
         record_count
         options {
           value
+          
           label
           count
         }
@@ -1249,6 +1279,92 @@ export const KLEVER_CATEGORY_PRODUCTS_ONLY_QUERY = /* GraphQL */ `
   query CategoryProductsOnly(${_CATPROD_ARGS_DECL}) {
     kleverCategoryProducts(${_CATPROD_ARGS_USE}) {
       ${_CATPROD_PRODUCT_FIELDS}
+    }
+  }
+`;
+
+// ─── Standard Magento products/categories queries ───────────────────────────
+// Used when kleverCategoryProducts resolver is not available on the backend.
+// Standard Magento `products` query — replaces the missing kleverCategoryProducts resolver.
+// Uses $filter (ProductAttributeFilterInput) so the route can pass { category_id: { eq: "5" } }.
+
+export const STANDARD_PRODUCTS_QUERY = /* GraphQL */ `
+  query CategoryProducts(
+    $filter: ProductAttributeFilterInput!
+    $pageSize: Int!
+    $currentPage: Int!
+  ) {
+    products(
+      filter: $filter
+      pageSize: $pageSize
+      currentPage: $currentPage
+    ) {
+      total_count
+      page_info {
+        current_page
+        page_size
+        total_pages
+      }
+      items {
+        id
+        sku
+        name
+        stock_status
+        only_x_left_in_stock
+        url_key
+        image {
+          url
+        }
+        small_image {
+          url
+        }
+        price_range {
+          minimum_price {
+            final_price {
+              value
+              currency
+            }
+          }
+        }
+      }
+    }
+  }
+`;
+
+export const STANDARD_FILTERS_QUERY = /* GraphQL */ `
+  query StandardFilters($categoryId: String!) {
+    products(
+      filter: { category_id: { eq: $categoryId } }
+      pageSize: 1
+    ) {
+      aggregations {
+        attribute_code label count
+        options { value label count }
+      }
+    }
+  }
+`;
+
+// Standard Magento aggregation query for tyre-size dropdowns (width / height / rim).
+// Replaces kleverTyreSizeWidth/Height/Rim resolvers which are not available on this backend.
+// Accepts optional width/height filters to cascade the dropdowns.
+export const STANDARD_TYRE_SIZE_AGGREGATION_QUERY = /* GraphQL */ `
+  query TyreSizeAggregation(
+    $width: FilterEqualTypeInput,
+    $height: FilterEqualTypeInput
+  ) {
+    products(
+      filter: {
+        width: $width,
+        height: $height
+      }
+      pageSize: 1
+    ) {
+      aggregations(filter: { category: { includeDirectChildrenOnly: false } }) {
+        attribute_code
+        label
+        options { value label count }
+      }
     }
   }
 `;

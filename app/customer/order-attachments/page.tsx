@@ -145,7 +145,7 @@ export default function OrderAttachmentsPage() {
         let href = raw;
         if (!/^https?:\/\//i.test(raw)) {
             // Relative path (e.g. "/i/m/file.png", "/api/file.pdf") → public order-upload media URL.
-            const origin = (process.env.NEXT_PUBLIC_MAGENTO_BASE_URL || "https://altalayi-demo.btire.com").replace(/\/$/, "");
+            const origin = (process.env.NEXT_PUBLIC_MAGENTO_BASE_URL || "https://altalayi-live.btire.com").replace(/\/$/, "");
             const path = raw.startsWith("/") ? raw : `/${raw}`;
             href = `${origin}/media/orderupload${path}`;
         }

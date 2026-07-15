@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getLocaleFromRequest } from "@/lib/api/magento-url";
 import { GENERATE_CUSTOMER_TOKEN_MUTATION } from "@/src/graphql/mutations";
 
-const MAGENTO_GRAPHQL = (process.env.NEXT_PUBLIC_MAGENTO_BASE_URL || "https://altalayi-demo.btire.com") + "/graphql";
+const MAGENTO_GRAPHQL = (process.env.NEXT_PUBLIC_MAGENTO_BASE_URL || "https://altalayi-live.btire.com") + "/graphql";
 
 // POST — email/password login (GraphQL: generateCustomerToken(email, password) { token }).
 // Replaces REST /login/email. The login page reads only the token (magentoData?.token), so

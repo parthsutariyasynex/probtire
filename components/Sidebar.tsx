@@ -244,9 +244,16 @@ const Sidebar = () => {
         );
     }
 
-    // Process and sort items based on API response
+    // Sales Person and Multi Company must not see Manage Accounts.
+    // Master Company and Sub Company see it regardless of Magento's is_visible flag.
+    const restrictedRole =
+        sidebarData.user_type === "Sales Person" || sidebarData.user_type === "Multi Company";
+
     const visibleItems = sidebarData.items
-        .filter(item => item.is_visible)
+        .filter(item => {
+            if (item.code === "manage_subaccounts") return !restrictedRole;
+            return item.is_visible;
+        })
         .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
 
     // Determine the active item by matching the current (locale-stripped) path against each

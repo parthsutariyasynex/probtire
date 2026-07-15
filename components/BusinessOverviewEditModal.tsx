@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { api } from "@/lib/api/api-client";
 import toast from "react-hot-toast";
+import { useTranslation } from "@/hooks/useTranslation";
 
 interface BusinessOverviewData {
     total_employees: string;
@@ -20,6 +21,7 @@ interface Props {
 }
 
 export default function BusinessOverviewEditModal({ isOpen, onClose, initialData, onSuccess }: Props) {
+    const { t } = useTranslation();
     const [formData, setFormData] = useState<BusinessOverviewData>({
         total_employees: "",
         trucks: "",
@@ -45,18 +47,18 @@ export default function BusinessOverviewEditModal({ isOpen, onClose, initialData
 
     const handleSave = async () => {
         setIsSaving(true);
-        const toastId = toast.loading("Updating business overview...");
+        const toastId = toast.loading(t("dashboard.updatingBusinessOverview"));
 
         try {
             // Note: Sending exactly the fields shown in the UI/Image
             await api.put("/kleverapi/business-overview", formData);
 
-            toast.success("Business overview updated successfully", { id: toastId });
+            toast.success(t("dashboard.businessOverviewUpdated"), { id: toastId });
             onSuccess();
             onClose();
         } catch (error: any) {
             console.error("Save Error:", error);
-            toast.error("Something went wrong", { id: toastId });
+            toast.error(t("common.failed"), { id: toastId });
         } finally {
             setIsSaving(false);
         }
@@ -71,7 +73,7 @@ export default function BusinessOverviewEditModal({ isOpen, onClose, initialData
                 {/* Header */}
                 <div className="bg-surface px-8 py-5 border-b border-gray-100 flex justify-between items-center">
                     <h2 className="text-subheading font-black text-black uppercase tracking-widest border-b-2 border-brand-yellow pb-1">
-                        Edit Business Overview
+                        {t("dashboard.editBusinessOverview")}
                     </h2>
                     <button
                         onClick={onClose}
@@ -87,7 +89,7 @@ export default function BusinessOverviewEditModal({ isOpen, onClose, initialData
                 <div className="p-8 space-y-6 max-h-[70vh] overflow-y-auto">
                     <div className="grid grid-cols-1 gap-6">
                         <div>
-                            <label className={labelClass}>Total Employee</label>
+                            <label className={labelClass}>{t("dashboard.totalEmployees")}</label>
                             <input
                                 type="text"
                                 className={inputClass}
@@ -98,7 +100,7 @@ export default function BusinessOverviewEditModal({ isOpen, onClose, initialData
                         </div>
 
                         <div>
-                            <label className={labelClass}>Total Trucks</label>
+                            <label className={labelClass}>{t("dashboard.totalTrucks")}</label>
                             <input
                                 type="text"
                                 className={inputClass}
@@ -109,7 +111,7 @@ export default function BusinessOverviewEditModal({ isOpen, onClose, initialData
                         </div>
 
                         <div>
-                            <label className={labelClass}>Annual Revenue</label>
+                            <label className={labelClass}>{t("dashboard.annualRevenue")}</label>
                             <input
                                 type="text"
                                 className={inputClass}
@@ -120,7 +122,7 @@ export default function BusinessOverviewEditModal({ isOpen, onClose, initialData
                         </div>
 
                         <div>
-                            <label className={labelClass}>Business Model</label>
+                            <label className={labelClass}>{t("dashboard.businessModel")}</label>
                             <input
                                 type="text"
                                 className={inputClass}
@@ -131,7 +133,7 @@ export default function BusinessOverviewEditModal({ isOpen, onClose, initialData
                         </div>
 
                         <div>
-                            <label className={labelClass}>Products/Services Offered</label>
+                            <label className={labelClass}>{t("dashboard.productsServicesOffered")}</label>
                             <input
                                 type="text"
                                 className={inputClass}
@@ -157,7 +159,7 @@ export default function BusinessOverviewEditModal({ isOpen, onClose, initialData
                         disabled={isSaving}
                         className="bg-brand-yellow hover:bg-black hover:text-white text-black text-body font-bold px-10 py-2.5 uppercase transition-all shadow-lg shadow-brand-yellow/10 tracking-widest disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                        {isSaving ? "Saving..." : "Save"}
+                        {isSaving ? t("common.loading") : t("common.save")}
                     </button>
                 </div>
             </div>

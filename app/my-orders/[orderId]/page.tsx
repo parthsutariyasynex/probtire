@@ -122,12 +122,12 @@ export default function OrderDetailsPage() {
     const handlePrintOrder = async () => {
         const token = (session as any)?.accessToken;
         if (!token || !orderId) {
-            toast.error("User session not found. Please log in again.");
+            toast.error(t("orders.sessionNotFound") || "User session not found. Please log in again.");
             return;
         }
 
         setIsPrinting(true);
-        const toastId = toast.loading("Preparing your order PDF...");
+        const toastId = toast.loading(t("orderDetails.preparingPdf"));
 
         try {
             const response = await fetch(`/api/kleverapi/order/${orderId}/pdf`, {
@@ -176,10 +176,10 @@ export default function OrderDetailsPage() {
             document.body.removeChild(link);
             window.URL.revokeObjectURL(url);
 
-            toast.success("Order PDF downloaded successfully!", { id: toastId });
+            toast.success(t("orderDetails.downloadSuccess"), { id: toastId });
         } catch (err: any) {
             console.error("Print Error:", err);
-            toast.error(err.message || "Something went wrong while printing", { id: toastId });
+            toast.error((typeof err === "string" ? err : err?.message) || t("orderDetails.downloadFailed"), { id: toastId });
         } finally {
             setIsPrinting(false);
         }
@@ -188,11 +188,11 @@ export default function OrderDetailsPage() {
     const handleReorder = async () => {
         const token = (session as any)?.accessToken;
         if (!token) {
-            toast.error("You must be logged in to reorder.");
+            toast.error(t("orders.mustLoggedIn"));
             return;
         }
 
-        const toastId = toast.loading("Adding items to cart...");
+        const toastId = toast.loading(t("quickOrder.addingToCart"));
         try {
             // reorderItems(orderNumber: String!) needs the order NUMBER (increment_id, e.g. "BT…"),
             // not the entity_id / base64 GraphQL id.
@@ -210,17 +210,17 @@ export default function OrderDetailsPage() {
             if (!res.ok) throw new Error(data.message || "Failed to reorder");
 
             await refetchCart();
-            toast.success("Items added to cart", { id: toastId });
+            toast.success(t("orders.addedToCart"), { id: toastId });
             router.push(lp("/checkout/cart"));
         } catch (err: any) {
-            toast.error(err.message || "Something went wrong", { id: toastId });
+            toast.error((typeof err === "string" ? err : err?.message) || t("common.failed"), { id: toastId });
         }
     };
 
     const handleOpenAttachment = async (attachment: any) => {
         const token = (session as any)?.accessToken;
         if (!token) {
-            toast.error("Unable to open attachment");
+            toast.error(t("orderAttachments.unableToOpen"));
             return;
         }
 
@@ -261,7 +261,7 @@ export default function OrderDetailsPage() {
             document.body.removeChild(link);
         } catch (err: any) {
             console.error("Attachment open error:", err);
-            toast.error(err.message || "Unable to open attachment");
+            toast.error((typeof err === "string" ? err : err?.message) || t("orderAttachments.unableToOpen"));
         } finally {
             setOpeningAttachmentId(null);
         }
@@ -723,7 +723,7 @@ export default function OrderDetailsPage() {
                         <p>{t("data.Saudi Arabia")}</p>
                         <p>{t("orderDetails.trn")}: </p>
                         <p>{t("orderDetails.phone")}: {shippingAddress?.telephone || "-"}</p>
-                        <p>{t("orderDetails.website")}: https://altalayi-demo.btire.com/</p>
+                        <p>{t("orderDetails.website")}: https://altalayi-live.btire.com/</p>
 
                     </div>
                     <div className="order-title-box">

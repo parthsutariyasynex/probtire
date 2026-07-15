@@ -67,17 +67,17 @@ export const CHANGE_CUSTOMER_PASSWORD_MUTATION = /* GraphQL */ `
 `;
 
 export const SEND_OTP_TO_CUSTOMER_MUTATION = /* GraphQL */ `
-  mutation SendOtpToCustomer($resend: Int!, $storeId: Int!, $mobile: String!, $eventType: String!) {
-    sendOtpToCustomer(resend: $resend, storeId: $storeId, mobile: $mobile, eventType: $eventType) {
-      message
+    mutation SendOtpToCustomer($resend: Int!, $storeId: Int!, $mobile: String!, $eventType: String!) {
+      sendOtpToCustomer(resend: $resend, storeId: $storeId, mobile: $mobile, eventType: $eventType) {
+        message
+      }
     }
-  }
 `;
 
 export const CREATE_CUSTOMER_TOKEN_WITH_OTP_MUTATION = /* GraphQL */ `
   mutation CreateCustomerTokenWithOtp($mobile: String!, $otp: String!, $websiteId: Int!) {
     createCustomerTokenWithOtp(mobile: $mobile, otp: $otp, websiteId: $websiteId) {
-      message
+      message 
       token
     }
   }
@@ -245,6 +245,15 @@ export const KLEVER_DELETE_SUBACCOUNT_MUTATION = /* GraphQL */ `
 // subaccounts manage page reads it from. Minimal customer fields (the impersonated session
 // re-fetches its own profile). Auth-changing → schema-validated only, NOT executed.
 // (Previously selected invalid CustomerAddress fields like `is_default_billing` — fixed.)
+// Login as a company account assigned to this Sales Person.
+export const KLEVER_LOGIN_AS_SALESPERSON_ACCOUNT_MUTATION = /* GraphQL */ `
+  mutation KleverLoginAsSalespersonAccount($customerId: Int!) {
+    kleverLoginAsSalespersonAccount(customerId: $customerId) {
+      token
+    }
+  }
+`;
+
 export const KLEVER_LOGIN_AS_SUBACCOUNT_MUTATION = /* GraphQL */ `
   mutation KleverLoginAsSubaccount($subaccountId: Int!) {
     kleverLoginAsSubaccount(subaccountId: $subaccountId) {
@@ -716,17 +725,26 @@ export const KLEVER_RESET_PASSWORD_BY_MOBILE_MUTATION = /* GraphQL */ `
   }
 `;
 
-// Place order — Klever custom, token-based (NO cart_id). Shipping address/method
-// must already be set on the quote via the prior checkout steps; this only takes
-// the payment method. Returns the order summary the success page reads.
+// Place order using standard Magento placeOrder mutation (kleverPlaceOrder does not exist in schema).
+// Returns orderV2 fields which are mapped to { order_id, order_increment_id, grand_total, currency_code, status } in the route.
 export const KLEVER_PLACE_ORDER_MUTATION = /* GraphQL */ `
-  mutation KleverPlaceOrder($paymentMethod: String!) {
-    kleverPlaceOrder(paymentMethod: $paymentMethod) {
-      order_id
-      order_increment_id
-      grand_total
-      currency_code
-      status
+  mutation KleverPlaceOrder($cartId: String!) {
+    placeOrder(input: { cart_id: $cartId }) {
+      errors {
+        message
+        code
+      }
+      orderV2 {
+        id
+        number
+        status
+        total {
+          grand_total {
+            value
+            currency
+          }
+        }
+      }
     }
   }
 `;

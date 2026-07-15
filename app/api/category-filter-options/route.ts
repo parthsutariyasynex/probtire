@@ -1,21 +1,15 @@
 import { NextRequest } from "next/server";
 import { getLocaleFromRequest } from "@/lib/api/magento-url";
 import { getRequestToken } from "@/lib/api/auth-helper";
-import { KLEVER_CATEGORY_FILTER_OPTIONS_FROM_PRODUCTS_QUERY } from "@/src/graphql/queries";
+// Commented out — kleverCategoryProducts resolver is not available on the current backend.
+// import { KLEVER_CATEGORY_FILTER_OPTIONS_FROM_PRODUCTS_QUERY } from "@/src/graphql/queries";
+import { STANDARD_FILTERS_QUERY } from "@/src/graphql/queries";
 
 // Layered-navigation filter options for a category, served via Magento GraphQL.
-// This is the filters-only counterpart to /api/category-products — fetching them
-// separately lets the products list and the filter sidebar load in parallel
-// instead of one slow combined call.
-//
-// Backed by kleverCategoryProducts(pageSize: 1){ filters } rather than
-// kleverCategoryFilterOptions: the latter omits the category-wide `offers` group
-// (which the sidebar shows) and is measurably slower. pageSize:1 keeps the product
-// payload negligible while the resolver returns the full category-wide filter set.
-// The query const lives in src/graphql/queries.ts.
+// Now uses standard Magento `products` query aggregations instead of the missing
+// kleverCategoryProducts resolver.
 
-// GraphQL filter `code` → the snake_case codes the frontend expects
-// (kept identical to the normalization in /api/category-products).
+// GraphQL aggregation `attribute_code` → the snake_case codes the frontend expects
 function normalizeCode(code: string): string {
     switch (code) {
         case "tyreSize": return "tyre_size";
@@ -25,14 +19,12 @@ function normalizeCode(code: string): string {
         case "newArrivals": return "new_arrivals";
         case "manufacturer": return "origin";
         case "mgs_brand": return "brand";
-        default: return code; // itemCode, brand, pattern, year, origin, types, oemMarking, offers
+        default: return code;
     }
 }
 
-// ── Short-lived response cache (the resolver is slow ~10s) ───────────────────
-// Keyed by locale + auth token + categoryId. Token is included because counts
-// can reflect customer-group visibility; never share entries across customers.
-const CACHE_TTL_MS = 2 * 60 * 1000; // 2 minutes
+// ── Short-lived response cache ───────────────────────────────────────────────
+const CACHE_TTL_MS = 2 * 60 * 1000;
 const responseCache = new Map<string, { body: string; expires: number }>();
 
 export async function GET(request: NextRequest) {
@@ -57,7 +49,7 @@ export async function GET(request: NextRequest) {
             });
         }
 
-        const domain = process.env.NEXT_PUBLIC_MAGENTO_BASE_URL || "https://altalayi-demo.btire.com";
+        const domain = process.env.NEXT_PUBLIC_MAGENTO_BASE_URL || "https://altalayi-live.btire.com";
         console.log("[category-filter-options] GraphQL categoryId:", categoryId, "locale:", locale);
 
         const res = await fetch(`${domain}/graphql`, {
@@ -68,8 +60,8 @@ export async function GET(request: NextRequest) {
                 ...(token && { Authorization: `Bearer ${token}` }),
             },
             body: JSON.stringify({
-                query: KLEVER_CATEGORY_FILTER_OPTIONS_FROM_PRODUCTS_QUERY,
-                variables: { categoryId: parseInt(categoryId, 10) },
+                query: STANDARD_FILTERS_QUERY,
+                variables: { categoryId: String(categoryId) },
             }),
             cache: "no-store",
         });
@@ -81,22 +73,67 @@ export async function GET(request: NextRequest) {
             return Response.json({ error: "Magento GraphQL error", details: json.errors }, { status: 502 });
         }
 
-        const result = json?.data?.kleverCategoryProducts;
-        if (!result) {
+        // Standard query returns data.products.aggregations (not data.kleverCategoryProducts.filters)
+        const aggregations = json?.data?.products?.aggregations;
+        if (!aggregations) {
             return Response.json(
                 { error: "Magento GraphQL error", message: "Empty filter-options response" },
                 { status: 502 }
             );
         }
 
-        // Normalize filter codes to what the frontend expects.
-        const filters = Array.isArray(result.filters)
-            ? result.filters.map((f: any) => ({ ...f, code: normalizeCode(f.code || f.attribute_code) }))
-            : [];
+        // ── Old filter logic (no exclusion, no ordering) ────────────────────
+        // Commented out — replaced with exclusion + ordering logic to match live site sidebar.
+        // const filters = aggregations
+        //     .filter((a: any) => !["category_id", "category_uid"].includes(a.attribute_code))
+        //     .map((a: any) => ({
+        //         code: normalizeCode(a.attribute_code),
+        //         label: a.label,
+        //         record_count: a.count,
+        //         options: (a.options || []).map((o: any) => ({
+        //             value: o.value,
+        //             label: o.label,
+        //             count: o.count,
+        //         })),
+        //     }));
+
+        // Aggregations to exclude from the sidebar:
+        // category_id/category_uid — internal Magento grouping
+        // parts_category — always single value, not useful
+        // width/height/rim — used by HorizontalFilter bar, not the sidebar
+        const EXCLUDE_CODES = new Set([
+            "category_id", "category_uid",
+            "parts_category", "width", "height", "rim",
+        ]);
+
+        // Sidebar order matching the live site
+        const SIDEBAR_ORDER: string[] = [
+            "item_code", "brand", "product_group", "tyre_size",
+            "pattern", "year", "origin", "runflat", "oem_marking",
+            "new_arrivals", "warranty_period",
+        ];
+
+        const mapped = aggregations
+            .filter((a: any) => !EXCLUDE_CODES.has(a.attribute_code))
+            .map((a: any) => ({
+                code: normalizeCode(a.attribute_code),
+                label: a.label,
+                record_count: a.count,
+                options: (a.options || []).map((o: any) => ({
+                    value: o.value,
+                    label: o.label,
+                    count: o.count,
+                })),
+            }));
+
+        const orderIndex = (code: string) => {
+            const i = SIDEBAR_ORDER.indexOf(code);
+            return i >= 0 ? i : SIDEBAR_ORDER.length;
+        };
+        const filters = mapped.sort((a: any, b: any) => orderIndex(a.code) - orderIndex(b.code));
 
         const responseBody = JSON.stringify({ filters });
 
-        // Store in cache + bound memory.
         responseCache.set(cacheKey, { body: responseBody, expires: now + CACHE_TTL_MS });
         if (responseCache.size > 200) {
             for (const [k, v] of responseCache) {

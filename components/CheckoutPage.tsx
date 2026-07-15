@@ -211,7 +211,7 @@ const CheckoutPageUI: React.FC = () => {
                     setAvailableTimeSlots(slots);
                 } catch (error) {
                     console.error("Failed to fetch time slots:", error);
-                    toast.error("Failed to fetch available time slots");
+                    toast.error(t("checkout.failedFetchTimeSlots"));
                 } finally {
                     setIsLoadingTimeSlots(false);
                 }
@@ -299,7 +299,7 @@ const CheckoutPageUI: React.FC = () => {
             localStorage.setItem("payment_commitment_file_names", JSON.stringify(next));
             return next;
         });
-        toast.success(files.length > 1 ? `${files.length} files selected` : "File selected successfully!");
+        toast.success(files.length > 1 ? t("checkout.filesSelected").replace("{0}", String(files.length)) : t("checkout.fileSelectedSuccess"));
     };
 
     const handlePaymentCommitmentChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -319,7 +319,7 @@ const CheckoutPageUI: React.FC = () => {
         if (paymentCommitmentRef.current) {
             paymentCommitmentRef.current.value = "";
         }
-        toast.success("File removed");
+        toast.success(t("checkout.fileRemoved"));
     };
 
     // Auto-select shipping method when they become available or when type changes
@@ -438,7 +438,7 @@ const CheckoutPageUI: React.FC = () => {
             setIsAddressSetOnBackend(true);
         } catch {
             setIsAddressSetOnBackend(false);
-            toast.error("Failed to update shipping address");
+            toast.error(t("checkout.failedUpdateShippingAddress"));
         }
     };
 
@@ -463,11 +463,11 @@ const CheckoutPageUI: React.FC = () => {
                     toast.success(t("checkout.saveBillingInfo"));
                 } catch (err) {
                     console.error("Address sync failed:", err);
-                    toast.error("Failed to sync shipping address to backend");
+                    toast.error(t("checkout.failedSyncShippingAddress"));
                     return;
                 }
             } else {
-                toast.error("Please select a shipping address or add a new one.");
+                toast.error(t("checkout.selectShippingAddressWarning"));
                 document.getElementById('step-1')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
                 return;
             }
@@ -485,9 +485,9 @@ const CheckoutPageUI: React.FC = () => {
                 } catch (err) {
                     console.error("Auto-repair shipping method failed:", err);
                 }
-                toast.success(`Selected shipping: ${method.title}`);
+                toast.success(t("checkout.selectedShipping").replace("{0}", method.title));
             } else {
-                toast.error("Please select a shipping method");
+                toast.error(t("checkout.selectShippingMethodWarning"));
                 document.getElementById('step-3')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
                 return;
             }
@@ -507,19 +507,19 @@ const CheckoutPageUI: React.FC = () => {
 
         if (shippingType === "pickup") {
             if (!selectedWarehouseId) {
-                toast.error("Please select a warehouse for pickup");
+                toast.error(t("checkout.selectWarehouseWarning"));
                 document.getElementById('step-pickup')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
                 return;
             }
             if (!pickupName || !pickupId || !pickupMobile || !pickupDate || !pickupTime) {
-                toast.error("Please fill all pickup details");
+                toast.error(t("checkout.fillPickupDetailsWarning"));
                 setIsPickupFormOpen(true);
                 return;
             }
         }
 
         if (uploadedPOs.length > 0 && !poNumber) {
-            toast.error("Please enter a PO Number as you have uploaded a file.");
+            toast.error(t("checkout.enterPoNumberWarning"));
             const element = document.getElementById('step-2');
             element?.scrollIntoView({ behavior: 'smooth' });
             return;
@@ -592,14 +592,20 @@ const CheckoutPageUI: React.FC = () => {
             };
             localStorage.setItem('last_order_summary', JSON.stringify(orderSummary));
 
-            // Navigate to the success page FIRST (using order_id directly), then clear the cart —
-            // so the redirect always wins the race with any cart-driven effect.
+            // Hide overlay and reset loading state BEFORE navigation so the success
+            // page never mounts while the overlay is still active.
+            setIsPlacingOrder(false);
+            hideLoading();
+
+            // Navigate to success, then clear cart in the background (fire-and-forget)
+            // so the redirect is never blocked by the clearCart request.
             router.push(lp(`/checkout/success?order_id=${encodeURIComponent(orderId)}`));
-            try { await clearCart(); } catch { /* cart will refresh on next visit */ }
+            clearCart().catch(() => { /* cart will refresh on next visit */ });
         } catch (error: any) {
             console.error("Place Order Error:", error);
-            toast.error(error.message || "Failed to place order. Please try again.");
+            toast.error((typeof error === "string" ? error : error?.message) || t("checkout.failedPlaceOrder"));
         } finally {
+            // Safety net for the error path — idempotent when already cleared above.
             setIsPlacingOrder(false);
             hideLoading();
         }
@@ -609,9 +615,9 @@ const CheckoutPageUI: React.FC = () => {
         if (!poNumber) return;
         try {
             await savePoNumber(poNumber);
-            toast.success("PO Number saved");
+            toast.success(t("checkout.poNumberSaved"));
         } catch (error: any) {
-            toast.error(error.message || "Failed to save PO number");
+            toast.error((typeof error === "string" ? error : error?.message) || t("checkout.failedSavePoNumber"));
         }
     };
 
@@ -621,7 +627,7 @@ const CheckoutPageUI: React.FC = () => {
             await saveOrderComment(comment);
             toast.success(t("common.success"));
         } catch (error: any) {
-            toast.error(error.message || "Failed to save order comment");
+            toast.error((typeof error === "string" ? error : error?.message) || t("checkout.failedSaveComment"));
         }
     };
 
@@ -638,11 +644,11 @@ const CheckoutPageUI: React.FC = () => {
     const validateFile = (file: File) => {
         const extension = file.name.substring(file.name.lastIndexOf(".")).toLowerCase();
         if (!ALLOWED_EXTENSIONS.includes(extension)) {
-            toast.error(`Invalid file type: ${file.name}. Allowed: ${ALLOWED_EXTENSIONS.join(", ")}`);
+            toast.error(t("checkout.invalidFileType").replace("{0}", file.name).replace("{1}", ALLOWED_EXTENSIONS.join(", ")));
             return false;
         }
         if (file.size > 5 * 1024 * 1024) {
-            toast.error(`File too large: ${file.name}. Max size 5MB.`);
+            toast.error(t("checkout.fileTooLarge").replace("{0}", file.name));
             return false;
         }
         return true;
@@ -666,7 +672,7 @@ const CheckoutPageUI: React.FC = () => {
             for (const file of validFiles) {
                 // Check for duplicates in UI
                 if (uploadedPOs.some(p => p.fileName === file.name)) {
-                    toast.error(`File already uploaded: ${file.name}`);
+                    toast.error(t("checkout.fileAlreadyUploaded").replace("{0}", file.name));
                     continue;
                 }
 
@@ -679,10 +685,10 @@ const CheckoutPageUI: React.FC = () => {
                 // remove can target it). Don't refetch the server list here — it may not reflect
                 // the new file yet and would make it flicker/vanish.
                 setUploadedPOs(prev => prev.some(p => p.fileName === file.name) ? prev : [...prev, { fileName: file.name }]);
-                toast.success(`Uploaded: ${file.name}`);
+                toast.success(t("checkout.uploadedSuccess").replace("{0}", file.name));
             }
         } catch (error: any) {
-            toast.error(error.message || "Failed to upload file(s)");
+            toast.error((typeof error === "string" ? error : error?.message) || t("checkout.failedUploadFiles"));
         } finally {
             setIsUploading(false);
             if (poUploadRef.current) poUploadRef.current.value = "";
@@ -715,9 +721,9 @@ const CheckoutPageUI: React.FC = () => {
         setIsUploading(true);
         try {
             await deletePoFile(fileName);
-            toast.success("File removed successfully");
+            toast.success(t("checkout.fileRemovedSuccess"));
         } catch (error: any) {
-            toast.error(error.message || "Failed to remove file");
+            toast.error((typeof error === "string" ? error : error?.message) || t("checkout.failedRemoveFile"));
         } finally {
             setIsUploading(false);
         }
@@ -731,7 +737,7 @@ const CheckoutPageUI: React.FC = () => {
         try {
             await setShippingMethod(method.carrierCode, method.methodCode);
         } catch (error: any) {
-            toast.error(error.message || "Failed to update shipping method");
+            toast.error((typeof error === "string" ? error : error?.message) || t("checkout.failedUpdateShippingMethod"));
         }
     };
     if (isCartLoading || status === "loading") {
@@ -1573,7 +1579,7 @@ const CheckoutPageUI: React.FC = () => {
                                         setSelectedWarehouseId(tempSelectedWarehouse.id);
                                         setIsWarehouseModalOpen(false);
                                         setIsPickupFormOpen(true);
-                                        toast.success(`Selected: ${tempSelectedWarehouse.name}`);
+                                        toast.success(t("checkout.selectedWarehouse").replace("{0}", tempSelectedWarehouse.name));
                                     }
                                 }}
                                 disabled={!tempSelectedWarehouse}

@@ -282,7 +282,7 @@ const MultiShippingShippingPage: React.FC = () => {
                                 router.push(lp('/multi-location-delivery/billing'));
                             } catch (err: any) {
                                 console.error("Error saving shipping methods:", err);
-                                toast.error(err.message || "Failed to save shipping methods.");
+                                toast.error(err.message || t("multi.shippingSaveFailed"));
                             }
                         }}
                         disabled={isLoading || isCheckoutLoading}

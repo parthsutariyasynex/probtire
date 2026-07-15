@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { KLEVER_PRINT_ORDER_QUERY } from "@/src/graphql/queries";
 
-const MAGENTO_GRAPHQL = (process.env.NEXT_PUBLIC_MAGENTO_BASE_URL || "https://altalayi-demo.btire.com") + "/graphql";
+const MAGENTO_GRAPHQL = (process.env.NEXT_PUBLIC_MAGENTO_BASE_URL || "https://altalayi-live.btire.com") + "/graphql";
 
 // Map a kleverPrintOrder flat address → the REST order-address shape the detail UI reads
 // (firstname/lastname/company/street[]/city/region/postcode/country_id/telephone). The print

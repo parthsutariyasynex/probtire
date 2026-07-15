@@ -175,7 +175,7 @@ const MultiLocationDeliveryPage: React.FC = () => {
             router.push(lp('/multi-location-delivery/shipping'));
         } catch (err: any) {
             console.error("Assignment error:", err);
-            toast.error(err.message || "Failed to assign addresses. Please try again.");
+            toast.error(err.message || t("multi.assignFailed"));
         } finally {
             setIsAssigning(false);
         }

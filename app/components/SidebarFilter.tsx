@@ -234,9 +234,14 @@ function SidebarFilter({
         });
     }, []);
 
-    // Matches logic we had before for relevant codes
+    // Old RELEVANT_CODES — had mismatched codes (itemcode, types, oemmarking) that
+    // didn't match the normalized codes from the API (item_code, runflat, oem_marking).
+    // const RELEVANT_CODES = useMemo(() => new Set([
+    //     "brand", "tyre_size", "pattern", "year", "origin", "manufacturer", "manufacturer_label", "offers", "new_arrivals", "product_group", "itemcode", "types", "oemmarking", "warranty_period"
+    // ]), []);
     const RELEVANT_CODES = useMemo(() => new Set([
-        "brand", "tyre_size", "pattern", "year", "origin", "manufacturer", "manufacturer_label", "offers", "new_arrivals", "product_group", "itemcode", "types", "oemmarking", "warranty_period"
+        "item_code", "brand", "product_group", "tyre_size", "pattern", "year",
+        "origin", "runflat", "oem_marking", "new_arrivals", "warranty_period"
     ]), []);
 
     const visibleFilterGroups = useMemo(() => {

@@ -1,26 +1,49 @@
-import { getServerSession } from "next-auth";
 import { getToken } from "next-auth/jwt";
-import { authOptions } from "@/lib/auth/auth-options";
 import { NextRequest } from "next/server";
 import { getLocaleFromRequest } from "@/lib/api/magento-url";
-import {
-    KLEVER_CATEGORY_PRODUCTS_WITH_FILTERS_QUERY,
-    KLEVER_CATEGORY_PRODUCTS_ONLY_QUERY,
-} from "@/src/graphql/queries";
+import { KLEVER_CATEGORY_PRODUCTS_ONLY_QUERY } from "@/src/graphql/queries";
 
-// GraphQL queries backing this route (kleverCategoryProducts) live in queries.ts:
-//  - KLEVER_CATEGORY_PRODUCTS_WITH_FILTERS_QUERY: products + layered-nav filters
-//  - KLEVER_CATEGORY_PRODUCTS_ONLY_QUERY: products only (faster; filters fetched separately)
+// Maps frontend filter param codes → kleverCategoryProducts named arg keys.
+// Multi-value selections (brand[0]=X&brand[1]=Y) are joined as comma-separated strings.
+const FILTER_CODE_TO_KLEVER: Record<string, string> = {
+    brand: "brand",
+    tyre_size: "color",
+    origin: "manufacturer",
+    product_group: "productGroup",
+    warranty_period: "warrantyPeriod",
+    new_arrivals: "newArrivals",
+    itemcode: "itemCode",
+    types: "types",
+    oemmarking: "oemMarking",
+    year: "year",
+    pattern: "pattern",
+};
+
+// Parse filter[0], filter[1] style params → kleverCategoryProducts named args.
+function parseFiltersForKlever(searchParams: URLSearchParams): Record<string, string> {
+    const SKIP_PARAMS = new Set(["categoryId", "page", "pageSize", "lang", "productsOnly", "sortBy", "sortOrder"]);
+    const CLIENT_SIDE_FILTERS = new Set(["width", "height", "rim", "offers"]);
+    const collected: Record<string, string[]> = {};
+
+    for (const [key, value] of searchParams.entries()) {
+        const match = key.match(/^([a-zA-Z_]+)\[\d+\]$/);
+        if (!match) continue;
+        const code = match[1];
+        if (SKIP_PARAMS.has(code) || CLIENT_SIDE_FILTERS.has(code)) continue;
+        if (!collected[code]) collected[code] = [];
+        collected[code].push(value);
+    }
+
+    const vars: Record<string, string> = {};
+    for (const [code, values] of Object.entries(collected)) {
+        const kleverKey = FILTER_CODE_TO_KLEVER[code] || code;
+        vars[kleverKey] = values.join(",");
+    }
+    return vars;
+}
 
 // ── Short-lived response cache ───────────────────────────────────────────────
-// The backend kleverCategoryProducts resolver is slow (~10-20s) because it scans
-// the whole category collection to build layered-nav counts. We cache the final,
-// normalized response body for a short window so repeat navigations are instant.
-//
-// IMPORTANT: the response includes customer-specific pricing (customer_price /
-// customer_group_price), so the key includes the auth token — entries are never
-// shared across customers. Guests share a "guest" bucket.
-const CACHE_TTL_MS = 2 * 60 * 1000; // 2 minutes
+const CACHE_TTL_MS = 2 * 60 * 1000;
 const responseCache = new Map<string, { body: string; expires: number }>();
 
 export async function GET(request: NextRequest) {
@@ -28,14 +51,12 @@ export async function GET(request: NextRequest) {
         // Step 1: Get token - try multiple methods
         let token: string | null = null;
 
-        // Method 1: Authorization header from client
         const authHeader = request.headers.get("authorization");
         if (authHeader && authHeader.startsWith("Bearer ")) {
             token = authHeader.substring(7).replace(/['"]/g, "").trim();
             console.log("[category-products] Token from Auth header:", token ? "found" : "missing");
         }
 
-        // Method 2: NextAuth JWT from cookie (most reliable on Vercel)
         if (!token) {
             try {
                 const jwtToken = await getToken({
@@ -49,7 +70,6 @@ export async function GET(request: NextRequest) {
             }
         }
 
-        // Method 4: auth-token cookie directly
         if (!token) {
             token = request.cookies.get("auth-token")?.value || null;
             if (token) {
@@ -58,13 +78,10 @@ export async function GET(request: NextRequest) {
             }
         }
 
-        // Final check: if token is invalid string, clear it
         if (token === "null" || token === "undefined" || !token) {
             token = null;
         }
 
-        // Note: For some anonymous endpoints, we might want to continue even without a token.
-        // But here we'll keep the check if the app requires login to see products.
         if (!token) {
             console.warn("[category-products] No token found. Proceeding as guest if allowed by Magento.");
         }
@@ -77,90 +94,23 @@ export async function GET(request: NextRequest) {
         }
         const page = searchParams.get("page") || "1";
         const pageSize = searchParams.get("pageSize") || "20";
-        // When true, skip the (slow) layered-nav filter computation — filters are
-        // fetched separately via /api/category-filter-options. Roughly halves latency.
-        const productsOnly = searchParams.get("productsOnly") === "1";
 
-        // Group parameters: Magento's layered navigation uses key[0]=v1. 
-        // We want to group these into key=v1,v2 for the category-products JSON API.
-        const groupedParams: Record<string, string[]> = {};
-        searchParams.forEach((value, key) => {
-            const baseKey = key.includes("[") ? key.split("[")[0] : key;
-            if (!groupedParams[baseKey]) groupedParams[baseKey] = [];
-            if (!groupedParams[baseKey].includes(value)) groupedParams[baseKey].push(value);
-        });
-
-        // Step 3: Map incoming layered-nav params to kleverCategoryProducts GraphQL args.
-        const variables: Record<string, any> = {
-            categoryId: parseInt(categoryId, 10),
-            currentPage: parseInt(page, 10) || 1,
-            pageSize: parseInt(pageSize, 10) || 20,
-        };
-
-        const sortByParam = searchParams.get("sortBy");
-        if (sortByParam) variables.sortBy = sortByParam;
-        const sortOrderParam = searchParams.get("sortOrder");
-        if (sortOrderParam) variables.sortOrder = sortOrderParam;
-
-        // Frontend filter key → GraphQL argument name (the resolver mirrors the
-        // old REST attributes: tyre size = `color`, etc.).
-        const argMap: Record<string, string> = {
-            brand: "brand",
-            origin: "origin",
-            manufacturer: "manufacturer",
-            tyre_size: "color",
-            product_group: "productGroup",
-            warranty_period: "warrantyPeriod",
-            new_arrivals: "newArrivals",
-            newArrivals: "newArrivals",
-            item_code: "itemCode",
-            itemCode: "itemCode",
-            oem_marking: "oemMarking",
-            oemMarking: "oemMarking",
-            pattern: "pattern",
-            year: "year",
-            types: "types",
-            offers: "offers",
-            width: "width",
-            height: "height",
-            rim: "rim",
-            runflat: "runflat",
-            parts_category: "partsCategory",
-            partsCategory: "partsCategory",
-            searchQuery: "searchQuery",
-            minPrice: "minPrice",
-            maxPrice: "maxPrice",
-        };
-        const floatArgs = new Set(["minPrice", "maxPrice"]);
-        // Params consumed elsewhere / not resolver filter args.
-        const reservedKeys = new Set(["categoryId", "page", "pageSize", "sortBy", "sortOrder", "is_ajax", "lang"]);
-
-        Object.entries(groupedParams).forEach(([key, values]) => {
-            if (reservedKeys.has(key)) return;
-            const arg = argMap[key];
-            if (!arg) return; // ignore params the resolver doesn't accept
-
-            const combined = values
-                .flatMap((v) => v.split(",").map((s) => s.trim()).filter(Boolean))
-                .filter((v, i, arr) => arr.indexOf(v) === i)
-                .join(",");
-
-            if (combined) {
-                variables[arg] = floatArgs.has(arg) ? parseFloat(combined) : combined;
-            }
-        });
-
-        // Debug: log what locale the API route receives
-        const xLocaleHeader = request.headers.get("x-locale");
-        const localeCookie = request.cookies.get("NEXT_LOCALE")?.value;
-        const referer = request.headers.get("referer") || "";
-        const langParam = new URL(request.url).searchParams.get("lang");
         const resolvedLocale = getLocaleFromRequest(request);
-        console.log("[category-products] LOCALE DEBUG: lang=" + langParam + " header=" + xLocaleHeader + " cookie=" + localeCookie + " resolved=" + resolvedLocale + " referer=" + referer);
+        console.log("[category-products] LOCALE DEBUG: resolved=" + resolvedLocale);
+
+        // Parse sidebar filter params (brand[0]=X, year[0]=Y, etc.) → Klever named args
+        const kleverFilters = parseFiltersForKlever(searchParams);
+        const filterKey = JSON.stringify(kleverFilters);
+
+        // Map sortBy UI param → Klever sortBy/sortOrder args
+        const sortByParam = searchParams.get("sortBy");
+        let kleverSort: Record<string, string> = {};
+        if (sortByParam === "price-asc") kleverSort = { sortBy: "price", sortOrder: "ASC" };
+        else if (sortByParam === "price-desc") kleverSort = { sortBy: "price", sortOrder: "DESC" };
 
         // ── Cache lookup ─────────────────────────────────────────────────
         const now = Date.now();
-        const cacheKey = `${resolvedLocale}|${token || "guest"}|${productsOnly ? "po" : "full"}|${JSON.stringify(variables)}`;
+        const cacheKey = `${resolvedLocale}|${token || "guest"}|${categoryId}|${page}|${pageSize}|${filterKey}|${sortByParam || ""}`;
         const cached = responseCache.get(cacheKey);
         if (cached && cached.expires > now) {
             console.log("[category-products] cache HIT", cacheKey);
@@ -173,26 +123,33 @@ export async function GET(request: NextRequest) {
             });
         }
 
-        // Fetch products via Magento GraphQL (kleverCategoryProducts) instead of REST.
-        const domain = process.env.NEXT_PUBLIC_MAGENTO_BASE_URL || "https://altalayi-demo.btire.com";
+        const domain = process.env.NEXT_PUBLIC_MAGENTO_BASE_URL || "https://altalayi-live.btire.com";
+
+        const variables: Record<string, any> = {
+            categoryId: parseInt(categoryId, 10),
+            currentPage: parseInt(page, 10) || 1,
+            pageSize: parseInt(pageSize, 10) || 20,
+            ...kleverFilters,
+            ...kleverSort,
+        };
+
         console.log("[category-products] GraphQL variables:", JSON.stringify(variables));
 
         const res = await fetch(`${domain}/graphql`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
-                // Select store view for locale (mirrors the old /rest/{locale}/ path).
                 Store: resolvedLocale,
                 ...(token && { Authorization: `Bearer ${token}` }),
             },
-            body: JSON.stringify({ query: productsOnly ? KLEVER_CATEGORY_PRODUCTS_ONLY_QUERY : KLEVER_CATEGORY_PRODUCTS_WITH_FILTERS_QUERY, variables }),
+            body: JSON.stringify({ query: KLEVER_CATEGORY_PRODUCTS_ONLY_QUERY, variables }),
             cache: "no-store",
         });
 
         const json = await res.json();
 
         if (Array.isArray(json?.errors) && json.errors.length > 0) {
-            console.error("kleverCategoryProducts error:", JSON.stringify(json.errors).slice(0, 500));
+            console.error("category-products error:", JSON.stringify(json.errors).slice(0, 500));
             return Response.json(
                 { error: "Magento GraphQL error", details: json.errors },
                 { status: 502 }
@@ -202,105 +159,28 @@ export async function GET(request: NextRequest) {
         const result = json?.data?.kleverCategoryProducts;
         if (!result) {
             return Response.json(
-                { error: "Magento GraphQL error", message: "Empty kleverCategoryProducts response" },
+                { error: "Magento GraphQL error", message: "Empty products response" },
                 { status: 502 }
             );
         }
 
-        // Shape into the structure the rest of this route (and the frontend) expects.
-        const data: any = {
-            products: Array.isArray(result.products) ? result.products : [],
-            filters: Array.isArray(result.filters) ? result.filters : [],
-            total_count: result.total_count,
-            page_size: result.page_size,
-            current_page: result.current_page,
-            total_pages: result.total_pages,
-        };
+        // kleverCategoryProducts already returns the full product shape.
+        // Add stock_status (derived from stock_label) for components that read it.
+        const products = (result.products || []).map((p: any) => ({
+            ...p,
+            stock_status: p.stock_label || (p.is_in_stock ? "Available" : "Not Available"),
+        }));
 
-        // ── Normalize Filter Keys ── (skipped in products-only mode)
-        if (!productsOnly && Array.isArray(data.filters)) {
-            data.filters = data.filters.map((f: any) => {
-                let code = f.code || f.attribute_code;
-
-                // Map backend keys to what the frontend expects
-                if (code === "color") code = "tyre_size";
-                if (code === "manufacturer") code = "origin";
-                if (code === "mgs_brand") code = "brand";
-                if (code === "productGroup") code = "product_group";
-                if (code === "warrantyPeriod") code = "warranty_period";
-                if (code === "newArrivals") code = "new_arrivals";
-
-                return { ...f, code };
-            });
-        }
-
-        // ── Dynamic Offers Filter Injection ── (skipped in products-only mode;
-        // the products page derives the offers group client-side instead)
-        const products = Array.isArray(data.products) ? data.products : (Array.isArray(data.items) ? data.items : []);
-
-        if (!productsOnly && products.length > 0) {
-            // Collect unique offers from the products array
-            const offerValues = products
-                .map((p: any) => p.offer)
-                .filter((v: any): v is string => typeof v === 'string' && v.trim().length > 0);
-
-            const uniqueOffers: string[] = Array.from(new Set(offerValues));
-
-            if (uniqueOffers.length > 0) {
-                // Count products per offer for the filter counts
-                const offerCounts: Record<string, number> = {};
-                offerValues.forEach((v: string) => {
-                    offerCounts[v] = (offerCounts[v] || 0) + 1;
-                });
-
-                const locale = getLocaleFromRequest(request);
-                // Create the synthetic filter group
-                const offersFilter = {
-                    code: "offers",
-                    label: locale === "ar" ? "العروض والترقيات" : "Promotions and Offers",
-                    record_count: uniqueOffers.length,
-                    options: uniqueOffers.map((offer: string) => ({
-                        value: offer,
-                        label: offer,
-                        count: offerCounts[offer]
-                    }))
-                };
-
-                // Ensure data.filters exists
-                if (!Array.isArray(data.filters)) {
-                    data.filters = [];
-                }
-
-                // Check if already exists to avoid duplicates
-                const hasOffers = data.filters.some((f: any) => f.code === "offers" || f.code === "promotions_and_offers");
-
-                if (!hasOffers) {
-                    // Find index of itemCode to insert after it, or push to start
-                    const itemCodeIndex = data.filters.findIndex((f: any) => f.code === "itemCode" || f.code === "item_code");
-                    if (itemCodeIndex !== -1) {
-                        data.filters.splice(itemCodeIndex + 1, 0, offersFilter);
-                    } else {
-                        data.filters.unshift(offersFilter);
-                    }
-                }
-            }
-        }
-
-        // Extract total count and other fields from the original response
-        const totalCount = typeof data.total_count === "number" ? data.total_count : products.length;
-        const finalFilters = Array.isArray(data.filters) ? data.filters : [];
-
-        // Return the clean, normalized structure requested.
         const responseBody = JSON.stringify({
-            ...data,
-            products: products,
-            total_count: totalCount,
-            filters: finalFilters
+            products,
+            filters: [],
+            total_count: result.total_count || 0,
+            page_size: result.page_size || parseInt(pageSize, 10),
+            current_page: result.current_page || 1,
+            total_pages: result.total_pages || 1,
         });
 
-        // Store in the short-lived cache so repeat navigations skip the slow backend.
         responseCache.set(cacheKey, { body: responseBody, expires: now + CACHE_TTL_MS });
-        // Bound memory: sweep expired entries when the map grows.
         if (responseCache.size > 200) {
             for (const [k, v] of responseCache) {
                 if (v.expires <= now) responseCache.delete(k);

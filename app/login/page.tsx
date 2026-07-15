@@ -11,7 +11,7 @@ import { sendOtp } from "@/store/actions/authActions";
 import { RootState } from "@/store/store";
 import { useTranslation } from "@/hooks/useTranslation";
 import { useLocalePath } from "@/hooks/useLocalePath";
-import { LoginSkeleton } from "@/components/skeletons";
+import { LoginSkeleton, ProductListingSkeleton } from "@/components/skeletons";
 
 const COUNTRY_CODES = [
   { code: "+966", country: "Saudi Arabia", arCountry: "المملكة العربية السعودية", iso: "sa", flagClass: "iti__flag iti__sa" },
@@ -19,42 +19,31 @@ const COUNTRY_CODES = [
   { code: "+971", country: "United Arab Emirates", arCountry: "الإمارات العربية المتحدة", iso: "ae", flagClass: "iti__flag iti__ae" },
 ];
 
-// Resolve the first Magento category URL from the menu API so login redirects
-// land on a SEO URL like /en/all-tyres/car-tyres.html instead of /en/products.
-// No hardcoded paths — falls back to /{locale} root if nothing resolves.
-async function resolveDefaultLandingUrl(locale: string): Promise<string> {
-  try {
-    const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
-    const res = await fetch("/api/kleverapi/menu", {
-      headers: {
-        "Content-Type": "application/json",
-        "x-locale": locale,
-        ...(token ? { "Authorization": `Bearer ${token}` } : {}),
-      },
-    });
-    if (res.ok) {
-      const items = await res.json();
-      if (Array.isArray(items)) {
-        for (const item of items) {
-          const href = item?.href || "";
-          if (typeof href === "string" && href.endsWith(".html")) {
-            return href;
-          }
-        }
-      }
-    }
-  } catch { /* fall through */ }
-  // Fallback when the menu can't be resolved (e.g. WAF-blocked → empty): go to products,
-  // NOT the bare `/${locale}` root (the middleware bounces that back to /login).
-  return `/${locale}/products`;
-}
+// function safeRedirectUrl(url: string | null | undefined, locale: string): string {
+//   if (!url || url.includes("/login") || url === `/${locale}` || url === `/${locale}/`) {
+//     return `/${locale}/products`;
+//   }
+//   return url;
+// }
 
-// Never redirect to /login (or the bare locale root, which middleware sends to /login).
-// Anything unsafe falls back to the products page so a successful login always lands somewhere.
-function safeRedirectUrl(url: string | null | undefined, locale: string): string {
-  if (!url || url.includes("/login") || url === `/${locale}` || url === `/${locale}/`) {
-    return `/${locale}/products`;
+
+// Validate callbackUrl after login. Falls back to /{locale}/ (root) which
+// middleware redirects to the first Magento category page (e.g. /en/all-tyres/car-tyres.html).
+// Previously hardcoded to /en/products — that bypassed the category landing entirely.
+function safeRedirectUrl(
+  url: string | null | undefined,
+  locale: string
+): string {
+  const fallback = `/${locale}/`;
+
+  if (!url || url.trim() === "") {
+    return fallback;
   }
+
+  if (url.includes("/login") || url === `/${locale}` || url === `/${locale}/`) {
+    return fallback;
+  }
+
   return url;
 }
 
@@ -72,6 +61,33 @@ function LoginPageContent() {
   const { t } = useTranslation();
   const lp = useLocalePath();
   const [mode, setMode] = useState<"password" | "otp">("password");
+  const [redirecting, setRedirecting] = useState(false);
+
+  const locale =
+    typeof window !== "undefined" &&
+      window.location.pathname.startsWith("/ar")
+      ? "ar"
+      : "en";
+
+  const redirectAfterLogin = () => {
+    const callbackParam = searchParams.get("callbackUrl");
+    const finalUrl = safeRedirectUrl(callbackParam, locale);
+    console.log("[TEMP DEBUG] Final redirect URL:", finalUrl);
+    setRedirecting(true);
+    // router.replace caused a login loop when the fallback is /${locale}/ (root).
+    // Middleware checks auth server-side on root, but during a soft navigation the
+    // session cookie isn't reliably sent yet → checkAuth() returns false → redirects
+    // back to /login. A full-page navigation guarantees cookies are always included.
+    // router.replace(finalUrl);
+    window.location.href = finalUrl;
+  };
+
+  if (typeof window !== "undefined") {
+    console.log("========== LOGIN PAGE ==========");
+    console.log("window.location.href =", window.location.href);
+    console.log("window.location.search =", window.location.search);
+    console.log("callbackUrl =", searchParams.get("callbackUrl"));
+  }
 
   const { data: session, status } = useSession();
   const dispatch = useAppDispatch();
@@ -85,28 +101,16 @@ function LoginPageContent() {
     if (status === "loading") return;
     if (status === "authenticated") {
       const sess = session as any;
-      // Only sign out on an EXPLICIT expired-token signal. Do NOT sign out merely because
-      // accessToken is momentarily absent — right after signIn() the session briefly reports
-      // status="authenticated" before accessToken is populated, and signing out there logged
-      // the user straight back out. (The jwt callback sets error + nulls accessToken together,
-      // so the error flag alone reliably detects a real expired session.)
       if (sess?.error === "MagentoTokenExpired") {
+        console.warn('[LoginPage] MagentoTokenExpired detected — calling signOut');
         signOut({ redirect: false });
         return;
       }
-      // Redirect to the destination exactly once (soft client nav, not a full reload).
       if (loginRedirectedRef.current) return;
       loginRedirectedRef.current = true;
-      (async () => {
-        const locale = window.location.pathname.startsWith("/ar") ? "ar" : "en";
-        const callback = searchParams.get("callbackUrl");
-        const landing = await resolveDefaultLandingUrl(locale);
-        const finalUrl = safeRedirectUrl(callback || landing, locale);
-        console.log("[login:session-effect] callbackUrl:", callback, "| landing:", landing, "| final redirect:", finalUrl);
-        router.replace(finalUrl);
-      })();
+      redirectAfterLogin();
     }
-  }, [status, session, lp, searchParams, router]);
+  }, [status, session, searchParams, router]);
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -144,7 +148,7 @@ function LoginPageContent() {
     e.preventDefault();
     setErrors({});
     if (!mobileNumber) {
-      setErrors({ mobile: "Mobile number is required" });
+      setErrors({ mobile: t("login.mobileRequired") });
       return;
     }
     dispatch(sendOtp(mobileNumber, countryCode, (err, data) => {
@@ -152,7 +156,7 @@ function LoginPageContent() {
         toast.success(t("login.otpSent"));
         setOtpSent(true);
       } else {
-        toast.error(err || "Failed to send OTP");
+        toast.error(err || t("login.failedSendOtp"));
       }
     }));
   };
@@ -165,58 +169,31 @@ function LoginPageContent() {
 
     if (mode === "password") {
       try {
-        const magentoRes = await fetch("/api/kleverapi/login", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ username: email, password }),
-        });
-        const magentoData = await magentoRes.json();
-
-        const magentoToken = typeof magentoData === "string"
-          ? magentoData.replace(/"/g, "").trim()
-          : magentoData?.token || magentoData;
-
-        if (magentoRes.ok && magentoToken) {
-          const cleanToken = String(magentoToken).replace(/"/g, "").trim();
-          localStorage.setItem("token", cleanToken);
-        }
-
         const res = await signIn("credentials", {
           email,
           password,
-          locale: window.location.pathname.startsWith('/ar') ? 'ar' : 'en',
+          locale,
           redirect: false,
         });
 
         if (res?.ok) {
-          // signIn(redirect:false) resolves `ok` only after the session cookie is set, and
-          // the full-page redirect below reloads the session fresh — so we just confirm the
-          // token with a short, bounded check (≤3 reads) instead of the old 15× poll that
-          // hammered /api/auth/session on every login.
-          let sess: any = await getSession();
-          for (let i = 0; i < 2 && !sess?.accessToken; i++) {
-            await new Promise(r => setTimeout(r, 150));
-            sess = await getSession();
-          }
+          const sess: any = await getSession();
           if (sess?.accessToken) localStorage.setItem("token", sess.accessToken);
           toast.success(t("login.loginSuccess"));
-          const locale = window.location.pathname.startsWith('/ar') ? 'ar' : 'en';
-          const callbackParam = searchParams.get("callbackUrl");
-          const landing = await resolveDefaultLandingUrl(locale);
-          const finalUrl = safeRedirectUrl(callbackParam || landing, locale);
-          console.log("[login] signIn result:", res);
-          console.log("[login] session token:", sess?.accessToken ? "present" : "missing", "| status:", status);
-          console.log("[login] callbackUrl param:", callbackParam, "| resolved landing:", landing, "| final redirect:", finalUrl);
-          router.replace(finalUrl);
+          redirectAfterLogin();
+          // Don't setLoading(false) — page is navigating away; the loading
+          // overlay covers the UI until the browser unloads this page.
         } else {
           localStorage.removeItem("token");
           toast.error(t("login.loginFailed"));
+          setLoading(false);
         }
       } catch {
         toast.error(t("login.loginFailed"));
-      } finally {
         setLoading(false);
       }
+      // Previously: finally { setLoading(false) } — this reverted the button
+      // to "Sign In" while the page was still visible during navigation.
     } else {
       try {
         // signIn("credentials") calls Magento /login/otp via auth-options.ts authorize().
@@ -226,37 +203,30 @@ function LoginPageContent() {
           mobile: mobileNumber,
           otp: otp,
           countryCode: countryCode,
-          locale: window.location.pathname.startsWith('/ar') ? 'ar' : 'en',
+          locale,
           redirect: false,
         });
 
         if (res?.ok) {
-          // Bounded session read (≤3) — signIn(redirect:false) has set the cookie; the
-          // full-page redirect reloads the session. Replaces the old 15× getSession poll.
-          let sess: any = await getSession();
-          for (let i = 0; i < 2 && !sess?.accessToken; i++) {
-            await new Promise(r => setTimeout(r, 150));
-            sess = await getSession();
-          }
+          const sess: any = await getSession();
           if (sess?.accessToken) localStorage.setItem("token", sess.accessToken);
           toast.success(t("login.loginSuccess"));
-          const locale = window.location.pathname.startsWith('/ar') ? 'ar' : 'en';
-          const callbackParam = searchParams.get("callbackUrl");
-          const landing = await resolveDefaultLandingUrl(locale);
-          const finalUrl = safeRedirectUrl(callbackParam || landing, locale);
-          console.log("[login-otp] callbackUrl param:", callbackParam, "| resolved landing:", landing, "| final redirect:", finalUrl);
-          router.replace(finalUrl);
+          redirectAfterLogin();
         } else {
           localStorage.removeItem("token");
-          toast.error(res?.error || t("login.loginFailed"));
+          toast.error(t("login.invalidOtp"));
+          setLoading(false);
         }
       } catch (err) {
-        toast.error(t("login.loginFailed"));
-      } finally {
+        toast.error(t("login.invalidOtp"));
         setLoading(false);
       }
     }
   };
+
+  if (redirecting) {
+    return <ProductListingSkeleton />;
+  }
 
   return (
     <div className="flex-1 w-full h-full bg-canvas flex flex-col font-rubik">
@@ -275,14 +245,14 @@ function LoginPageContent() {
               <button
                 type="button"
                 className={`flex-1 py-[14px] text-body font-bold uppercase tracking-wider transition-all cursor-pointer ${mode === 'otp' ? 'bg-black text-white' : 'bg-white text-gray-900 hover:bg-gray-50'}`}
-                onClick={() => { setMode("otp"); setOtpSent(false); setErrors({}); window.history.replaceState(null, "", lp("/login?mode=otp")); }}
+                onClick={() => { const cb = searchParams.get("callbackUrl"); const cbParam = cb ? `&callbackUrl=${encodeURIComponent(cb)}` : ""; setMode("otp"); setOtpSent(false); setErrors({}); window.history.replaceState(null, "", lp(`/login?mode=otp${cbParam}`)); }}
               >
                 {t("login.modeOtp")}
               </button>
               <button
                 type="button"
                 className={`flex-1 py-[14px] text-body font-bold uppercase tracking-wider transition-all cursor-pointer border-l border-gray-100 ${mode === 'password' ? 'bg-black text-white' : 'bg-white text-gray-900 hover:bg-gray-50'}`}
-                onClick={() => { setMode("password"); setOtpSent(false); setErrors({}); window.history.replaceState(null, "", lp("/login?mode=password")); }}
+                onClick={() => { const cb = searchParams.get("callbackUrl"); const cbParam = cb ? `&callbackUrl=${encodeURIComponent(cb)}` : ""; setMode("password"); setOtpSent(false); setErrors({}); window.history.replaceState(null, "", lp(`/login?mode=password${cbParam}`)); }}
               >
                 {t("login.modePassword")}
               </button>

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getLocaleFromRequest } from "@/lib/api/magento-url";
 import { KLEVER_FORGET_PASSWORD_VERIFY_OTP_MUTATION } from "@/src/graphql/mutations";
 
-const MAGENTO_GRAPHQL = (process.env.NEXT_PUBLIC_MAGENTO_BASE_URL || "https://altalayi-demo.btire.com") + "/graphql";
+const MAGENTO_GRAPHQL = (process.env.NEXT_PUBLIC_MAGENTO_BASE_URL || "https://altalayi-live.btire.com") + "/graphql";
 
 // POST — verify mobile reset OTP (GraphQL: kleverForgetPasswordVerifyOtp → String).
 // Public. Returns the raw reset-token string; the caller handles

@@ -3,10 +3,8 @@ import { getLocaleFromRequest } from "@/lib/api/magento-url";
 import { getRequestToken } from "@/lib/api/auth-helper";
 import { KLEVER_MARK_NOTIFICATION_AS_READ_MUTATION } from "@/src/graphql/mutations";
 
-const MAGENTO_GRAPHQL = (process.env.NEXT_PUBLIC_MAGENTO_BASE_URL || "https://altalayi-demo.btire.com") + "/graphql";
+const MAGENTO_GRAPHQL = (process.env.NEXT_PUBLIC_MAGENTO_BASE_URL || "https://altalayi-live.btire.com") + "/graphql";
 
-// POST — mark a notification read (GraphQL: kleverMarkNotificationRead(notificationId: Int!)).
-// Returns { success, message }. NOT executed during migration — schema-validated + tsc only.
 export async function POST(
     request: NextRequest,
     { params }: { params: Promise<{ id: string }> }

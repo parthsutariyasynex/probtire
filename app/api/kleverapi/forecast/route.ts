@@ -4,7 +4,7 @@ import { getRequestToken } from '@/lib/api/auth-helper';
 import { KLEVER_FORECAST_LIST_QUERY } from '@/src/graphql/queries';
 import { KLEVER_UPLOAD_FORECAST_MUTATION } from '@/src/graphql/mutations';
 
-const MAGENTO_GRAPHQL = (process.env.NEXT_PUBLIC_MAGENTO_BASE_URL || "https://altalayi-demo.btire.com") + "/graphql";
+const MAGENTO_GRAPHQL = (process.env.NEXT_PUBLIC_MAGENTO_BASE_URL || "https://altalayi-live.btire.com") + "/graphql";
 
 // GET — forecast file list (GraphQL: kleverForecastList(pageSize, currentPage)).
 // Replaces REST /forecast. Returns { items[{forecast_id, file_name, file_url,

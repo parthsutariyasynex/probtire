@@ -3,10 +3,8 @@ import { getLocaleFromRequest } from "@/lib/api/magento-url";
 import { getRequestToken } from "@/lib/api/auth-helper";
 import { KLEVER_REMOVE_NOTIFICATION_MUTATION } from "@/src/graphql/mutations";
 
-const MAGENTO_GRAPHQL = (process.env.NEXT_PUBLIC_MAGENTO_BASE_URL || "https://altalayi-demo.btire.com") + "/graphql";
+const MAGENTO_GRAPHQL = (process.env.NEXT_PUBLIC_MAGENTO_BASE_URL || "https://altalayi-live.btire.com") + "/graphql";
 
-// POST — remove a notification (GraphQL: kleverRemoveNotification(notificationId: Int!)).
-// Returns { success, message }. NOT executed during migration — schema-validated + tsc only.
 export async function POST(
     request: NextRequest,
     { params }: { params: Promise<{ id: string }> }

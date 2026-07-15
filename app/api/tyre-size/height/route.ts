@@ -1,12 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getRequestToken } from "@/lib/api/auth-helper";
 import { getLocaleFromRequest } from "@/lib/api/magento-url";
-import { KLEVER_TYRE_SIZE_HEIGHT_QUERY } from "@/src/graphql/queries";
+// Commented out — kleverTyreSizeHeight resolver is not available on the current backend.
+// import { KLEVER_TYRE_SIZE_HEIGHT_QUERY } from "@/src/graphql/queries";
+import { STANDARD_TYRE_SIZE_AGGREGATION_QUERY } from "@/src/graphql/queries";
 
-// Tyre-size height options via Magento GraphQL (kleverTyreSizeHeight(width)),
-// replacing the old REST /tyre-size/height. Response: { status, options: [{ value, label }] }.
-// Cached by locale + width (catalog-wide, not customer-specific).
-const CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
+// Tyre-size height options via standard Magento products aggregations.
+// Replaces the missing kleverTyreSizeHeight resolver.
+// Accepts optional ?width= param to cascade (filter products by width first).
+// Response shape kept the same: { status, options: [{ value, label }] }.
+const CACHE_TTL_MS = 10 * 60 * 1000;
 const cache = new Map<string, { body: any; expires: number }>();
 
 export async function GET(request: NextRequest) {
@@ -22,7 +25,18 @@ export async function GET(request: NextRequest) {
     }
 
     try {
-        const domain = process.env.NEXT_PUBLIC_MAGENTO_BASE_URL || "https://altalayi-demo.btire.com";
+        const domain = process.env.NEXT_PUBLIC_MAGENTO_BASE_URL || "https://altalayi-live.btire.com";
+
+        // Old klever query — resolver doesn't exist on this backend
+        // const res = await fetch(`${domain}/graphql`, {
+        //     ...headers,
+        //     body: JSON.stringify({ query: KLEVER_TYRE_SIZE_HEIGHT_QUERY, variables: width ? { width } : {} }),
+        // });
+        // const raw = json?.data?.kleverTyreSizeHeight;
+
+        const variables: Record<string, any> = {};
+        if (width) variables.width = { eq: width };
+
         const res = await fetch(`${domain}/graphql`, {
             method: "POST",
             headers: {
@@ -30,10 +44,10 @@ export async function GET(request: NextRequest) {
                 Store: locale,
                 ...(token && token !== "null" && { Authorization: `Bearer ${token}` }),
             },
-            // Omit `width` when empty — the resolver treats an empty string as a
-            // filter value (→ 0 results), whereas an omitted/null arg returns ALL
-            // heights (what HorizontalFilter expects on initial load / reset).
-            body: JSON.stringify({ query: KLEVER_TYRE_SIZE_HEIGHT_QUERY, variables: width ? { width } : {} }),
+            body: JSON.stringify({
+                query: STANDARD_TYRE_SIZE_AGGREGATION_QUERY,
+                variables,
+            }),
             cache: "no-store",
         });
 
@@ -43,9 +57,11 @@ export async function GET(request: NextRequest) {
             return NextResponse.json({ status: "error", options: [] }, { status: 502 });
         }
 
-        const raw = json?.data?.kleverTyreSizeHeight;
-        const body = { status: raw?.status, options: Array.isArray(raw?.options) ? raw.options : [] };
+        const aggregations = json?.data?.products?.aggregations || [];
+        const heightAgg = aggregations.find((a: any) => a.attribute_code === "height");
+        const options = (heightAgg?.options || []).map((o: any) => ({ value: o.label, label: o.label }));
 
+        const body = { status: "success", options };
         cache.set(cacheKey, { body, expires: now + CACHE_TTL_MS });
         return NextResponse.json(body, { headers: { "X-Cache": "MISS" } });
     } catch (err: any) {
