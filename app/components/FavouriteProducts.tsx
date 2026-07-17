@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { ShoppingCart, X, Info, Star, Trash2, ChevronsUpDown, ChevronUp, ChevronDown } from "lucide-react";
+import { ShoppingCart, X, Info, Star, Trash2, ChevronsUpDown, ChevronUp, ChevronDown, Image as ImageIcon } from "lucide-react";
 import { formatPrice, redirectToLogin } from "@/utils/helpers";
 import { toast } from "react-hot-toast";
 import ProductEnquiryModal from "./ProductEnquiryModal";
@@ -39,6 +39,31 @@ interface Product {
     brand?: string;
     favorite_id?: number | string;
     is_action?: string;
+}
+
+function isValidImageUrl(url: any): boolean {
+    if (!url || typeof url !== "string") return false;
+    const cleanUrl = url.trim().toLowerCase();
+    if (
+        cleanUrl === "" ||
+        cleanUrl === "no" ||
+        cleanUrl === "image no" ||
+        cleanUrl === "imade no" ||
+        cleanUrl === "no_image" ||
+        cleanUrl === "none" ||
+        cleanUrl === "null" ||
+        cleanUrl === "undefined"
+    ) {
+        return false;
+    }
+    if (
+        cleanUrl.includes("placeholder/image.jpg") ||
+        cleanUrl.includes("placeholder/small_image.jpg") ||
+        cleanUrl.includes("placeholder/thumbnail.jpg")
+    ) {
+        return false;
+    }
+    return true;
 }
 
 const BASE_HEADER_KEYS = ['m.brand', 'm.size', 'm.pattern', 'm.year', 'm.origin', 'm.image', 'm.offer', 'm.stock', 'm.price'] as const;
@@ -424,8 +449,12 @@ export default function FavouriteProducts({ title }: { title?: React.ReactNode }
                                     </div>
                                     {product.offer && <p className="text-caption font-bold text-red-600 uppercase mt-1">{product.offer}</p>}
                                 </div>
-                                <div className="w-14 h-14 flex-shrink-0 rounded-lg border border-gray-100 overflow-hidden bg-gray-50 flex items-center justify-center cursor-pointer" onClick={() => { setSelectedImage(product.image_url); setPreviewProduct(product); setIsImageModalOpen(true); }}>
-                                    <img src={product.image_url} alt={product.name} className="w-full h-full object-contain" />
+                                <div className="w-14 h-14 flex-shrink-0 rounded-lg border border-gray-100 overflow-hidden bg-gray-50 flex items-center justify-center cursor-pointer" onClick={() => { if (isValidImageUrl(product.image_url)) { setSelectedImage(product.image_url); setPreviewProduct(product); setIsImageModalOpen(true); } }}>
+                                    {isValidImageUrl(product.image_url) ? (
+                                        <img src={product.image_url} alt={product.name} className="w-full h-full object-contain" />
+                                    ) : (
+                                        <ImageIcon size={20} className="text-gray-300" />
+                                    )}
                                 </div>
                             </div>
                             <div className="flex items-center justify-between border-t border-gray-100 pt-2.5 mt-1 gap-2">
@@ -448,16 +477,16 @@ export default function FavouriteProducts({ title }: { title?: React.ReactNode }
                                 <div className="flex items-center gap-1 flex-shrink-0">
                                     {!shouldHideCartActions && (
                                         !isOutOfStock ? (
-                                            <button onClick={() => onAddToCart(product)} disabled={addingToCart === product.sku} className="h-9 px-2.5 rounded-lg flex items-center gap-1.5 text-label font-black uppercase shadow-sm active:scale-95 cursor-pointer flex-shrink-0 bg-brand-yellow text-black">
+                                            <button onClick={() => onAddToCart(product)} disabled={addingToCart === product.sku} className="h-9 px-2.5 rounded-sm flex items-center gap-1.5 text-label font-black uppercase shadow-sm active:scale-95 cursor-pointer flex-shrink-0 bg-brand-yellow text-black">
                                                 <ShoppingCart size={14} strokeWidth={2.5} />
                                             </button>
                                         ) : (
-                                            <button onClick={() => { setInquiryProduct(product); setIsInquiryModalOpen(true); }} className="h-9 px-2.5 bg-brand-yellow text-black rounded-lg flex items-center gap-1.5 text-label font-black uppercase shadow-sm active:scale-95 cursor-pointer flex-shrink-0">
+                                            <button onClick={() => { setInquiryProduct(product); setIsInquiryModalOpen(true); }} className="h-9 px-2.5 bg-brand-yellow text-black rounded-sm flex items-center gap-1.5 text-label font-black uppercase shadow-sm active:scale-95 cursor-pointer flex-shrink-0">
                                                 <Info size={14} strokeWidth={2.5} />
                                             </button>
                                         )
                                     )}
-                                    <button onClick={() => handleRemove(product)} disabled={removing === product.product_id} className={`w-9 h-9 rounded-lg flex items-center justify-center active:scale-95 cursor-pointer flex-shrink-0 ${removing === product.product_id ? "bg-gray-100 text-gray-400" : "bg-white text-gray-400 border border-gray-100 hover:text-red-500"}`}>
+                                    <button onClick={() => handleRemove(product)} disabled={removing === product.product_id} className={`w-9 h-9 rounded-sm flex items-center justify-center active:scale-95 cursor-pointer flex-shrink-0 ${removing === product.product_id ? "bg-gray-100 text-gray-400" : "bg-white text-gray-400 border border-gray-100 hover:text-red-500"}`}>
                                         <Trash2 size={16} strokeWidth={2.5} />
                                     </button>
                                 </div>
@@ -591,8 +620,8 @@ export default function FavouriteProducts({ title }: { title?: React.ReactNode }
 
                                             {/* 6. IMAGE */}
                                             <td className="py-1 px-2 md:px-3 text-center">
-                                                <div className="w-12 h-12 mx-auto">
-                                                    {product.image_url ? (
+                                                <div className="w-12 h-12 mx-auto text-center">
+                                                    {isValidImageUrl(product.image_url) ? (
                                                         <div
                                                             className="relative w-12 h-12 group/img cursor-pointer"
                                                             onClick={() => {
@@ -611,7 +640,9 @@ export default function FavouriteProducts({ title }: { title?: React.ReactNode }
                                                             </div>
                                                         </div>
                                                     ) : (
-                                                        <span className="text-caption text-gray-300 font-black uppercase leading-[48px]">{t("m.no-image")}</span>
+                                                        <div className="w-12 h-12 mx-auto flex items-center justify-center bg-gray-50 rounded border border-gray-100 shadow-sm">
+                                                            <ImageIcon size={20} className="text-gray-300" />
+                                                        </div>
                                                     )}
                                                 </div>
                                             </td>

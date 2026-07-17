@@ -403,7 +403,7 @@ function MyOrdersPageContent() {
             <div className="flex flex-col lg:flex-row flex-1 w-full">
                 <Sidebar />
 
-                <main className="flex-1 w-full px-4 md:px-6 lg:px-8 py-4 md:py-6 lg:py-5 bg-white">
+                <main className="flex-1 w-full px-4 md:px-6 lg:px-8 py-4 md:py-6 lg:py-5 bg-surface">
                     <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-5">
                         <div className="flex items-center gap-4 flex-1 min-w-0">
                             <h1 className="text-h3 md:text-[26px] font-bold text-black uppercase tracking-wide whitespace-nowrap">

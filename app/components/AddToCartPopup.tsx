@@ -36,7 +36,7 @@ const AddToCartPopup: React.FC<AddToCartPopupProps> = ({ isOpen, onClose, produc
             onClose={onClose}
             maxWidth="max-w-[540px]"
             className="!rounded-2xl overflow-hidden !border-none"
-            closeOnOverlayClick={false}
+            closeOnOverlayClick={true}
         >
             <div className="flex flex-col bg-white font-sans" dir={isRtl ? "rtl" : "ltr"}>
                 {/* Yellow Header */}

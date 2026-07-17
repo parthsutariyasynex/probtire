@@ -153,7 +153,7 @@ const SearchPopup: React.FC<SearchPopupProps> = ({ isOpen, onClose }) => {
             maxWidth="max-w-3xl"
             className="!rounded-2xl overflow-visible h-fit"
             scrollable={false}
-            closeOnOverlayClick={false}
+            closeOnOverlayClick={true}
         >
             <div className="relative p-6 md:p-10" dir={isRtl ? "rtl" : "ltr"}>
                 {/* Close Button */}

@@ -231,80 +231,76 @@ export default function ForgotPasswordPage() {
   };
 
   return (
-    <div className="min-h-screen bg-canvas flex flex-col font-['Rubik']">
+    <div className="flex-1 w-full h-full bg-canvas flex flex-col font-rubik">
+      <main className="flex-1 w-full flex justify-center items-start pt-6 sm:pt-8 md:pt-16 pb-8 sm:pb-12 px-4 md:px-0">
+        <div className="w-full max-w-[440px] bg-white rounded-sm shadow-[0_10px_40px_rgba(0,0,0,0.08)] border border-gray-100 overflow-hidden">
 
+          {/* Header */}
+          <div className="px-4 sm:px-6 md:px-8 pt-5 sm:pt-7 pb-4 sm:pb-5">
+            <h1 className="text-h4 sm:text-subheading font-semibold tracking-[0.5px] uppercase text-gray-900">
+              {step === 'input' ? t("forgotPassword.title") : step === 'otp' ? t("forgotPassword.verifyOtp") : t("forgotPassword.resetPassword")}
+            </h1>
+          </div>
 
-      <div className="flex-1 flex items-center justify-center p-4 md:p-10">
-        <div className="w-full max-w-[450px] bg-white rounded-sm shadow-lg border border-gray-100 flex flex-col overflow-hidden">
-
-          {/* Header Section */}
-          <div className="p-4 sm:p-6 md:p-8 flex flex-col gap-6">
-            <div className="pb-4 border-b-[0.80px] border-gray-200">
-              <div className="text-black text-base sm:text-lg font-bold uppercase tracking-wide">
-                {step === 'input' ? t("forgotPassword.title") : step === 'otp' ? t("forgotPassword.verifyOtp") : t("forgotPassword.resetPassword")}
-              </div>
-            </div>
-
-            {step === 'input' && (
-              <div className="flex rounded-[5px] overflow-hidden border border-gray-100">
-
+          {/* Mode tabs — step 1 only */}
+          {step === 'input' && (
+            <div className="px-4 sm:px-6 md:px-8">
+              <div className="flex w-full rounded-sm overflow-hidden border border-gray-200">
                 <button
                   type="button"
-                  className={`flex-1 py-3.5 text-xs font-semibold uppercase tracking-wider transition-all cursor-pointer ${resetMode === 'mobile' ? 'bg-black text-white' : 'bg-neutral-100 text-black hover:bg-neutral-200'}`}
+                  className={`flex-1 py-[14px] text-body font-bold uppercase tracking-wider transition-all cursor-pointer ${resetMode === 'mobile' ? 'bg-black text-white' : 'bg-white text-gray-900 hover:bg-gray-50'}`}
                   onClick={() => { setResetMode("mobile"); setErrors({}); }}
                 >
                   {t("login.modeOtp")}
                 </button>
                 <button
                   type="button"
-                  className={`flex-1 py-3.5 text-xs font-semibold uppercase tracking-wider transition-all cursor-pointer ${resetMode === 'email' ? 'bg-black text-white' : 'bg-neutral-100 text-black hover:bg-neutral-200'}`}
+                  className={`flex-1 py-[14px] text-body font-bold uppercase tracking-wider transition-all cursor-pointer border-l border-gray-100 ${resetMode === 'email' ? 'bg-black text-white' : 'bg-white text-gray-900 hover:bg-gray-50'}`}
                   onClick={() => { setResetMode("email"); setErrors({}); }}
                 >
                   {t("login.modePassword")}
                 </button>
               </div>
-            )}
-          </div>
+            </div>
+          )}
 
-          {/* Form Content Section */}
-          <div className="px-4 sm:px-6 md:px-8 pb-6 sm:pb-8 flex flex-col gap-6">
-            <div className="text-gray-600 text-xs font-normal leading-5 sm:leading-4">
+          {/* Form Content */}
+          <div className="px-4 sm:px-6 md:px-8 pt-4 sm:pt-5 pb-6 sm:pb-8">
+            <p className="text-body-sm sm:text-body text-gray-500 font-medium leading-relaxed mb-5">
               {step === 'input'
                 ? (resetMode === 'email' ? t("forgotPassword.emailSubtitle") : t("forgotPassword.mobileSubtitle"))
                 : step === 'otp' ? `${t("forgotPassword.otpSubtitle")} ${countryCode} ${mobileNumber}`
                   : t("forgotPassword.resetSubtitle")}
-            </div>
+            </p>
 
-            <form onSubmit={handleSubmit} className="flex flex-col gap-3 sm:gap-5" noValidate>
+            <form onSubmit={handleSubmit} className="flex flex-col gap-3 sm:gap-[14px]" noValidate>
 
-              {/* Step: Input Email or Mobile */}
+              {/* Step: Input */}
               {step === "input" && (
                 <>
                   {resetMode === "email" ? (
-                    <div className="flex flex-col gap-1.5">
-                      <div className="flex items-center gap-1">
-                        <span className="text-black text-xs font-semibold uppercase tracking-tight">{t("forgotPassword.email")}</span>
-                        <span className="text-red-600 text-xl font-semibold leading-none mt-1">*</span>
-                      </div>
+                    <div className="flex flex-col gap-[5px]">
+                      <label className="block text-label font-semibold text-gray-900 uppercase tracking-widest cursor-pointer">
+                        {t("forgotPassword.email")} <span className="text-red-600 font-bold">*</span>
+                      </label>
                       <input
                         id="email-input"
                         type="email"
                         placeholder={t("login.emailPlaceholder")}
                         value={email}
                         onChange={(e) => { setEmail(e.target.value); if (errors.email) setErrors({ ...errors, email: "" }); }}
-                        className={`w-full h-10 sm:h-11 bg-white px-3 text-sm rounded-xs outline outline-1 transition-all cursor-text ${errors.email ? 'outline-red-500' : 'outline-neutral-200 focus:outline-black focus:outline-2 focus:ring-1 focus:ring-black'}`}
+                        className={`w-full h-[48px] bg-white px-3 text-sm border transition-all outline-none cursor-text ${errors.email ? 'border-red-500' : 'border-gray-300 focus:border-gray-600'}`}
                       />
                       {errors.email && <span className="text-red-500 text-label font-medium leading-none">{errors.email}</span>}
                     </div>
                   ) : (
-                    <div className="flex flex-col gap-1.5 relative">
-                      <div className="flex items-center gap-1">
-                        <span className="text-black text-xs font-semibold uppercase tracking-tight">{t("forgotPassword.mobileNumber")}</span>
-                        <span className="text-red-600 text-xl font-semibold leading-none mt-1">*</span>
-                      </div>
-                      <div className={`flex h-10 sm:h-11 bg-white rounded-xs outline outline-1 transition-all overflow-visible ${errors.mobile ? 'outline-red-500' : 'outline-neutral-200 focus-within:outline-black focus-within:outline-2'}`}>
+                    <div className="flex flex-col gap-[5px] relative">
+                      <label className="block text-label font-semibold text-gray-900 uppercase tracking-widest cursor-pointer">
+                        {t("forgotPassword.mobileNumber")} <span className="text-red-600 font-bold">*</span>
+                      </label>
+                      <div className={`flex h-[48px] bg-white border transition-all overflow-visible ${errors.mobile ? 'border-red-500' : 'border-gray-300 focus-within:border-gray-600'}`}>
                         <div
-                          className="bg-[#f5f5f5] px-3 flex items-center gap-2 border-r border-neutral-200 cursor-pointer min-w-[75px] sm:min-w-[100px] hover:bg-neutral-200 transition-colors"
+                          className="bg-[#f5f5f5] px-3 flex items-center gap-2 border-r border-gray-200 cursor-pointer min-w-[75px] sm:min-w-[100px] hover:bg-gray-200 transition-colors"
                           onClick={() => setShowDropdown(!showDropdown)}
                         >
                           <span className={`${selectedCountry?.flagClass} scale-110`}></span>
@@ -319,14 +315,13 @@ export default function ForgotPasswordPage() {
                           onChange={(e) => { setMobileNumber(e.target.value.replace(/\D/g, "")); if (errors.mobile) setErrors({ ...errors, mobile: '' }); }}
                           className="flex-1 px-3 text-sm outline-none cursor-text"
                         />
-
                         {showDropdown && (
-                          <div className="absolute top-full mt-1 left-0 w-full bg-white border border-neutral-300 shadow-2xl z-[9999] rounded-xs overflow-hidden">
+                          <div className="absolute top-full mt-1 left-0 w-full bg-white border border-gray-300 shadow-2xl z-[9999] overflow-hidden">
                             {COUNTRY_CODES.map((item) => (
                               <div
                                 key={item.code}
                                 onClick={() => { setCountryCode(item.code); setShowDropdown(false); }}
-                                className="p-3.5 hover:bg-neutral-100 cursor-pointer flex items-center gap-3 border-b last:border-0 border-neutral-100 transition-colors"
+                                className="p-3.5 hover:bg-gray-50 cursor-pointer flex items-center gap-3 border-b last:border-0 border-gray-100 transition-colors"
                               >
                                 <span className={item.flagClass}></span>
                                 <span className="text-xs font-bold text-black">{item.code}</span>
@@ -342,20 +337,19 @@ export default function ForgotPasswordPage() {
                 </>
               )}
 
-              {/* Step: OTP Verification */}
+              {/* Step: OTP */}
               {step === "otp" && (
-                <div className="flex flex-col gap-1.5">
-                  <div className="flex items-center gap-1">
-                    <span className="text-black text-xs font-semibold uppercase tracking-tight">{t("login.verificationCode")}</span>
-                    <span className="text-red-600 text-xl font-semibold leading-none mt-1">*</span>
-                  </div>
+                <div className="flex flex-col gap-[5px]">
+                  <label className="block text-label font-semibold text-gray-900 uppercase tracking-widest cursor-pointer">
+                    {t("login.verificationCode")} <span className="text-red-600 font-bold">*</span>
+                  </label>
                   <input
                     id="otp-input"
                     type="text"
                     placeholder={t("login.enterOtp")}
                     value={otp}
                     onChange={(e) => { setOtp(e.target.value); if (errors.otp) setErrors({ ...errors, otp: "" }); }}
-                    className={`w-full h-10 sm:h-11 bg-white px-3 text-sm text-center font-bold tracking-[6px] sm:tracking-[8px] rounded-xs outline outline-1 transition-all placeholder:tracking-normal placeholder:font-normal cursor-text ${errors.otp ? 'outline-red-500' : 'outline-neutral-200 focus:outline-black focus:outline-2 focus:ring-1 focus:ring-black'}`}
+                    className={`w-full h-[48px] bg-white px-3 text-sm border transition-all outline-none cursor-text text-center font-bold tracking-[6px] sm:tracking-[8px] placeholder:tracking-normal placeholder:font-normal ${errors.otp ? 'border-red-500' : 'border-gray-300 focus:border-gray-600'}`}
                   />
                   {errors.otp && <span className="text-red-500 text-label font-medium leading-none">{errors.otp}</span>}
                   <button
@@ -368,63 +362,59 @@ export default function ForgotPasswordPage() {
                 </div>
               )}
 
-              {/* Step: New Password */}
+              {/* Step: Reset */}
               {step === "reset" && (
                 <>
-                  <div className="flex flex-col gap-1.5">
-                    <div className="flex items-center gap-1">
-                      <span className="text-black text-xs font-semibold uppercase tracking-tight">{t("forgotPassword.newPassword")}</span>
-                      <span className="text-red-600 text-xl font-semibold leading-none mt-1">*</span>
-                    </div>
+                  <div className="flex flex-col gap-[5px]">
+                    <label className="block text-label font-semibold text-gray-900 uppercase tracking-widest cursor-pointer">
+                      {t("forgotPassword.newPassword")} <span className="text-red-600 font-bold">*</span>
+                    </label>
                     <input
                       id="new-password-input"
                       type="password"
                       placeholder={t("login.passwordPlaceholder")}
                       value={newPassword}
                       onChange={(e) => { setNewPassword(e.target.value); if (errors.password) setErrors({ ...errors, password: "" }); }}
-                      className={`w-full h-10 sm:h-11 bg-white px-3 text-sm rounded-xs outline outline-1 transition-all cursor-text ${errors.password ? 'outline-red-500' : 'outline-neutral-200 focus:outline-black focus:outline-2 focus:ring-1 focus:ring-black'}`}
+                      className={`w-full h-[48px] bg-white px-3 text-sm border transition-all outline-none cursor-text ${errors.password ? 'border-red-500' : 'border-gray-300 focus:border-gray-600'}`}
                     />
                     {errors.password && <span className="text-red-500 text-label font-medium leading-none">{errors.password}</span>}
                   </div>
 
-                  <div className="flex flex-col gap-1.5">
-                    <div className="flex items-center gap-1">
-                      <span className="text-black text-xs font-semibold uppercase tracking-tight">{t("forgotPassword.confirmPassword")}</span>
-                      <span className="text-red-600 text-xl font-semibold leading-none mt-1">*</span>
-                    </div>
+                  <div className="flex flex-col gap-[5px]">
+                    <label className="block text-label font-semibold text-gray-900 uppercase tracking-widest cursor-pointer">
+                      {t("forgotPassword.confirmPassword")} <span className="text-red-600 font-bold">*</span>
+                    </label>
                     <input
                       id="confirm-password-input"
                       type="password"
                       placeholder={t("forgotPassword.confirmPassword")}
                       value={confirmPassword}
                       onChange={(e) => { setConfirmPassword(e.target.value); if (errors.confirmPassword) setErrors({ ...errors, confirmPassword: "" }); }}
-                      className={`w-full h-10 sm:h-11 bg-white px-3 text-sm rounded-xs outline outline-1 transition-all cursor-text ${errors.confirmPassword ? 'outline-red-500' : 'outline-neutral-200 focus:outline-black focus:outline-2 focus:ring-1 focus:ring-black'}`}
+                      className={`w-full h-[48px] bg-white px-3 text-sm border transition-all outline-none cursor-text ${errors.confirmPassword ? 'border-red-500' : 'border-gray-300 focus:border-gray-600'}`}
                     />
                     {errors.confirmPassword && <span className="text-red-500 text-label font-medium leading-none">{errors.confirmPassword}</span>}
                   </div>
                 </>
               )}
 
-              <div className="flex flex-col gap-3 sm:gap-4 mt-2">
+              <div className="pt-2 flex flex-col gap-3">
                 <button
                   id="submit-button"
                   type="submit"
                   disabled={loading || reduxLoading}
-                  className="w-full h-12 bg-amber-400 hover:bg-amber-500 rounded-sm flex justify-center items-center transition-all disabled:opacity-50 shadow-sm active:scale-[0.98] cursor-pointer"
+                  className="w-full h-10 sm:h-[46px] bg-brand-yellow hover:bg-brand-yellow-dark text-black font-black uppercase transition-all disabled:opacity-50 cursor-pointer active:scale-[0.98] tracking-widest text-label sm:text-body-sm rounded-sm"
                 >
-                  <div className="text-center text-black text-body font-bold uppercase tracking-wider cursor-pointer">
-                    {loading || reduxLoading ? t("forgotPassword.sending") : (
-                      step === 'input' ? (resetMode === 'email' ? t("forgotPassword.sendResetLink") : t("forgotPassword.sendOtp")) :
-                        step === 'otp' ? t("forgotPassword.verifyOtpButton") : t("forgotPassword.resetPasswordButton")
-                    )}
-                  </div>
+                  {loading || reduxLoading ? t("forgotPassword.sending") : (
+                    step === 'input' ? (resetMode === 'email' ? t("forgotPassword.sendResetLink") : t("forgotPassword.sendOtp")) :
+                      step === 'otp' ? t("forgotPassword.verifyOtpButton") : t("forgotPassword.resetPasswordButton")
+                  )}
                 </button>
 
                 <div className="flex justify-between items-center">
                   <Link href={lp("/login")}>
-                    <div className="text-black text-sm font-normal cursor-pointer hover:underline hover:text-amber-600 transition-colors">
+                    <span className="text-body-sm font-bold text-gray-700 hover:text-black cursor-pointer hover:underline underline-offset-2 py-2 inline-block">
                       {t("forgotPassword.backToLogin")}
-                    </div>
+                    </span>
                   </Link>
                   {step !== 'input' && (
                     <button
@@ -440,7 +430,7 @@ export default function ForgotPasswordPage() {
             </form>
           </div>
         </div>
-      </div>
+      </main>
     </div>
   );
 }

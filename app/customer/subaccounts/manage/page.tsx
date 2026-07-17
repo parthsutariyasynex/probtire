@@ -130,10 +130,11 @@ export default function ManageSubAccountsPage() {
         const subAccountId = subAccount.customer_id || subAccount.entity_id || subAccount.id || subAccount.sub_account_id;
 
         if (!subAccountId) {
-            alert(t("common.error"));
+            setError(t("common.error"));
             return;
         }
         setLoggingInId(subAccountId);
+        setError(null);
 
         try {
             const loginUrl = isSalesPerson
@@ -151,7 +152,7 @@ export default function ManageSubAccountsPage() {
             const data = await res.json();
 
             if (!res.ok) {
-                alert(data.message || t("common.failed"));
+                setError(data.message || t("common.failed"));
                 setLoggingInId(null);
                 return;
             }
@@ -187,7 +188,7 @@ export default function ManageSubAccountsPage() {
 
             router.push(lp("/subaccount/my-account"));
         } catch (err: any) {
-            alert(err.message || t("common.failed"));
+            setError(err.message || t("common.failed"));
             setLoggingInId(null);
         }
     };
@@ -268,7 +269,7 @@ export default function ManageSubAccountsPage() {
                     )}
 
                     {error && (
-                        <div className="bg-red-50 border border-red-100 text-red-600 p-4 md:p-8 rounded-md text-center mb-6" role="alert">
+                        <div className="bg-red-50 border border-red-100 text-red-600 p-4 md:p-8 rounded-sm text-center mb-6" role="alert">
                             <p className="font-black text-xs uppercase mb-2">{t("common.error")}</p>
                             <p className="text-xs">{error}</p>
                         </div>

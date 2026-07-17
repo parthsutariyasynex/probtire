@@ -148,7 +148,7 @@ export default function InquiryModal({ product, isOpen, onClose }: InquiryModalP
                         <button
                             type="submit"
                             disabled={isSubmitting}
-                            className="flex-[2] py-4 px-6 bg-brand-yellow hover:bg-brand-yellow-dark text-black font-black rounded-lg transition-all shadow-md flex items-center justify-center gap-2 disabled:opacity-50 uppercase tracking-widest text-sm"
+                            className="btn-primary flex-[2] flex items-center justify-center gap-2 disabled:opacity-50"
                         >
                             {isSubmitting ? (
                                 t("common.loading")

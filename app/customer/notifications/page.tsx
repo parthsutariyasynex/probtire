@@ -122,9 +122,9 @@ export default function NotificationsPage() {
     // firstLoadDone, data present) keeps the real chrome and only skeletons the table body below.
     if (!firstLoadDone) {
         return (
-            <div className="flex flex-col lg:flex-row flex-1 min-h-0 w-full bg-white font-rubik">
+            <div className="flex flex-col lg:flex-row flex-1 min-h-0 w-full bg-surface font-rubik">
                 <SidebarSkeleton />
-                <main className="flex-1 w-full min-w-0 px-4 md:px-6 lg:px-8 py-4 md:py-6 lg:py-5 bg-white">
+                <main className="flex-1 w-full min-w-0 px-4 md:px-6 lg:px-8 py-4 md:py-6 lg:py-5 bg-surface">
                     <NotificationsSkeleton count={pageSize} />
                 </main>
             </div>
@@ -137,7 +137,7 @@ export default function NotificationsPage() {
             <Sidebar />
 
             {/* MAIN CONTENT */}
-            <main className="flex-1 w-full min-w-0 px-4 md:px-6 lg:px-8 py-4 md:py-6 lg:py-5 bg-white" dir={isRtl ? "rtl" : "ltr"}>
+            <main className="flex-1 w-full min-w-0 px-4 md:px-6 lg:px-8 py-4 md:py-6 lg:py-5 bg-surface" dir={isRtl ? "rtl" : "ltr"}>
                     <h1 className="text-h3 md:text-h1-sm font-semibold text-black mb-5 uppercase tracking-tight" >
                             {t('notifications.title')}
                         </h1>

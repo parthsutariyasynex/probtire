@@ -30,6 +30,10 @@ export default function OrderDetailsPage() {
     const [isPrinting, setIsPrinting] = useState(false);
     const [openingAttachmentId, setOpeningAttachmentId] = useState<string | null>(null);
     const [isCancelling, setIsCancelling] = useState(false);
+    const [confirmComment, setConfirmComment] = useState("");
+    const [selectedFile, setSelectedFile] = useState<File | null>(null);
+    const [isConfirming, setIsConfirming] = useState(false);
+    const [isConfirmed, setIsConfirmed] = useState(false);
     const permissionDeniedRef = React.useRef(false);
 
     const authToken = (session as any)?.accessToken;
@@ -291,6 +295,88 @@ export default function OrderDetailsPage() {
         }
     };
 
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files && e.target.files.length > 0) {
+            const file = e.target.files[0];
+            const ext = file.name.split('.').pop()?.toLowerCase();
+            const allowedExts = ["jpg", "jpeg", "png", "zip", "rar", "docx", "doc", "pdf", "xls", "xlsx", "csv", "msg", "eml"];
+            
+            if (ext && !allowedExts.includes(ext)) {
+                toast.error(t("orderDetails.invalidFileType") || "Invalid file type");
+                return;
+            }
+
+            if (file.size > 10 * 1024 * 1024) {
+                toast.error(t("orderDetails.fileTooLarge") || "File size must be less than 10MB");
+                return;
+            }
+
+            setSelectedFile(file);
+        }
+    };
+
+    const handleConfirmOrder = async (e: React.FormEvent) => {
+        e.preventDefault();
+        const token = (session as any)?.accessToken;
+        if (!token) {
+            toast.error(t("orders.mustLoggedIn") || "Please log in");
+            return;
+        }
+
+        setIsConfirming(true);
+        const toastId = toast.loading(t("orderDetails.confirming") || "Confirming order...");
+        try {
+            const attachmentsPayload: any[] = [];
+            if (selectedFile) {
+                const base64Data = await new Promise<string>((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.readAsDataURL(selectedFile);
+                    reader.onload = () => {
+                        const base64 = (reader.result as string).split(",")[1];
+                        resolve(base64);
+                    };
+                    reader.onerror = (error) => reject(error);
+                });
+
+                attachmentsPayload.push({
+                    file_name: selectedFile.name,
+                    file_content: base64Data
+                });
+            }
+
+            const res = await fetch(`/api/kleverapi/order/${orderId}/confirm`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    comment: confirmComment,
+                    attachments: attachmentsPayload
+                })
+            });
+
+            const data = await res.json();
+            if (!res.ok || data.success === false) {
+                throw new Error(data.message || "Failed to confirm order");
+            }
+
+            toast.success(t("orderDetails.confirmSuccess") || "Order confirmed successfully", { id: toastId });
+            setIsConfirmed(true);
+            setSelectedFile(null);
+            setConfirmComment("");
+            
+            // Refresh order info and attachments list
+            fetchOrderDetails();
+            fetchAttachments();
+        } catch (err: any) {
+            console.error("Order confirmation error:", err);
+            toast.error(err.message || t("orderDetails.confirmFailed") || "Error confirming order", { id: toastId });
+        } finally {
+            setIsConfirming(false);
+        }
+    };
+
     const handleOpenAttachment = async (attachment: any) => {
         const token = (session as any)?.accessToken;
         if (!token) {
@@ -397,7 +483,7 @@ export default function OrderDetailsPage() {
             <div className="min-h-screen flex flex-col w-full bg-surface font-rubik">
                 <div className="flex flex-col lg:flex-row flex-1 w-full">
                     <Sidebar />
-                    <main className="flex-1 w-full px-4 md:px-6 lg:px-8 py-4 md:py-6 lg:py-5 bg-white">
+                    <main className="flex-1 w-full px-4 md:px-6 lg:px-8 py-4 md:py-6 lg:py-5 bg-surface">
                         <div className="bg-red-50 border border-red-100 text-red-600 p-4 md:p-8 rounded-lg text-center shadow-sm">
                             <p className="font-bold text-body-lg uppercase tracking-widest mb-2">{t("orderDetails.errorLoading")}</p>
 
@@ -423,6 +509,7 @@ export default function OrderDetailsPage() {
     const paymentMethod = order.payment?.additional_information?.[0] || order.payment?.method || "N/A";
     const statusLower = order.status?.toLowerCase() || "";
     const isCancelable = statusLower.includes("pending") || statusLower.includes("holded");
+    const isCheckPending = statusLower === "approval_pending" || statusLower === "check_pending" || statusLower.includes("pending");
 
     return (
         <div className="min-h-screen flex flex-col w-full bg-surface font-rubik">
@@ -431,7 +518,7 @@ export default function OrderDetailsPage() {
                 <Sidebar />
 
                 {/* Right Content */}
-                <main className="flex-1 w-full px-4 md:px-6 lg:px-8 py-4 md:py-6 lg:py-5 bg-white min-w-0 text-xs">
+                <main className="flex-1 w-full px-4 md:px-6 lg:px-8 py-4 md:py-6 lg:py-5 bg-surface min-w-0 text-xs">
                     {/* Header Section */}
                     <div className="flex flex-col mb-10">
                         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 md:mb-10 border-b-2 border-brand-yellow pb-2 gap-2 sm:gap-0">
@@ -457,7 +544,7 @@ export default function OrderDetailsPage() {
                             {!shouldHideCartActions && (
                                 <button
                                     onClick={handleReorder}
-                                    className="bg-brand-yellow hover:bg-brand-yellow-dark text-black font-black py-2.5 px-6 md:px-8 rounded-md text-label uppercase tracking-widest transition-all shadow-sm active:scale-95 border border-brand-yellow-dark w-full sm:w-auto"
+                                    className="bg-brand-yellow hover:bg-brand-yellow-dark text-black font-black py-2.5 px-6 md:px-8 rounded-sm text-label uppercase tracking-widest transition-all shadow-sm active:scale-95 border border-brand-yellow-dark w-full sm:w-auto"
                                 >
                                     {t("orderDetails.reorder")}
                                 </button>
@@ -467,7 +554,7 @@ export default function OrderDetailsPage() {
                                 <button
                                     onClick={handleCancelOrder}
                                     disabled={isCancelling}
-                                    className={`bg-brand-yellow hover:bg-brand-yellow-dark text-black font-black py-2.5 px-6 md:px-8 rounded-md text-label uppercase tracking-widest transition-all shadow-sm active:scale-95 border border-brand-yellow-dark w-full sm:w-auto ${isCancelling ? 'opacity-70 cursor-not-allowed' : ''}`}
+                                    className={`bg-brand-yellow hover:bg-brand-yellow-dark text-black font-black py-2.5 px-6 md:px-8 rounded-sm text-label uppercase tracking-widest transition-all shadow-sm active:scale-95 border border-brand-yellow-dark w-full sm:w-auto ${isCancelling ? 'opacity-70 cursor-not-allowed' : ''}`}
                                 >
                                     {isCancelling ? t("orderDetails.cancelling") : t("orderDetails.cancelOrder")}
                                 </button>
@@ -491,6 +578,96 @@ export default function OrderDetailsPage() {
                             </button>
                         </div>
                     </div>
+
+                    {/* Order Check Section */}
+                    {isCheckPending && !isConfirmed && (
+                        <div className="bg-white rounded-md border border-subtle overflow-hidden mb-10 shadow-sm no-print">
+                            <div className="border-b border-subtle px-3 md:px-6 py-3 md:py-4 bg-gray-50">
+                                <h2 className="text-xs font-black text-black uppercase tracking-widest">
+                                    {t("orderDetails.orderCheck")}
+                                </h2>
+                            </div>
+                            <form onSubmit={handleConfirmOrder} className="p-4 md:p-6 space-y-6">
+                                <div className="space-y-2">
+                                    <label className="block text-xs font-black text-black uppercase tracking-wider">
+                                        {t("orderDetails.attachment")}
+                                    </label>
+                                    <div className="flex flex-col md:flex-row md:items-center gap-4">
+                                        <label className="flex items-center justify-center px-4 py-2 border border-dashed border-gray-300 rounded-md shadow-sm text-xs font-medium text-gray-700 bg-white hover:bg-gray-50 cursor-pointer transition-colors w-full md:w-auto">
+                                            <svg className="w-5 h-5 mr-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
+                                            </svg>
+                                            <span>{t("orderDetails.selectFiles")}</span>
+                                            <input 
+                                                type="file" 
+                                                className="hidden" 
+                                                onChange={handleFileChange}
+                                                accept=".jpg,.jpeg,.png,.zip,.rar,.docx,.doc,.pdf,.xls,.xlsx,.csv,.msg,.eml"
+                                            />
+                                        </label>
+                                        <div className="flex-1 min-w-0">
+                                            {selectedFile ? (
+                                                <div className="flex items-center gap-2 text-xs text-gray-900 bg-gray-50 px-3 py-2 rounded border border-subtle">
+                                                    <svg className="w-4 h-4 text-green-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                                                    </svg>
+                                                    <span className="truncate font-medium text-black">{selectedFile.name}</span>
+                                                    <span className="text-gray-500 font-normal">({(selectedFile.size / 1024 / 1024).toFixed(2)} MB)</span>
+                                                    <button 
+                                                        type="button" 
+                                                        onClick={() => setSelectedFile(null)} 
+                                                        className="ml-auto text-gray-400 hover:text-red-500 p-1"
+                                                    >
+                                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                                                        </svg>
+                                                    </button>
+                                                </div>
+                                            ) : (
+                                                <span className="text-gray-500 text-xs italic">{t("orderDetails.noAttachments")}</span>
+                                            )}
+                                        </div>
+                                    </div>
+                                    <p className="text-[10px] text-gray-500">
+                                        {t("orderDetails.allowedFiles")}
+                                    </p>
+                                </div>
+
+                                <div className="space-y-2">
+                                    <label className="block text-xs font-black text-black uppercase tracking-wider">
+                                        {t("orderDetails.comment")}
+                                    </label>
+                                    <textarea
+                                        rows={3}
+                                        value={confirmComment}
+                                        onChange={(e) => setConfirmComment(e.target.value)}
+                                        placeholder={t("orderDetails.commentPlaceholder")}
+                                        className="w-full border border-subtle rounded-md p-3 text-xs focus:ring-1 focus:ring-brand-yellow focus:border-brand-yellow outline-none transition-all placeholder:text-gray-400 text-black"
+                                    />
+                                </div>
+
+                                <div className="flex justify-end pt-2">
+                                    <button
+                                        type="submit"
+                                        disabled={isConfirming}
+                                        className={`bg-brand-yellow hover:bg-brand-yellow-dark text-black font-black py-2.5 px-6 md:px-8 rounded-md text-label uppercase tracking-widest transition-all border border-brand-yellow-dark shadow-sm flex items-center justify-center gap-2 active:scale-95 ${isConfirming ? 'opacity-70 cursor-not-allowed' : ''}`}
+                                    >
+                                        {isConfirming ? (
+                                            <>
+                                                <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-black" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                                </svg>
+                                                <span>{t("orderDetails.confirming")}</span>
+                                            </>
+                                        ) : (
+                                            t("orderDetails.confirmOrder")
+                                        )}
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    )}
 
                     {/* Items Ordered Table */}
                     <div className="bg-white rounded-md border border-subtle overflow-hidden mb-10 shadow-sm">

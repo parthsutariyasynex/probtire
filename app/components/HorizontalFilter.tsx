@@ -383,25 +383,25 @@ const HorizontalFilter: React.FC<HorizontalFilterProps> = ({ onSearch, initialVa
     return (
         <div className="w-full bg-white h-full px-2 sm:px-4 md:px-6 flex items-center justify-center gap-2 sm:gap-4 flex-nowrap overflow-visible relative">
             {/* Label */}
-            <label className="bg-brand-yellow px-4 md:px-6 py-2 md:py-2.5 rounded shadow-sm flex-shrink-0 select-none">
-                <span className="text-black font-semibold italic uppercase text-body-sm md:text-body-xl tracking-tight whitespace-nowrap">
+            <div className="bg-brand-yellow px-6 h-[44px] rounded flex-shrink-0 select-none flex items-center justify-center cursor-default shadow-sm">
+                <span className="text-black font-black italic uppercase text-xs md:text-sm tracking-wider whitespace-nowrap">
                     {t("m.search-by-size")}
                 </span>
-            </label>
+            </div>
 
-            <div className="w-[200px] flex-shrink-0 h-[40px] md:h-[45px]">
+            <div className="w-[200px] flex-shrink-0 h-[44px]">
                 {loadingWidth ? <Skeleton className="w-full h-full" /> : (
                     <SearchableDropdown label="Width" placeholder={t("m.width")} options={widthList} value={width} onChange={setWidth} loading={loadingWidth} direction="up" />
                 )}
             </div>
 
-            <div className="w-[200px] flex-shrink-0 h-[40px] md:h-[45px]">
+            <div className="w-[200px] flex-shrink-0 h-[44px]">
                 {loadingHeight ? <Skeleton className="w-full h-full" /> : (
                     <SearchableDropdown label="Height" placeholder={t("m.height")} options={heightList} value={height} onChange={setHeight} loading={loadingHeight} emptyMessage={t("filter.noHeights")} direction="up" />
                 )}
             </div>
 
-            <div className="w-[200px] flex-shrink-0 h-[40px] md:h-[45px]">
+            <div className="w-[200px] flex-shrink-0 h-[44px]">
                 {loadingRim ? <Skeleton className="w-full h-full" /> : (
                     <SearchableDropdown label="Rim" placeholder={t("m.rim")} options={rimList} value={rim} onChange={setRim} loading={loadingRim} emptyMessage={t("filter.noRims")} direction="up" />
                 )}
@@ -409,22 +409,10 @@ const HorizontalFilter: React.FC<HorizontalFilterProps> = ({ onSearch, initialVa
 
             <button
                 onClick={handleSearchClick}
-                className="bg-brand-yellow hover:bg-black hover:text-white px-4 sm:px-6 md:px-10 py-2 md:py-2.5 h-[40px] md:h-[45px] rounded border-none shadow-sm transition-all text-black font-semibold italic uppercase text-body-sm md:text-body-xl tracking-tight active:scale-95 cursor-pointer flex-shrink-0 flex items-center justify-center"
+                className="bg-brand-yellow hover:bg-black hover:text-white px-8 h-[44px] rounded border-none shadow-sm transition-all text-black font-black italic uppercase text-xs md:text-sm tracking-wider active:scale-95 cursor-pointer flex-shrink-0 flex items-center justify-center"
             >
                 {t("m.search")}
             </button>
-
-            <div className="w-[40px] md:w-[45px] h-[40px] md:h-[45px] flex-shrink-0">
-                {(width || height || rim) && (
-                    <button
-                        onClick={handleReset}
-                        className="w-full h-full rounded border border-gray-300 bg-white text-gray-500 hover:bg-red-50 hover:text-red-500 hover:border-red-300 transition-all active:scale-95 flex items-center justify-center cursor-pointer"
-                        title="Clear filter"
-                    >
-                        <RotateCcw className="w-4 h-4" />
-                    </button>
-                )}
-            </div>
         </div>
     );
 };

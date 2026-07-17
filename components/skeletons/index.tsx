@@ -3,7 +3,6 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { useTranslation } from "@/hooks/useTranslation";
 
 // ─── Skeleton primitives ──────────────────────────────────────────────────────
 const Pulse = ({ className = "" }: { className?: string }) => (
@@ -94,7 +93,8 @@ export function ProductCardSkeleton() {
 //   <xl:  4-button mobile controls (favourites, search, sort, filter) +
 //         mobile card grid + pagination.
 export function ProductListingSkeleton({ count = 10 }: { count?: number }) {
-  const { isRtl } = useTranslation();
+  const pathname = usePathname();
+  const isRtl = pathname?.startsWith("/ar");
   // Real desktop header column widths (BASE + ACTION).
   const COL_WIDTHS = ["8%", "13%", "13%", "6%", "7%", "7%", "9%", "9%", "10%", "110px"];
 
@@ -2728,10 +2728,32 @@ function renderSkeletonForPath(base: string): React.ReactNode {
   }
 
   // Dedicated CMS-style pages (banner + custom content)
-  if (base.startsWith("/about")) return <AboutSkeleton />;
-  if (base.startsWith("/locations")) return <LocationsSkeleton />;
-  if (base.startsWith("/guides")) return <GuidesSkeleton />;
-  if (base.startsWith("/catalogue")) return <CatalogueSkeleton />;
+  if (base.startsWith("/about") || base.includes("about-us")) return <AboutSkeleton />;
+  if (
+    base.startsWith("/locations") ||
+    base.includes("branch-locations") ||
+    base.includes("branches") ||
+    base.includes("our-branches") ||
+    base.includes("contact") ||
+    base.includes("contact-us")
+  ) {
+    return <LocationsSkeleton />;
+  }
+  if (
+    base.startsWith("/guides") ||
+    base.includes("user-guides") ||
+    base.includes("tyre-guides")
+  ) {
+    return <GuidesSkeleton />;
+  }
+  if (
+    base.startsWith("/catalogue") ||
+    base.includes("catalog") ||
+    base.includes("product-catalogue") ||
+    base.includes("product-catalog")
+  ) {
+    return <CatalogueSkeleton />;
+  }
 
   // Text-only CMS pages (privacy, terms, return-exchange)
   if (
@@ -2739,6 +2761,7 @@ function renderSkeletonForPath(base: string): React.ReactNode {
     base.startsWith("/privacy") ||
     base.startsWith("/terms-conditions") ||
     base.startsWith("/terms") ||
+    base.startsWith("terms-of-service") ||
     base.startsWith("/return-exchange-policy") ||
     base.startsWith("/returns-exchange")
   ) {

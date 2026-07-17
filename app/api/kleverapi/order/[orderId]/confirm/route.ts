@@ -39,7 +39,7 @@ export async function POST(
                 Store: getLocaleFromRequest(request),
                 Authorization: `Bearer ${token}`,
             },
-            body: JSON.stringify({ query: KLEVER_CONFIRM_ORDER_MUTATION, variables: { orderId: id, input } }),
+            body: JSON.stringify({ query: KLEVER_CONFIRM_ORDER_MUTATION, variables: { orderId: id, request: input } }),
             cache: "no-store",
         });
 

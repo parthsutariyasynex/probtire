@@ -1,7 +1,7 @@
 "use client";
 
 import { Suspense, useEffect, useState, useMemo, useCallback, useRef } from "react";
-import { ShoppingCart, X, Star, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, ChevronsUpDown, AlertTriangle, Info, Check, Filter, Search } from "lucide-react";
+import { ShoppingCart, X, Star, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, ChevronsUpDown, AlertTriangle, Info, Check, Filter, Search, Image as ImageIcon } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import ProductDialog from "../components/ProductDialog";
@@ -110,6 +110,31 @@ function CardSpinner() {
   );
 }
 
+function isValidImageUrl(url: any): boolean {
+  if (!url || typeof url !== "string") return false;
+  const cleanUrl = url.trim().toLowerCase();
+  if (
+    cleanUrl === "" ||
+    cleanUrl === "no" ||
+    cleanUrl === "image no" ||
+    cleanUrl === "imade no" ||
+    cleanUrl === "no_image" ||
+    cleanUrl === "none" ||
+    cleanUrl === "null" ||
+    cleanUrl === "undefined"
+  ) {
+    return false;
+  }
+  if (
+    cleanUrl.includes("placeholder/image.jpg") ||
+    cleanUrl.includes("placeholder/small_image.jpg") ||
+    cleanUrl.includes("placeholder/thumbnail.jpg")
+  ) {
+    return false;
+  }
+  return true;
+}
+
 export default function ProductsPage() {
   const router = useRouter();
   const { t, isRtl } = useTranslation();
@@ -211,6 +236,10 @@ export default function ProductsPage() {
     setIsMounted(true);
     const stored = localStorage.getItem("favourites");
     if (stored) setFavIds(JSON.parse(stored));
+
+  }, []);
+
+  useEffect(() => {
     if (searchParams) {
       // categoryId comes from the URL, then the menu-derived default (sessionStorage).
       // When the menu is unavailable (e.g. WAF-blocked → no defaultCategoryId), fall back
@@ -227,6 +256,23 @@ export default function ProductsPage() {
       setIsInitialized(true);
     }
   }, [searchParams]);
+
+  // Sync selectedFilterLabels when selectedFilters or apiFilters change
+  useEffect(() => {
+    if (!isInitialized) return;
+    const nextLabels: Record<string, { value: string; label: string }[]> = {};
+    Object.entries(selectedFilters).forEach(([code, values]) => {
+      const group = apiFilters?.find((g: any) => (g.code || g.attribute_code) === code);
+      nextLabels[code] = values.map(val => {
+        const opt = group?.options?.find((o: any) => String(o.value ?? "") === val);
+        return {
+          value: val,
+          label: opt ? (opt.label || opt.value) : val
+        };
+      });
+    });
+    setSelectedFilterLabels(nextLabels);
+  }, [selectedFilters, apiFilters, isInitialized]);
 
   useEffect(() => {
     if (!isMounted) return;
@@ -591,9 +637,13 @@ export default function ProductsPage() {
           </div>
           <div
             className="w-12 h-12 sm:w-14 sm:h-14 flex-shrink-0 rounded-lg border border-gray-100 overflow-hidden bg-gray-50 flex items-center justify-center cursor-pointer"
-            onClick={() => { if (product?.image_url) { setSelectedImage(product.image_url); setPreviewProduct(product); setIsImageModalOpen(true); } }}
+            onClick={() => { if (isValidImageUrl(product?.image_url)) { setSelectedImage(product.image_url); setPreviewProduct(product); setIsImageModalOpen(true); } }}
           >
-            {product?.image_url ? <img src={product.image_url} alt={product.name} className="w-full h-full object-contain" /> : <span className="text-[8px] text-gray-300 font-bold uppercase">No Img</span>}
+            {isValidImageUrl(product?.image_url) ? (
+              <img src={product.image_url} alt={product.name} className="w-full h-full object-contain" />
+            ) : (
+              <ImageIcon size={20} className="text-gray-300" />
+            )}
           </div>
         </div>
         {/* Bottom: price left + actions right */}
@@ -679,11 +729,11 @@ export default function ProductsPage() {
           {compact ? `${displayCount} ${t("m.products")}` : <>{t("m.found")} <span className="text-gray-900">{displayCount}</span> {t("m.products")}</>}
         </span>
         <div className="flex items-center gap-1 md:gap-1.5">
-          <button disabled={currentPage === 1} onClick={() => setCurrentPage(p => p - 1)} className={`border border-gray-200 rounded-lg md:rounded-xl bg-white disabled:opacity-30 ${compact ? 'p-1.5' : 'p-2'}`}>{isRtl ? <ChevronRight size={compact ? 14 : 16} /> : <ChevronLeft size={compact ? 14 : 16} />}</button>
+          <button disabled={currentPage === 1} onClick={() => setCurrentPage(p => p - 1)} className={`border border-gray-200 rounded-sm bg-white disabled:opacity-30 ${compact ? 'p-1.5' : 'p-2'}`}>{isRtl ? <ChevronRight size={compact ? 14 : 16} /> : <ChevronLeft size={compact ? 14 : 16} />}</button>
           {Array.from({ length: Math.min(5, totalPages || 1) }).map((_, i) => (
-            <button key={i} onClick={() => setCurrentPage(i + 1)} className={`rounded-lg md:rounded-xl font-black ${compact ? 'w-8 h-8 text-label' : 'w-9 h-9 text-xs'} ${currentPage === i + 1 ? "bg-brand-yellow text-black" : "bg-white text-gray-400 border border-gray-200"}`}>{i + 1}</button>
+            <button key={i} onClick={() => setCurrentPage(i + 1)} className={`rounded-sm font-black ${compact ? 'w-8 h-8 text-label' : 'w-9 h-9 text-xs'} ${currentPage === i + 1 ? "bg-brand-yellow text-black" : "bg-white text-gray-400 border border-gray-200"}`}>{i + 1}</button>
           ))}
-          <button disabled={currentPage === totalPages} onClick={() => setCurrentPage(p => p + 1)} className={`border border-gray-200 rounded-lg md:rounded-xl bg-white disabled:opacity-30 ${compact ? 'p-1.5' : 'p-2'}`}>{isRtl ? <ChevronLeft size={compact ? 14 : 16} /> : <ChevronRight size={compact ? 14 : 16} />}</button>
+          <button disabled={currentPage === totalPages} onClick={() => setCurrentPage(p => p + 1)} className={`border border-gray-200 rounded-sm bg-white disabled:opacity-30 ${compact ? 'p-1.5' : 'p-2'}`}>{isRtl ? <ChevronLeft size={compact ? 14 : 16} /> : <ChevronRight size={compact ? 14 : 16} />}</button>
         </div>
       </div>
     );
@@ -723,7 +773,7 @@ export default function ProductsPage() {
               </div>
             </div>
             <div className="p-4 border-t border-gray-100 flex-shrink-0">
-              <button onClick={() => setIsMobileFilterOpen(false)} className="w-full h-[44px] bg-black text-white font-black uppercase text-body-sm tracking-widest rounded-lg active:scale-95 cursor-pointer">
+              <button onClick={() => setIsMobileFilterOpen(false)} className="w-full h-[44px] bg-black text-white font-black uppercase text-body-sm tracking-widest rounded-sm active:scale-95 cursor-pointer">
                 {t("m.apply-filters")}
               </button>
             </div>
@@ -742,22 +792,22 @@ export default function ProductsPage() {
           </div>
         </Drawer>
 
-        <div className="flex-1 flex flex-col w-full">
+        <div className="flex-1 flex flex-col w-full relative xl:pb-[90px]">
 
           {/* ── MOBILE CONTROLS ── */}
           <div className="xl:hidden flex flex-col gap-2 mb-3">
             {/* Controls: 2 cols on mobile, 4 cols on tablet */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
               {(!shouldHideCartActions || isSalesPerson) && (
-                <button onClick={() => router.push(lp("/wishlist"))} className="h-[44px] bg-white border border-gray-200 rounded-xl flex items-center justify-center gap-2 text-label font-bold uppercase tracking-wider shadow-sm active:scale-95 cursor-pointer">
+                <button onClick={() => router.push(lp("/wishlist"))} className="h-[44px] bg-white border border-gray-200 rounded-sm flex items-center justify-center gap-2 text-label font-bold uppercase tracking-wider shadow-sm active:scale-95 cursor-pointer">
                   <Star className="w-4 h-4 fill-black text-black" /> {t("m.favourite-products")}
                 </button>
               )}
-              <button onClick={() => setIsMobileSearchOpen(true)} className="h-[44px] bg-brand-yellow rounded-xl flex items-center justify-center gap-2 text-label font-bold uppercase tracking-wider shadow-sm active:scale-95 cursor-pointer">
+              <button onClick={() => setIsMobileSearchOpen(true)} className="h-[44px] bg-brand-yellow rounded-sm flex items-center justify-center gap-2 text-label font-bold uppercase tracking-wider shadow-sm active:scale-95 cursor-pointer">
                 <Search className="w-4 h-4" /> {t("m.search")}
               </button>
               <div className="relative">
-                <button onClick={() => setIsMobileSortOpen((prev) => !prev)} className="w-full h-[44px] bg-white border border-gray-200 rounded-xl flex items-center justify-center gap-2 text-label font-bold uppercase tracking-wider shadow-sm active:scale-95 cursor-pointer">
+                <button onClick={() => setIsMobileSortOpen((prev) => !prev)} className="w-full h-[44px] bg-white border border-gray-200 rounded-sm flex items-center justify-center gap-2 text-label font-bold uppercase tracking-wider shadow-sm active:scale-95 cursor-pointer">
                   <ChevronDown className="w-4 h-4" />
                   <span className="truncate">{sortBy === "none" ? t("products.sortByDefault") : sortBy === "price-asc" ? t("products.sortByLowToHigh") : t("products.sortByHighToLow")}</span>
                 </button>
@@ -785,7 +835,7 @@ export default function ProductsPage() {
                   </>
                 )}
               </div>
-              <button onClick={() => setIsMobileFilterOpen(true)} className="h-[44px] bg-white border border-gray-200 rounded-xl flex items-center justify-center gap-2 text-label font-bold uppercase tracking-wider shadow-sm active:scale-95 cursor-pointer">
+              <button onClick={() => setIsMobileFilterOpen(true)} className="h-[44px] bg-white border border-gray-200 rounded-sm flex items-center justify-center gap-2 text-label font-bold uppercase tracking-wider shadow-sm active:scale-95 cursor-pointer">
                 <Filter className="w-4 h-4" /> {t("m.filter-options")}
                 {Object.keys(selectedFilters).length > 0 && <span className="w-5 h-5 bg-brand-yellow rounded-full text-caption font-black flex items-center justify-center">{Object.keys(selectedFilters).length}</span>}
               </button>
@@ -844,7 +894,7 @@ export default function ProductsPage() {
                 value={sortBy}
                 onChange={setSortBy}
                 options={[{ label: t("products.sortByDefault"), value: "none" }, { label: t("products.sortByLowToHigh"), value: "price-asc" }, { label: t("products.sortByHighToLow"), value: "price-desc" }]}
-                buttonClassName="h-10 px-4 bg-white border border-gray-200 text-black flex items-center justify-between gap-6 text-xs font-bold hover:bg-gray-50 hover:border-gray-300 transition-all cursor-pointer rounded-md shadow-sm whitespace-nowrap"
+                buttonClassName="h-10 px-4 bg-white border border-gray-200 text-black flex items-center justify-between gap-6 text-xs font-bold hover:bg-gray-50 hover:border-gray-300 transition-all cursor-pointer rounded-sm shadow-sm whitespace-nowrap"
                 minWidth={180}
               />
             </div>
@@ -907,14 +957,18 @@ export default function ProductsPage() {
                           <td className="px-2 md:px-4 text-body-sm font-medium text-black/80 text-center">{product?.origin ? (t(`data.${product.origin}`) !== `data.${product.origin}` ? t(`data.${product.origin}`) : product.origin) : "—"}</td>
                           <td className="px-2 md:px-4 text-center">
                             <div className="w-10 h-10 mx-auto">
-                              {product?.image_url ? (
+                              {isValidImageUrl(product?.image_url) ? (
                                 <div className="relative w-10 h-10 group/img cursor-pointer" onClick={() => { setSelectedImage(product.image_url); setPreviewProduct(product); setIsImageModalOpen(true); }}>
                                   <img src={product.image_url} alt={product.name} width={40} height={40} className="w-10 h-10 object-contain rounded border border-gray-100 shadow-sm" />
                                   <div className="absolute inset-0 bg-black/50 opacity-0 group-hover/img:opacity-100 transition-all duration-300 flex items-center justify-center rounded">
                                     <div className="w-5 h-5 bg-brand-yellow rounded-full flex items-center justify-center text-black font-semibold text-caption shadow-lg transform scale-50 group-hover/img:scale-100 transition-transform duration-300">+</div>
                                   </div>
                                 </div>
-                              ) : <span className="text-caption text-black/40 font-semibold uppercase leading-[40px]">No Image</span>}
+                              ) : (
+                                <div className="w-10 h-10 mx-auto flex items-center justify-center bg-gray-50 rounded border border-gray-100 shadow-sm">
+                                  <ImageIcon size={18} className="text-gray-300" />
+                                </div>
+                              )}
                             </div>
                           </td>
                           <td className="px-2 md:px-4 text-center">{product.offer ? <span className="text-red-600 font-semibold text-caption uppercase tracking-tight block max-w-[150px] mx-auto">{product.offer}</span> : <span className="text-black/20">—</span>}</td>
@@ -996,8 +1050,8 @@ export default function ProductsPage() {
         </div>
 
         {/* Desktop bottom search bar */}
-        <div className={`hidden xl:flex fixed bottom-0 z-[40] bg-white border-t-[4px] border-brand-yellow shadow-[0_-10px_30px_rgba(0,0,0,0.12)] h-[90px] items-center transition-all duration-300 ${isFooterVisible ? "translate-y-[110px]" : "translate-y-0"} ${isRtl ? (isSidebarCollapsed ? "left-0 right-[50px]" : "left-0 right-[300px]") : (isSidebarCollapsed ? "left-[50px] right-0" : "left-[300px] right-0")}`}>
-          <div className="w-full">
+        <div className="hidden xl:flex fixed bottom-0 left-0 right-0 z-[40] bg-white border-t-[4px] border-brand-yellow shadow-[0_-10px_30px_rgba(0,0,0,0.12)] h-[90px] items-center transition-all duration-300 translate-y-0">
+          <div className={`w-full transition-all duration-300 ${isRtl ? (isSidebarCollapsed ? "pr-[50px] pl-0" : "pr-[300px] pl-0") : (isSidebarCollapsed ? "pl-[50px] pr-0" : "pl-[300px] pr-0")}`}>
             <div className="w-full max-w-[1400px] mx-auto px-4">
               <HorizontalFilter onSearch={handleHorizontalSearch} initialValues={{ width: debouncedFilters["width"]?.[0] || "", height: debouncedFilters["height"]?.[0] || "", rim: debouncedFilters["rim"]?.[0] || "" }} />
             </div>

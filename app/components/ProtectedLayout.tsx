@@ -35,8 +35,16 @@ export default function ProtectedLayout({ children }: ProtectedLayoutProps) {
 
   // Strip locale prefix for route matching
   const pathnameWithoutLocale = stripLocaleFromPath(pathname);
-  const publicPages = ['/login', '/forgot-password', '/about', '/catalogue', '/locations', '/guides', '/privacy-policy', '/return-exchange-policy', '/terms-conditions'];
-  const isPublicPage = publicPages.some(p => pathnameWithoutLocale.startsWith(p));
+  const publicPages = [
+    '/login', '/forgot-password', '/about', '/about-us',
+    '/catalogue', '/catalog', '/product-catalogue', '/product-catalog',
+    '/locations', '/branch-locations', '/branches', '/our-branches', '/contact', '/contact-us',
+    '/guides', '/user-guides', '/tyre-guides',
+    '/privacy-policy', '/privacy',
+    '/return-exchange-policy', '/returns-exchange',
+    '/terms-conditions', '/terms', '/terms-of-service'
+  ];
+  const isPublicPage = publicPages.some(p => pathnameWithoutLocale === p || pathnameWithoutLocale.startsWith(p + '/'));
 
   // Sync NextAuth session with Redux & LocalStorage
   useEffect(() => {

@@ -97,6 +97,11 @@
     text-align: right;
   }
 
+  /* 3px radius on all interactive form elements by default */
+  button, input, select, textarea {
+    border-radius: var(--radius-sm);
+  }
+
   body {
     min-width: 320px;
   }
@@ -355,4 +360,8 @@
   font-style: normal;
   position: relative;
   top: 1px;
+}
+/* Primary action button — consistent across all pages */
+.btn-primary {
+  @apply px-6 py-3 bg-brand-yellow text-black text-xs font-bold uppercase tracking-[0.2em] hover:bg-brand-yellow-dark transition-all cursor-pointer rounded-sm active:scale-95 shadow-md shadow-black/5;
 }

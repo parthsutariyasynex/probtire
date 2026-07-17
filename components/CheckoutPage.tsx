@@ -229,6 +229,8 @@ const CheckoutPageUI: React.FC = () => {
     // File inputs refs
     const poUploadRef = useRef<HTMLInputElement>(null);
     const paymentCommitmentRef = useRef<HTMLInputElement>(null);
+    const poUploadContainerRef = useRef<HTMLDivElement>(null);
+    const paymentCommitmentContainerRef = useRef<HTMLDivElement>(null);
     // Set once an order is successfully placed, so the empty-cart redirect doesn't fire after
     // clearCart() and steal the navigation to the success page.
     const orderPlacedRef = useRef(false);
@@ -239,6 +241,30 @@ const CheckoutPageUI: React.FC = () => {
             router.push(lp("/login?callback=/checkout"));
         }
     }, [status, router]);
+
+    // Close upload popups on click outside
+    useEffect(() => {
+        function handleClickOutside(event: MouseEvent) {
+            if (
+                isPoUploadOpen &&
+                poUploadContainerRef.current &&
+                !poUploadContainerRef.current.contains(event.target as Node)
+            ) {
+                setIsPoUploadOpen(false);
+            }
+            if (
+                isPaymentCommitmentOpen &&
+                paymentCommitmentContainerRef.current &&
+                !paymentCommitmentContainerRef.current.contains(event.target as Node)
+            ) {
+                setIsPaymentCommitmentOpen(false);
+            }
+        }
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => {
+            document.removeEventListener("mousedown", handleClickOutside);
+        };
+    }, [isPoUploadOpen, isPaymentCommitmentOpen]);
 
     // Redirect if cart is empty — but NOT right after placing an order (clearCart() empties the
     // cart on success, and without this guard the empty-cart redirect races the success redirect
@@ -889,14 +915,13 @@ const CheckoutPageUI: React.FC = () => {
                                     />
                                     {uploadedPOs.length > 0 && (
                                         <div className="mt-3 flex flex-wrap gap-2">
-                                            {/* Hidden since it is listed next to/below the drop area */}
                                         </div>
                                     )}
                                 </div>
 
                                 <div className="space-y-1.5 w-full relative">
                                     {/* Transparent spacer label to match PO NUMBER label height and align tops of columns */}
-                                    <div className="absolute top-full left-0 right-0 z-50 border border-subtle rounded-sm bg-white shadow-lg">
+                                    <div ref={poUploadContainerRef} className="absolute top-full left-0 right-0 z-50 border border-subtle rounded-sm bg-white shadow-lg">
                                         <div
                                             className={`bg-gray-50/50 px-4 py-2.5 flex items-center justify-between cursor-pointer hover:bg-white transition-colors rounded-t-sm ${isPoUploadOpen ? "border-b border-subtle" : "rounded-sm"}`}
                                             onClick={() => setIsPoUploadOpen(!isPoUploadOpen)}
@@ -1280,7 +1305,7 @@ const CheckoutPageUI: React.FC = () => {
                                                         </label>
 
                                                         {method.code === "checkmo" && isSelected && (
-                                                            <div className="mt-3 relative">
+                                                            <div ref={paymentCommitmentContainerRef} className="mt-3 relative">
                                                                 <div
                                                                     className="w-full px-4 py-2.5 text-sm font-medium text-black bg-white border border-gray-200 rounded focus:border-primary focus:outline-none transition-all placeholder:text-black/40 placeholder:font-normal flex items-center justify-between cursor-pointer select-none"
                                                                     onClick={() => setIsPaymentCommitmentOpen(!isPaymentCommitmentOpen)}
@@ -1515,8 +1540,14 @@ const CheckoutPageUI: React.FC = () => {
 
             {/* Warehouse Selection Modal */}
             {isWarehouseModalOpen && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
-                    <div className="bg-white w-full max-w-4xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300 border border-gray-200">
+                <div 
+                    className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300"
+                    onClick={() => setIsWarehouseModalOpen(false)}
+                >
+                    <div 
+                        className="bg-white w-full max-w-4xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300 border border-gray-200"
+                        onClick={(e) => e.stopPropagation()}
+                    >
                         {/* Modal Header */}
                         <div className="bg-black py-4 px-6 flex justify-end items-center">
                             <button

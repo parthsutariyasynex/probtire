@@ -5,12 +5,16 @@ import Link from "next/link";
 import { Mail, Share2, Facebook, Instagram, Twitter, Linkedin } from "lucide-react";
 import { useTranslation } from "@/hooks/useTranslation";
 import { useLocalePath } from "@/hooks/useLocalePath";
+import { usePathname } from "next/navigation";
 
 const Footer: React.FC = () => {
     const { t } = useTranslation();
     const lp = useLocalePath();
+    const pathname = usePathname();
+    const isProductsPage = pathname?.includes("/products");
+
     return (
-        <footer id="footer" className="bg-black text-white py-6 sm:py-8 font-rubik">
+        <footer id="footer" className={`bg-black text-white py-6 sm:py-8 font-rubik transition-all duration-300 ${isProductsPage ? "xl:pb-[110px]" : ""}`}>
             <div className="max-w-[1920px] mx-auto px-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-12 text-center pb-5 border-b border-gray-800/40">
 

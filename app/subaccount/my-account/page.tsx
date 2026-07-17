@@ -53,6 +53,7 @@ export default function SubAccountMyAccountPage() {
     const [isSubAccountSession, setIsSubAccountSession] = useState(false);
     // Sub-account's own customer data (from login response)
     const [subCustomer, setSubCustomer] = useState<any>(null);
+    const [subLoading, setSubLoading] = useState(true);
     // Whether the user_type is "Company Sub Account" (direct login path)
     const [userType, setUserType] = useState<string>("");
     const [roleLoaded, setRoleLoaded] = useState(false);
@@ -129,6 +130,8 @@ export default function SubAccountMyAccountPage() {
                 }
             } catch (err) {
                 console.error("[SubAccountMyAccountPage] Error fetching fresh profile:", err);
+            } finally {
+                setSubLoading(false);
             }
         };
 
@@ -147,7 +150,7 @@ export default function SubAccountMyAccountPage() {
         }
     }, [status, token, dispatch, router]);
 
-    if (!roleLoaded || parentLoading) {
+    if (!roleLoaded || parentLoading || (!subCustomer && subLoading)) {
         return (
             <div className="min-h-screen flex flex-col w-full bg-surface font-rubik">
                 <div className="flex flex-col lg:flex-row flex-1 w-full">
@@ -316,14 +319,14 @@ export default function SubAccountMyAccountPage() {
                                             {defaultShipping?.id ? (
                                                 <Link
                                                     href={lp(`/customer/address/edit/id/${defaultShipping.id}`)}
-                                                    className="bg-brand-yellow hover:bg-brand-yellow-dark text-black text-body-sm md:text-body font-bold px-6 md:px-8 py-2 md:py-2.5 uppercase transition-all rounded-none inline-block w-full sm:w-auto text-center"
+                                                    className="btn-primary inline-block w-full sm:w-auto text-center"
                                                 >
                                                     EDIT ADDRESS
                                                 </Link>
                                             ) : (
                                                 <Link
                                                     href={lp("/customer/address")}
-                                                    className="bg-brand-yellow hover:bg-brand-yellow-dark text-black text-body-sm md:text-body font-bold px-6 md:px-8 py-2 md:py-2.5 uppercase transition-all rounded-none inline-block w-full sm:w-auto text-center"
+                                                    className="btn-primary inline-block w-full sm:w-auto text-center"
                                                 >
                                                     EDIT ADDRESS
                                                 </Link>

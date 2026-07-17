@@ -443,11 +443,11 @@ export default function MyAccountPage() {
 
                                             <div className="pt-4 md:pt-8">
                                                 {defaultShipping?.id ? (
-                                                    <Link href={lp(`/customer/address-book/edit/${defaultShipping.id}`)} className="w-full md:w-auto text-center bg-brand-yellow hover:bg-brand-yellow-dark text-black text-body font-bold px-4 md:px-8 py-2.5 uppercase transition-all rounded-none inline-block">
+                                                    <Link href={lp(`/customer/address-book/edit/${defaultShipping.id}`)} className="w-full md:w-auto text-center bg-brand-yellow hover:bg-brand-yellow-dark text-black text-body font-bold px-4 md:px-8 py-2.5 uppercase transition-all rounded-sm inline-block">
                                                         {t("addressBook.editAddress")}
                                                     </Link>
                                                 ) : (
-                                                    <Link href={lp("/customer/address")} className="w-full md:w-auto text-center bg-brand-yellow hover:bg-brand-yellow-dark text-black text-body font-bold px-4 md:px-8 py-2.5 uppercase transition-all rounded-none inline-block">
+                                                    <Link href={lp("/customer/address")} className="w-full md:w-auto text-center bg-brand-yellow hover:bg-brand-yellow-dark text-black text-body font-bold px-4 md:px-8 py-2.5 uppercase transition-all rounded-sm inline-block">
                                                         {t("addressBook.editAddress")}
                                                     </Link>
                                                 )}
