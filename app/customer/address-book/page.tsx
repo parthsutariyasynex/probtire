@@ -1,25 +1,70 @@
 "use client";
 import { useTranslation } from "@/hooks/useTranslation";
+import { useLocalePath } from "@/hooks/useLocalePath";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import Sidebar from "@/components/Sidebar";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchCustomerInfo } from "@/store/actions/customerActions";
 import { RootState } from "@/store/store";
-import Link from "next/link";
 import Addresses from "../../components/Addresses";
 import { redirectToLogin } from "@/utils/helpers";
 import { AddressBookSkeleton, SidebarSkeleton } from "@/components/skeletons";
+import toast from "react-hot-toast";
+
+const ROLE_CACHE_KEY = "altalayi_user_type_v1";
+const TOKEN_CACHE_KEY = "altalayi_role_token_v1";
 
 export default function AddressBookPage() {
     const router = useRouter();
+    const lp = useLocalePath();
     const { t, isRtl } = useTranslation();
     const dispatch = useDispatch();
     const { data: session, status } = useSession();
     const { data: customer, loading } = useSelector((state: RootState) => state.customer);
     const token = useSelector((state: RootState) => state.auth.token);
+
+    const [userType, setUserType] = useState<string>("");
+    const [roleLoaded, setRoleLoaded] = useState(false);
+
+    // Resolve user_type from sessionStorage cache or account-sidebar API
+    useEffect(() => {
+        const accessToken = (session as any)?.accessToken as string | undefined;
+        if (!accessToken) { setRoleLoaded(true); return; }
+        if (typeof sessionStorage === "undefined") { setRoleLoaded(true); return; }
+
+        if (sessionStorage.getItem(TOKEN_CACHE_KEY) === accessToken) {
+            setUserType(sessionStorage.getItem(ROLE_CACHE_KEY) || "");
+            setRoleLoaded(true);
+            return;
+        }
+
+        fetch("/api/kleverapi/account-sidebar", {
+            headers: { Authorization: `Bearer ${accessToken}` },
+        })
+            .then(r => r.json())
+            .then(data => {
+                const type = data?.user_type || "Customer";
+                if (type !== "Guest") {
+                    sessionStorage.setItem(ROLE_CACHE_KEY, type);
+                    sessionStorage.setItem(TOKEN_CACHE_KEY, accessToken);
+                }
+                setUserType(type);
+                setRoleLoaded(true);
+            })
+            .catch(() => { setRoleLoaded(true); });
+    }, [(session as any)?.accessToken]);
+
+    // Company Sub Account: show Magento-equivalent warning and redirect to /customer/account
+    useEffect(() => {
+        if (!roleLoaded) return;
+        if (userType === "Company Sub Account") {
+            toast.error("You don't have permission to edit account address information.");
+            router.replace(lp("/customer/account"));
+        }
+    }, [roleLoaded, userType]);
 
     useEffect(() => {
         if (status === "unauthenticated") {
@@ -33,7 +78,7 @@ export default function AddressBookPage() {
         }
     }, [dispatch, status, router, token]);
 
-    if (status === "loading" || loading) {
+    if (status === "loading" || loading || !roleLoaded) {
         return (
             <div className="flex flex-col lg:flex-row flex-1 min-h-0 w-full bg-white font-rubik">
                 <SidebarSkeleton />
@@ -48,6 +93,9 @@ export default function AddressBookPage() {
             </div>
         );
     }
+
+    // Block render while redirect is in progress for Company Sub Account
+    if (userType === "Company Sub Account") return null;
 
     return (
         <div className="flex flex-col lg:flex-row flex-1 min-h-0 w-full">

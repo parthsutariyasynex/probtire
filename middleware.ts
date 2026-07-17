@@ -33,7 +33,7 @@ const PUBLIC_ROUTES = [
     "/privacy-policy", "/return-exchange-policy", "/terms-conditions",
 ];
 
-const SKIP_PATHS = ["/api", "/_next", "/favicon.ico", "/logo", "/images", "/locales"];
+const SKIP_PATHS = ["/api", "/_next", "/favicon.ico", "/logo", "/images", "/locales", "/brand-guidelines.html"];
 
 // ─── Magento URL resolution ────────────────────────────────────────────────
 // Magento exposes SEO URLs like /en/all-tyres/car-tyres.html and /en/about-us.

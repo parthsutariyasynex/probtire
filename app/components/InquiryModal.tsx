@@ -77,7 +77,7 @@ export default function InquiryModal({ product, isOpen, onClose }: InquiryModalP
                                         <p className="text-xs font-bold text-gray-700">{product.pattern || "N/A"}</p>
                                     </div>
                                     <div className="space-y-0.5">
-                                        <p className="text-sm font-black text-yellow-600 price currency-riyal"><Price amount={product.final_price || product.price} /></p>
+                                        <p className="text-sm font-black text-brand-yellow-dark price currency-riyal"><Price amount={product.final_price || product.price} /></p>
 
 
                                     </div>
@@ -94,7 +94,7 @@ export default function InquiryModal({ product, isOpen, onClose }: InquiryModalP
                                 required
                                 type="text"
                                 placeholder={t("inquiry.fullNamePlaceholder")}
-                                className="w-full px-4 py-3.5 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-yellow-400 focus:border-yellow-400 bg-white outline-none transition-all text-sm font-medium"
+                                className="w-full px-4 py-3.5 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-brand-yellow focus:border-brand-yellow bg-white outline-none transition-all text-sm font-medium"
                                 value={formData.name}
                                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                             />
@@ -106,7 +106,7 @@ export default function InquiryModal({ product, isOpen, onClose }: InquiryModalP
                                 required
                                 type="email"
                                 placeholder={t("inquiry.emailPlaceholder")}
-                                className="w-full px-4 py-3.5 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-yellow-400 focus:border-yellow-400 bg-white outline-none transition-all text-sm font-medium"
+                                className="w-full px-4 py-3.5 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-brand-yellow focus:border-brand-yellow bg-white outline-none transition-all text-sm font-medium"
                                 value={formData.email}
                                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                             />
@@ -118,7 +118,7 @@ export default function InquiryModal({ product, isOpen, onClose }: InquiryModalP
                                 required
                                 type="tel"
                                 placeholder={t("inquiry.mobilePlaceholder")}
-                                className="w-full px-4 py-3.5 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-yellow-400 focus:border-yellow-400 bg-white outline-none transition-all text-sm font-medium"
+                                className="w-full px-4 py-3.5 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-brand-yellow focus:border-brand-yellow bg-white outline-none transition-all text-sm font-medium"
                                 value={formData.phone}
                                 onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                             />
@@ -130,7 +130,7 @@ export default function InquiryModal({ product, isOpen, onClose }: InquiryModalP
                                 required
                                 rows={4}
                                 placeholder={t("inquiry.messagePlaceholder")}
-                                className="w-full px-4 py-3.5 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-yellow-400 focus:border-yellow-400 bg-white outline-none transition-all text-sm font-medium resize-none shadow-sm"
+                                className="w-full px-4 py-3.5 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-brand-yellow focus:border-brand-yellow bg-white outline-none transition-all text-sm font-medium resize-none shadow-sm"
                                 value={formData.message}
                                 onChange={(e) => setFormData({ ...formData, message: e.target.value })}
                             />
@@ -148,7 +148,7 @@ export default function InquiryModal({ product, isOpen, onClose }: InquiryModalP
                         <button
                             type="submit"
                             disabled={isSubmitting}
-                            className="flex-[2] py-4 px-6 bg-yellow-400 hover:bg-yellow-500 text-black font-black rounded-lg transition-all shadow-md flex items-center justify-center gap-2 disabled:opacity-50 uppercase tracking-widest text-sm"
+                            className="flex-[2] py-4 px-6 bg-brand-yellow hover:bg-brand-yellow-dark text-black font-black rounded-lg transition-all shadow-md flex items-center justify-center gap-2 disabled:opacity-50 uppercase tracking-widest text-sm"
                         >
                             {isSubmitting ? (
                                 t("common.loading")

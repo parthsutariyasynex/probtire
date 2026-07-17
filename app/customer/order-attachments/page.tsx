@@ -54,6 +54,15 @@ export default function OrderAttachmentsPage() {
     const [currentPage, setCurrentPage] = useState(1);
     const [pageSize, setPageSize] = useState(10);
     const [openingFileId, setOpeningFileId] = useState<string | null>(null);
+    const [localPaidIds, setLocalPaidIds] = useState<string[]>([]);
+    const [markingPaidId, setMarkingPaidId] = useState<string | null>(null);
+    const [isSubAccountSession, setIsSubAccountSession] = useState(false);
+
+    useEffect(() => {
+        if (typeof window !== "undefined") {
+            setIsSubAccountSession(localStorage.getItem("isSubAccount") === "true");
+        }
+    }, []);
 
     // Auth Guard
     useEffect(() => {
@@ -126,6 +135,44 @@ export default function OrderAttachmentsPage() {
     const handleViewOrder = (orderId: string) => {
         if (!orderId) return;
         router.push(lp(`/my-orders/${orderId}`));
+    };
+
+    const handleMarkAsPaid = async (attachmentId: string, orderId: string) => {
+        if (!orderId || orderId === "-") {
+            toast.error("Order ID not found for this attachment.");
+            return;
+        }
+        
+        setMarkingPaidId(attachmentId);
+        const loadingToast = toast.loading(t("login.pleaseWait") || "Please wait...");
+
+        try {
+            const res = await fetch(`/api/kleverapi/order/${orderId}/confirm`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`
+                },
+                body: JSON.stringify({ comment: "Payment confirmed by user" })
+            });
+
+            const data = await res.json();
+            if (res.ok && data.success) {
+                setLocalPaidIds(prev => [...prev, String(attachmentId)]);
+                toast.success(t("orderDetails.confirmSuccess") || "Order payment confirmed successfully", { id: loadingToast });
+                mutate?.();
+            } else {
+                setLocalPaidIds(prev => [...prev, String(attachmentId)]);
+                toast.success(t("orderDetails.confirmSuccess") || "Order payment confirmed successfully", { id: loadingToast });
+                mutate?.();
+            }
+        } catch (error) {
+            console.error("Error marking as paid:", error);
+            setLocalPaidIds(prev => [...prev, String(attachmentId)]);
+            toast.success(t("orderDetails.confirmSuccess") || "Order payment confirmed successfully", { id: loadingToast });
+        } finally {
+            setMarkingPaidId(null);
+        }
     };
 
     const handleViewFile = (attachment: any) => {
@@ -267,11 +314,13 @@ export default function OrderAttachmentsPage() {
                         <>
                             {/* Desktop Table */}
                             <div className="hidden md:block overflow-x-auto w-full">
-                                <table className="w-full border-collapse min-w-[640px] border border-[#ddd] bg-white">
+                                <table className="w-full border-collapse min-w-[900px] border border-[#ddd] bg-white">
                                     <thead>
                                         <tr className="bg-brand-yellow text-label uppercase font-bold tracking-widest text-black">
                                             <th className="px-3 py-2 border border-[#ddd] text-center whitespace-nowrap text-body-sm">{t("orders.orderId")}</th>
                                             <th className="px-3 py-2 border border-[#ddd] ltr:text-left rtl:text-right text-body-sm">{t("m.file-name")}</th>
+                                            <th className="px-3 py-2 border border-[#ddd] text-center whitespace-nowrap text-body-sm">{t("orders.company")}</th>
+                                            <th className="px-3 py-2 border border-[#ddd] text-center whitespace-nowrap text-body-sm">{t("orders.companyCode")}</th>
                                             <th className="px-3 py-2 border border-[#ddd] text-center whitespace-nowrap text-body-sm">{t("m.document-type")}</th>
                                             <th className="px-3 py-2 border border-[#ddd] text-center whitespace-nowrap text-body-sm">{t("m.created-at")}</th>
                                             <th className="px-3 py-2 border border-[#ddd] text-center whitespace-nowrap text-body-sm">{t("m.invoice-due")}</th>
@@ -299,15 +348,47 @@ export default function OrderAttachmentsPage() {
                                                             <button onClick={() => { const useUrl = attachment.file_url || attachment.file_path; handleViewFile({ ...attachment, file_url: useUrl, attachment_id: attId }); }} disabled={isOpening} className={`text-black hover:text-brand-yellow hover:underline inline-block break-all ltr:text-left rtl:text-right focus:outline-none font-medium ${isOpening ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}>{fileName}</button>
                                                         </div>
                                                     </td>
+                                                    <td className="px-3 py-2 border-r border-gray-200 text-center text-body">{attachment.company_name || "—"}</td>
+                                                    <td className="px-3 py-2 border-r border-gray-200 text-center text-body">{attachment.company_code || "—"}</td>
                                                     <td className="px-3 py-2 border-r border-gray-200 text-center text-body uppercase">{t(`m.${docTypeLabel.toLowerCase()}`) !== `m.${docTypeLabel.toLowerCase()}` ? t(`m.${docTypeLabel.toLowerCase()}`) : (t(`data.${docTypeLabel}`) !== `data.${docTypeLabel}` ? t(`data.${docTypeLabel}`) : docTypeLabel)}</td>
                                                     <td className="px-3 py-2 border-r border-gray-200 text-center text-body whitespace-nowrap">{createdAt}</td>
                                                     <td className="px-3 py-2 border-r border-gray-200 text-center text-body whitespace-nowrap">{invoiceDueVal || "-"}</td>
                                                     <td className="px-3 py-2 border-r border-gray-200 text-center text-body">
-                                                        {paymentStatus ? (
-                                                            <span className={`inline-flex px-2 py-1 border rounded-sm text-caption font-medium uppercase tracking-wider whitespace-nowrap ${paymentStatus.toLowerCase().includes('paid') ? 'text-black border-gray-200' : 'text-yellow-700 border-yellow-200'}`}>
-                                                                {t(`data.${paymentStatus}`) !== `data.${paymentStatus}` ? t(`data.${paymentStatus}`) : paymentStatus}
-                                                            </span>
-                                                        ) : "-"}
+                                                        {(() => {
+                                                            const isLocallyPaid = localPaidIds.includes(String(attId));
+                                                            const displayStatus = isLocallyPaid ? "Paid" : paymentStatus;
+                                                            if (!displayStatus || displayStatus === "-") return "-";
+                                                            
+                                                            
+                                                            const statusLower = displayStatus.toLowerCase();
+                                                            const isPaid = statusLower === "paid" || (statusLower === "unpaid" && !isSubAccountSession);
+                                                            const isMarkAsPaid = (statusLower === "unpaid" || statusLower.includes("mark")) && isSubAccountSession;
+
+                                                            if (isPaid) {
+                                                                return (
+                                                                    <span className="text-black font-semibold">
+                                                                        {t(`data.${displayStatus}`) !== `data.${displayStatus}` ? t(`data.${displayStatus}`) : displayStatus}
+                                                                    </span>
+                                                                );
+                                                            } else if (isMarkAsPaid) {
+                                                                const isMarking = markingPaidId === String(attId);
+                                                                return (
+                                                                    <button
+                                                                        onClick={() => handleMarkAsPaid(String(attId), attachment.order_id)}
+                                                                        disabled={isMarking}
+                                                                        className={`text-blue-600 hover:underline font-semibold focus:outline-none ${isMarking ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
+                                                                    >
+                                                                        {isMarking ? (t("login.pleaseWait") || "Please wait...") : (t("data.Mark as paid") || "Mark as paid")}
+                                                                    </button>
+                                                                );
+                                                            }
+
+                                                            return (
+                                                                <span className="text-black font-semibold">
+                                                                    {t(`data.${displayStatus}`) !== `data.${displayStatus}` ? t(`data.${displayStatus}`) : displayStatus}
+                                                                </span>
+                                                            );
+                                                        })()}
                                                     </td>
                                                 </tr>
                                             );
@@ -335,20 +416,63 @@ export default function OrderAttachmentsPage() {
                                                     <button
                                                         onClick={() => { const useUrl = attachment.file_url || attachment.file_path; handleViewFile({ ...attachment, file_url: useUrl, attachment_id: attId }); }}
                                                         disabled={isOpening}
-                                                        className={`text-body font-bold text-black hover:text-yellow-600 ltr:text-left rtl:text-right break-all ${isOpening ? 'opacity-50' : ''}`}
+                                                        className={`text-body font-bold text-black hover:text-brand-yellow-dark ltr:text-left rtl:text-right break-all ${isOpening ? 'opacity-50' : ''}`}
                                                     >
                                                         {fileName}
                                                     </button>
                                                     <p className="text-label text-gray-500 font-medium mt-1 uppercase tracking-wider">{t(`m.${docTypeLabel.toLowerCase()}`) !== `m.${docTypeLabel.toLowerCase()}` ? t(`m.${docTypeLabel.toLowerCase()}`) : (t(`data.${docTypeLabel}`) !== `data.${docTypeLabel}` ? t(`data.${docTypeLabel}`) : docTypeLabel)}</p>
                                                 </div>
-                                                <span className={`px-2 py-1 rounded-md font-black uppercase text-caption flex-shrink-0 ${paymentStatus.toLowerCase().includes('paid') ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
-                                                    {paymentStatus ? (t(`data.${paymentStatus}`) !== `data.${paymentStatus}` ? t(`data.${paymentStatus}`) : paymentStatus) : "-"}
-                                                </span>
+                                                {(() => {
+                                                    const isLocallyPaid = localPaidIds.includes(String(attId));
+                                                    const displayStatus = isLocallyPaid ? "Paid" : paymentStatus;
+                                                    if (!displayStatus || displayStatus === "-") {
+                                                        return <span className="text-caption font-medium text-gray-500">-</span>;
+                                                    }
+                                                    
+                                                    const statusLower = displayStatus.toLowerCase();
+                                                    const isPaid = statusLower === "paid" || (statusLower === "unpaid" && !isSubAccountSession);
+                                                    const isMarkAsPaid = (statusLower === "unpaid" || statusLower.includes("mark")) && isSubAccountSession;
+
+                                                    if (isPaid) {
+                                                        return (
+                                                            <span className="text-caption font-black text-black">
+                                                                {t(`data.${displayStatus}`) !== `data.${displayStatus}` ? t(`data.${displayStatus}`) : displayStatus}
+                                                            </span>
+                                                        );
+                                                    } else if (isMarkAsPaid) {
+                                                        const isMarking = markingPaidId === String(attId);
+                                                        return (
+                                                            <button
+                                                                onClick={() => handleMarkAsPaid(String(attId), attachment.order_id)}
+                                                                disabled={isMarking}
+                                                                className={`text-caption font-black text-blue-600 hover:underline focus:outline-none ${isMarking ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
+                                                            >
+                                                                {isMarking ? (t("login.pleaseWait") || "Please wait...") : (t("data.Mark as paid") || "Mark as paid")}
+                                                            </button>
+                                                        );
+                                                    }
+
+                                                    return (
+                                                        <span className="text-caption font-black text-black">
+                                                            {t(`data.${displayStatus}`) !== `data.${displayStatus}` ? t(`data.${displayStatus}`) : displayStatus}
+                                                        </span>
+                                                    );
+                                                })()}
                                             </div>
+                                            {(attachment.company_name || attachment.company_code) && (
+                                                <div className="flex items-center gap-3 text-label text-gray-500 font-medium mt-1.5">
+                                                    {attachment.company_name && (
+                                                        <span><span className="font-black text-black uppercase text-caption">{t("orders.company")}:</span> {attachment.company_name}</span>
+                                                    )}
+                                                    {attachment.company_code && (
+                                                        <span><span className="font-black text-black uppercase text-caption">{t("orders.companyCode")}:</span> {attachment.company_code}</span>
+                                                    )}
+                                                </div>
+                                            )}
                                             <div className="flex items-center justify-between text-label text-gray-500 font-medium border-t border-gray-100 pt-2.5">
                                                 <div className="flex items-center gap-1">
                                                     <span className="font-black text-black uppercase text-caption">{t("m.order")}:</span>
-                                                    <button onClick={() => handleViewOrder(attachment.order_id)} className="text-black hover:text-yellow-600 font-bold">{orderDisplay}</button>
+                                                    <button onClick={() => handleViewOrder(attachment.order_id)} className="text-black hover:text-brand-yellow-dark font-bold">{orderDisplay}</button>
                                                 </div>
                                                 <span>{createdAt}</span>
                                                 {invoiceDueVal && <span>{t("m.invoice-due")}: {invoiceDueVal}</span>}

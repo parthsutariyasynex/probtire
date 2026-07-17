@@ -12,6 +12,11 @@ import Sidebar from "@/components/Sidebar";
 import Link from "next/link";
 import { redirectToLogin } from "@/utils/helpers";
 import { AccountSkeleton, SidebarSkeleton } from "@/components/skeletons";
+import { api } from "@/lib/api/api-client";
+import toast from "react-hot-toast";
+
+const ROLE_CACHE_KEY = "altalayi_user_type_v1";
+const TOKEN_CACHE_KEY = "altalayi_role_token_v1";
 
 type CustomAttribute = {
     attribute_code: string;
@@ -40,38 +45,95 @@ export default function SubAccountMyAccountPage() {
     const lp = useLocalePath();
     const pathname = usePathname();
     const dispatch = useDispatch<AppDispatch>();
-    const { status } = useSession();
-    // Parent account data from Redux (for company info)
+    const { data: session, status } = useSession();
+    // Parent account data from Redux (for company info — populated by ProtectedLayout syncing the session token)
     const { data: parentCustomer, loading: parentLoading } = useSelector((state: RootState) => state.customer);
     const token = useSelector((state: RootState) => state.auth.token);
 
     const [isSubAccountSession, setIsSubAccountSession] = useState(false);
     // Sub-account's own customer data (from login response)
     const [subCustomer, setSubCustomer] = useState<any>(null);
+    // Whether the user_type is "Company Sub Account" (direct login path)
+    const [userType, setUserType] = useState<string>("");
+    const [roleLoaded, setRoleLoaded] = useState(false);
 
-    // Check sub-account session & load sub-account customer from localStorage
+    // Resolve user_type from sessionStorage cache or account-sidebar API
     useEffect(() => {
-        if (typeof window !== "undefined") {
-            const isSub = localStorage.getItem("isSubAccount") === "true";
-            setIsSubAccountSession(isSub);
+        const accessToken = (session as any)?.accessToken as string | undefined;
+        if (!accessToken) { setRoleLoaded(true); return; }
+        if (typeof sessionStorage === "undefined") { setRoleLoaded(true); return; }
 
-            if (!isSub) {
-                router.replace(lp("/customer/account"));
-                return;
+        if (sessionStorage.getItem(TOKEN_CACHE_KEY) === accessToken) {
+            setUserType(sessionStorage.getItem(ROLE_CACHE_KEY) || "");
+            setRoleLoaded(true);
+            return;
+        }
+        fetch("/api/kleverapi/account-sidebar", {
+            headers: { Authorization: `Bearer ${accessToken}` },
+        }).then(r => r.json()).then(data => {
+            const type = data?.user_type || "Customer";
+            if (type !== "Guest") {
+                sessionStorage.setItem(ROLE_CACHE_KEY, type);
+                sessionStorage.setItem(TOKEN_CACHE_KEY, accessToken);
             }
+            setUserType(type);
+            setRoleLoaded(true);
+        }).catch(() => { setRoleLoaded(true); });
+    }, [(session as any)?.accessToken]);
 
-            // Login response is stored as {token, customer: {...}}
+    // Check sub-account session & load sub-account customer data
+    useEffect(() => {
+        if (!roleLoaded) return;
+        if (typeof window === "undefined") return;
+
+        const isSub = localStorage.getItem("isSubAccount") === "true";
+        const isDirectSubAccount = userType === "Company Sub Account";
+
+        setIsSubAccountSession(isSub);
+
+        if (!isSub && !isDirectSubAccount) {
+            router.replace(lp("/customer/account"));
+            return;
+        }
+
+        if (isSub) {
+            // Via "Login as Sub Account" flow: show toast and load from localStorage
+            toast.success(t("dashboard.subAccountBanner") || "You are logged as subaccount now.");
+
             const storedData = localStorage.getItem("subAccountData");
             if (storedData) {
                 try {
                     const parsed = JSON.parse(storedData);
-                    // Extract the customer object from login response
                     const customerData = parsed.customer || parsed;
                     setSubCustomer(customerData);
                 } catch { }
             }
         }
-    }, [pathname, router]);
+
+        // Always fetch fresh sub-account profile (works for both direct login and "Login as" flow)
+        const fetchSubAccountProfile = async () => {
+            try {
+                const freshData = await api.get("/kleverapi/my-account");
+                if (freshData) {
+                    setSubCustomer(freshData);
+                    if (isSub) {
+                        const storedData = localStorage.getItem("subAccountData");
+                        if (storedData) {
+                            try {
+                                const parsed = JSON.parse(storedData);
+                                parsed.customer = freshData;
+                                localStorage.setItem("subAccountData", JSON.stringify(parsed));
+                            } catch { }
+                        }
+                    }
+                }
+            } catch (err) {
+                console.error("[SubAccountMyAccountPage] Error fetching fresh profile:", err);
+            }
+        };
+
+        fetchSubAccountProfile();
+    }, [pathname, router, roleLoaded, userType]);
 
     // Fetch parent account data (for company info)
     useEffect(() => {
@@ -85,7 +147,7 @@ export default function SubAccountMyAccountPage() {
         }
     }, [status, token, dispatch, router]);
 
-    if (parentLoading) {
+    if (!roleLoaded || parentLoading) {
         return (
             <div className="min-h-screen flex flex-col w-full bg-surface font-rubik">
                 <div className="flex flex-col lg:flex-row flex-1 w-full">
@@ -98,10 +160,12 @@ export default function SubAccountMyAccountPage() {
         );
     }
 
-    if (!parentCustomer) return null;
+    // Only block render if we've loaded the role and it's not a sub account at all
+    if (roleLoaded && userType !== "Company Sub Account" && !isSubAccountSession) return null;
 
-    // Helper: get attribute from PARENT account data (for company info)
+    // Helper: get attribute from PARENT account data (for company info). Safe when parentCustomer is null.
     const getParentAttr = (code: string, fallback: string = "N/A") => {
+        if (!parentCustomer) return fallback;
         if ((parentCustomer as any)[code] !== undefined) return (parentCustomer as any)[code];
         if ((parentCustomer as any).extension_attributes?.[code] !== undefined) {
             return (parentCustomer as any).extension_attributes[code];
@@ -115,16 +179,20 @@ export default function SubAccountMyAccountPage() {
     // ===== CONTACT INFORMATION (from sub-account login customer) =====
     const contactName = subCustomer
         ? `${subCustomer.firstname || ""} ${subCustomer.lastname || ""}`.trim()
-        : localStorage.getItem("subAccountName") || "N/A";
+        : (typeof localStorage !== "undefined" ? localStorage.getItem("subAccountName") : null) || "N/A";
     const contactEmail = subCustomer?.email || "N/A";
+    const contactMobile = subCustomer?.custom_attributes?.find((a: any) => a.attribute_code === "customer_mobile")?.value
+        || subCustomer?.customer_mobile || "";
 
     // ===== COMPANY INFORMATION (from parent account) =====
     const companyName = getParentAttr("company_name");
-    const companyContactName = `${(parentCustomer as any).firstname || ""} ${(parentCustomer as any).lastname || ""}`.trim() || "N/A";
-    const companyEmail = (parentCustomer as any).email || "N/A";
+    const companyContactName = parentCustomer
+        ? `${(parentCustomer as any).firstname || ""} ${(parentCustomer as any).lastname || ""}`.trim() || "N/A"
+        : "N/A";
+    const companyEmail = (parentCustomer as any)?.email || "N/A";
 
     // Parent addresses for mobile fallback
-    const parentAddresses = (parentCustomer as any).addresses as Address[] | undefined;
+    const parentAddresses = (parentCustomer as any)?.addresses as Address[] | undefined;
     const parentDefaultBilling = parentAddresses?.find((a: Address) => a.default_billing);
     const parentDefaultShipping = parentAddresses?.find((a: Address) => a.default_shipping);
 
@@ -147,24 +215,16 @@ export default function SubAccountMyAccountPage() {
     const sectionHeader = "bg-[#f5f5f5] px-3 md:px-4 py-2.5 md:py-3 border-b border-gray-300 text-black font-bold uppercase text-body-sm md:text-body";
 
     return (
-        <>
-
-
-            <div className="flex flex-col lg:flex-row flex-1 min-h-0 w-full">
+        <div className="min-h-screen flex flex-col w-full bg-surface font-rubik">
+            <div className="flex flex-col lg:flex-row flex-1 w-full">
                 <Sidebar />
 
                 {/* Right Content */}
                 <main className="flex-1 p-4 md:p-8 bg-white min-h-0">
 
-                    {/* Green Alert Banner */}
-                    {isSubAccountSession && (
-                        <div className="bg-[#e7f6e7] border-l-4 border-[#2d8a2d] text-[#1b5e20] p-3 md:p-4 mb-6 md:mb-8 flex items-center gap-3 animate-in fade-in slide-in-from-top duration-500 shadow-sm" role="alert">
-                            <span className="text-[#2d8a2d] font-bold text-lg">✔</span>
-                            <p className="text-body-lg font-medium tracking-tight">You are logged as subaccount now.</p>
-                        </div>
-                    )}
 
-                    <h1 className="text-xl md:text-2xl font-bold text-black mb-4 md:mb-6 uppercase tracking-wide">
+
+                    <h1 className="text-h3 md:text-[26px] font-bold text-black mb-5 uppercase tracking-wide">
                         MY ACCOUNT
                     </h1>
 
@@ -183,7 +243,8 @@ export default function SubAccountMyAccountPage() {
                                     <div className="p-3 md:p-5 text-body text-gray-800 space-y-2 font-normal leading-relaxed">
                                         <p><span className="text-black font-bold">Contact Name:</span> {contactName}</p>
                                         <p><span className="text-black font-bold">Email:</span> {contactEmail}</p>
-                                        <p><span className="text-black font-bold">Contact Information:</span> {contactEmail} ,</p>
+                                        {contactMobile && <p><span className="text-black font-bold">Customer Mobile:</span> {contactMobile}</p>}
+                                        <p><span className="text-black font-bold">Contact Information:</span> {contactEmail}{contactMobile ? ` ,${contactMobile}` : ""}</p>
                                     </div>
                                 </div>
 
@@ -264,7 +325,7 @@ export default function SubAccountMyAccountPage() {
                                                     href={lp("/customer/address")}
                                                     className="bg-brand-yellow hover:bg-brand-yellow-dark text-black text-body-sm md:text-body font-bold px-6 md:px-8 py-2 md:py-2.5 uppercase transition-all rounded-none inline-block w-full sm:w-auto text-center"
                                                 >
-                                                    ADD ADDRESS
+                                                    EDIT ADDRESS
                                                 </Link>
                                             )}
                                         </div>
@@ -275,7 +336,6 @@ export default function SubAccountMyAccountPage() {
                     </div>
                 </main>
             </div>
-
-        </>
+        </div>
     );
 }

@@ -442,7 +442,7 @@ const MultiShippingReviewPage: React.FC = () => {
                 <div className="bg-surface-muted p-4 sm:p-6 md:p-8 flex flex-col sm:flex-row justify-between items-center gap-3 sm:gap-4">
                     <button
                         onClick={() => router.push(lp('/multi-location-delivery/billing'))}
-                        className="w-full sm:w-auto bg-black text-white px-6 md:px-10 py-3.5 md:py-4 text-label font-bold uppercase tracking-[0.15em] hover:opacity-90 transition-opacity text-center"
+                        className="w-full sm:w-auto bg-black text-white px-6 md:px-10 py-3.5 md:py-4 text-label font-bold uppercase tracking-[0.15em] hover:opacity-90 transition-opacity text-center font-sans"
                     >
                         {t("multi.backToBilling")}
                     </button>
@@ -450,7 +450,7 @@ const MultiShippingReviewPage: React.FC = () => {
                     <button
                         onClick={handlePlaceOrder}
                         disabled={isPlacingOrder}
-                        className="w-full sm:w-auto bg-brand-yellow text-black px-10 md:px-16 py-3.5 md:py-4 text-label font-bold uppercase tracking-[0.15em] hover:bg-black hover:text-white transition-all shadow-sm flex items-center justify-center gap-2"
+                        className="w-full sm:w-auto bg-brand-yellow text-black px-10 md:px-16 py-3.5 md:py-4 text-label font-bold uppercase tracking-[0.15em] hover:bg-black hover:text-white transition-all shadow-sm flex items-center justify-center gap-2 font-sans"
                     >
                         {t("multi.placeOrder")}
                     </button>

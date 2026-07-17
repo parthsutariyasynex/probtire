@@ -38,24 +38,19 @@ interface Product {
     offer?: string;
     brand?: string;
     favorite_id?: number | string;
+    is_action?: string;
 }
 
-const TABLE_HEADER_KEYS = ['m.brand', 'inquiry.name', 'm.image', 'm.stock', 'm.price', 'm.action'] as const;
-const COL_WIDTHS = ['12%', '38%', '10%', '12%', '13%', '15%'] as const;
-const ROW_HEIGHT = 'h-auto md:h-[52px]';
-
-function TableColGroup() {
-    return (
-        <colgroup>
-            {COL_WIDTHS.map((w, i) => <col key={i} style={{ width: w }} />)}
-        </colgroup>
-    );
-}
+const BASE_HEADER_KEYS = ['m.brand', 'm.size', 'm.pattern', 'm.year', 'm.origin', 'm.image', 'm.offer', 'm.stock', 'm.price'] as const;
+const ACTION_HEADER_KEY = 'm.action';
+const BASE_COL_WIDTHS = ['8%', '13%', '13%', '6%', '7%', '7%', '9%', '9%', '10%'] as const;
+const ACTION_COL_WIDTH = '110px';
 
 export default function FavouriteProducts({ title }: { title?: React.ReactNode }) {
     const router = useRouter();
     const { t } = useTranslation();
     const { data: session } = useSession();
+    const authToken = (session as any)?.accessToken || (typeof window !== "undefined" ? localStorage.getItem("token") : null);
     const { refetchCart } = useCart();
 
     const [favProducts, setFavProducts] = useState<Product[]>([]);
@@ -65,6 +60,35 @@ export default function FavouriteProducts({ title }: { title?: React.ReactNode }
     const [quantities, setQuantities] = useState<Record<number, number>>({});
     const [removing, setRemoving] = useState<number | null>(null);
     const { showLoading, hideLoading } = useLoadingOverlay();
+
+    const isSalesPerson = useMemo(() => Number((session as any)?.utypid) === 3, [session]);
+    const [isMultiCompany, setIsMultiCompany] = useState(false);
+    const [isSubOrMasterCompany, setIsSubOrMasterCompany] = useState(false);
+
+    useEffect(() => {
+        if (!authToken) { setIsMultiCompany(false); setIsSubOrMasterCompany(false); return; }
+        if (typeof sessionStorage === "undefined") return;
+        const ROLE_CACHE = "altalayi_user_type_v1";
+        const TOKEN_CACHE = "altalayi_role_token_v1";
+        if (sessionStorage.getItem(TOKEN_CACHE) === authToken) {
+            const cached = sessionStorage.getItem(ROLE_CACHE) || "Customer";
+            setIsMultiCompany(cached === "Multiple Company User");
+            setIsSubOrMasterCompany(cached === "Company Sub Account" || cached === "Master Company");
+            return;
+        }
+        fetch("/api/kleverapi/account-sidebar", {
+            headers: { Authorization: `Bearer ${authToken}` },
+        }).then(r => r.json()).then(data => {
+            const type = data?.user_type || "Customer";
+            sessionStorage.setItem(ROLE_CACHE, type);
+            sessionStorage.setItem(TOKEN_CACHE, authToken);
+            setIsMultiCompany(type === "Multiple Company User");
+            setIsSubOrMasterCompany(type === "Company Sub Account" || type === "Master Company");
+        }).catch(() => { });
+    }, [authToken]);
+
+    const shouldHideCartActions = (isSalesPerson || isMultiCompany) && !isSubOrMasterCompany;
+
     const [isAddedPopupOpen, setIsAddedPopupOpen] = useState(false);
     const [addedProduct, setAddedProduct] = useState<any | null>(null);
 
@@ -78,10 +102,10 @@ export default function FavouriteProducts({ title }: { title?: React.ReactNode }
     const [isImageModalOpen, setIsImageModalOpen] = useState(false);
     const [previewProduct, setPreviewProduct] = useState<Product | null>(null);
 
-    const [sortField, setSortField] = useState<'brand' | 'name' | 'stock' | 'price' | null>(null);
+    const [sortField, setSortField] = useState<'brand' | 'tyre_size' | 'pattern' | 'year' | 'origin' | 'stock' | 'price' | null>(null);
     const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
 
-    const handleSort = (field: 'brand' | 'name' | 'stock' | 'price') => {
+    const handleSort = (field: 'brand' | 'tyre_size' | 'pattern' | 'year' | 'origin' | 'stock' | 'price') => {
         if (sortField === field) {
             setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
         } else {
@@ -100,9 +124,18 @@ export default function FavouriteProducts({ title }: { title?: React.ReactNode }
             if (sortField === 'brand') {
                 valA = a.brand || a.name.split(' ')[0] || "";
                 valB = b.brand || b.name.split(' ')[0] || "";
-            } else if (sortField === 'name') {
-                valA = a.name || "";
-                valB = b.name || "";
+            } else if (sortField === 'tyre_size') {
+                valA = a.tyre_size || "";
+                valB = b.tyre_size || "";
+            } else if (sortField === 'pattern') {
+                valA = a.pattern || a.name || "";
+                valB = b.pattern || b.name || "";
+            } else if (sortField === 'year') {
+                valA = a.year || "";
+                valB = b.year || "";
+            } else if (sortField === 'origin') {
+                valA = a.origin || "";
+                valB = b.origin || "";
             } else if (sortField === 'stock') {
                 const getStockScore = (p: Product) => {
                     const isOutOfStock = p.stock_status === "Out of Stock" || p.stock_status === "Not Available" || Number(p.stock_qty || 0) <= 0;
@@ -321,8 +354,14 @@ export default function FavouriteProducts({ title }: { title?: React.ReactNode }
                     <option value="">{t("common.default") || "Default"}</option>
                     <option value="brand-asc">{t("m.brand") || "Brand"} (A-Z)</option>
                     <option value="brand-desc">{t("m.brand") || "Brand"} (Z-A)</option>
-                    <option value="name-asc">{t("inquiry.name") || "Name"} (A-Z)</option>
-                    <option value="name-desc">{t("inquiry.name") || "Name"} (Z-A)</option>
+                    <option value="tyre_size-asc">{t("m.size") || "Size"} (A-Z)</option>
+                    <option value="tyre_size-desc">{t("m.size") || "Size"} (Z-A)</option>
+                    <option value="pattern-asc">{t("m.pattern") || "Pattern"} (A-Z)</option>
+                    <option value="pattern-desc">{t("m.pattern") || "Pattern"} (Z-A)</option>
+                    <option value="year-asc">{t("m.year") || "Year"} (A-Z)</option>
+                    <option value="year-desc">{t("m.year") || "Year"} (Z-A)</option>
+                    <option value="origin-asc">{t("m.origin") || "Origin"} (A-Z)</option>
+                    <option value="origin-desc">{t("m.origin") || "Origin"} (Z-A)</option>
                     <option value="stock-desc">{t("m.stock") || "Stock"} ({t("stock.available") || "Available"} First)</option>
                     <option value="price-asc">{t("m.price") || "Price"} ({t("common.lowToHigh") || "Low to High"})</option>
                     <option value="price-desc">{t("m.price") || "Price"} ({t("common.highToLow") || "High to Low"})</option>
@@ -364,7 +403,7 @@ export default function FavouriteProducts({ title }: { title?: React.ReactNode }
                     const brandName = product.brand || product.name.split(' ')[0] || "—";
                     const isOutOfStock = product.stock_status === "Out of Stock" || product.stock_status === "Not Available" || Number(product.stock_qty || 0) <= 0;
                     const isLimited = product.stock_qty > 0 && product.stock_qty <= 10;
-                    const dotColor = isOutOfStock ? "bg-red-500" : isLimited ? "bg-yellow-400" : "bg-green-500";
+                    const dotColor = isOutOfStock ? "bg-red-500" : isLimited ? "bg-brand-yellow" : "bg-green-500";
                     const stockLabel = isOutOfStock ? t("stock.not_available") : isLimited ? t("stock.limited") : t("stock.available");
 
                     return (
@@ -407,14 +446,16 @@ export default function FavouriteProducts({ title }: { title?: React.ReactNode }
                                     )}
                                 </div>
                                 <div className="flex items-center gap-1 flex-shrink-0">
-                                    {!isOutOfStock ? (
-                                        <button onClick={() => onAddToCart(product)} disabled={addingToCart === product.sku} className={`h-9 px-2.5 rounded-lg flex items-center gap-1.5 text-label font-black uppercase shadow-sm active:scale-95 cursor-pointer flex-shrink-0 bg-brand-yellow text-black`}>
-                                            <ShoppingCart size={14} strokeWidth={2.5} />
-                                        </button>
-                                    ) : (
-                                        <button onClick={() => { setInquiryProduct(product); setIsInquiryModalOpen(true); }} className="h-9 px-2.5 bg-brand-yellow text-black rounded-lg flex items-center gap-1.5 text-label font-black uppercase shadow-sm active:scale-95 cursor-pointer flex-shrink-0">
-                                            <Info size={14} strokeWidth={2.5} />
-                                        </button>
+                                    {!shouldHideCartActions && (
+                                        !isOutOfStock ? (
+                                            <button onClick={() => onAddToCart(product)} disabled={addingToCart === product.sku} className="h-9 px-2.5 rounded-lg flex items-center gap-1.5 text-label font-black uppercase shadow-sm active:scale-95 cursor-pointer flex-shrink-0 bg-brand-yellow text-black">
+                                                <ShoppingCart size={14} strokeWidth={2.5} />
+                                            </button>
+                                        ) : (
+                                            <button onClick={() => { setInquiryProduct(product); setIsInquiryModalOpen(true); }} className="h-9 px-2.5 bg-brand-yellow text-black rounded-lg flex items-center gap-1.5 text-label font-black uppercase shadow-sm active:scale-95 cursor-pointer flex-shrink-0">
+                                                <Info size={14} strokeWidth={2.5} />
+                                            </button>
+                                        )
                                     )}
                                     <button onClick={() => handleRemove(product)} disabled={removing === product.product_id} className={`w-9 h-9 rounded-lg flex items-center justify-center active:scale-95 cursor-pointer flex-shrink-0 ${removing === product.product_id ? "bg-gray-100 text-gray-400" : "bg-white text-gray-400 border border-gray-100 hover:text-red-500"}`}>
                                         <Trash2 size={16} strokeWidth={2.5} />
@@ -428,33 +469,27 @@ export default function FavouriteProducts({ title }: { title?: React.ReactNode }
 
             <div className="hidden xl:flex flex-col bg-white rounded-sm shadow-sm border border-subtle overflow-hidden transition-all duration-300 hover:shadow-md">
                 <div className="flex-1 overflow-x-auto">
-                    <table className="w-full border-collapse table-fixed min-w-[950px]">
+                    <table className="w-full border-collapse table-fixed min-w-[900px]">
                         <colgroup>
-                            <col className="w-[12%]" />
-                            <col className="w-[38%]" />
-                            <col className="w-[10%]" />
-                            <col className="w-[12%]" />
-                            <col className="w-[13%]" />
-                            <col className="w-[15%]" />
+                            {BASE_COL_WIDTHS.map((w, i) => <col key={i} style={{ width: w }} />)}
+                            <col style={{ width: ACTION_COL_WIDTH }} />
                         </colgroup>
                         <thead className="sticky top-0 z-20">
                             <tr className="bg-gray-50/80 text-black text-label font-semibold uppercase tracking-widest border-b border-[#ddd]">
-                                {TABLE_HEADER_KEYS.map(key => {
-                                    let casingClass = "uppercase";
-                                    if (key === 'inquiry.name' || key === 'm.price') {
-                                        casingClass = "normal-case";
-                                    }
-
-                                    let sortKey: 'brand' | 'name' | 'stock' | 'price' | null = null;
+                                {BASE_HEADER_KEYS.map(key => {
+                                    let sortKey: 'brand' | 'tyre_size' | 'pattern' | 'year' | 'origin' | 'stock' | 'price' | null = null;
                                     if (key === 'm.brand') sortKey = 'brand';
-                                    else if (key === 'inquiry.name') sortKey = 'name';
+                                    else if (key === 'm.size') sortKey = 'tyre_size';
+                                    else if (key === 'm.pattern') sortKey = 'pattern';
+                                    else if (key === 'm.year') sortKey = 'year';
+                                    else if (key === 'm.origin') sortKey = 'origin';
                                     else if (key === 'm.stock') sortKey = 'stock';
                                     else if (key === 'm.price') sortKey = 'price';
 
                                     if (sortKey) {
                                         const isSorted = sortField === sortKey;
                                         return (
-                                            <th key={key} className={`px-2 md:px-4 py-2 md:py-3 text-label font-semibold text-black tracking-widest text-center whitespace-nowrap cursor-pointer select-none hover:text-brand-yellow transition-colors ${casingClass}`} onClick={() => handleSort(sortKey!)}>
+                                            <th key={key} className="px-2 md:px-3 py-2 md:py-3 text-label font-semibold text-black tracking-widest text-center whitespace-nowrap cursor-pointer select-none hover:text-brand-yellow transition-colors uppercase" onClick={() => handleSort(sortKey!)}>
                                                 <button type="button" className="inline-flex items-center justify-center gap-1.5 mx-auto transition-colors cursor-pointer select-none">
                                                     {t(key)}
                                                     {isSorted ? (
@@ -466,46 +501,39 @@ export default function FavouriteProducts({ title }: { title?: React.ReactNode }
                                             </th>
                                         );
                                     }
-
                                     return (
-                                        <th key={key} className={`px-2 md:px-4 py-2 md:py-3 text-label font-semibold text-black tracking-widest text-center whitespace-nowrap ${casingClass}`}>
+                                        <th key={key} className="px-2 md:px-3 py-2 md:py-3 text-label font-semibold text-black tracking-widest text-center whitespace-nowrap uppercase">
                                             {t(key)}
                                         </th>
                                     );
                                 })}
+                                <th className="px-2 md:px-3 py-2 md:py-3 text-label font-semibold text-black tracking-widest text-center whitespace-nowrap uppercase">
+                                    {t(ACTION_HEADER_KEY)}
+                                </th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-200">
                             {loading && favProducts.length === 0 ? (
                                 Array.from({ length: 10 }).map((_, i) => (
                                     <tr key={i} className="h-[52px] animate-pulse">
-                                        {/* 1. BRAND */}
-                                        <td className="px-2 md:px-4 text-center">
-                                            <div className="h-3.5 bg-gray-200 rounded w-12 mx-auto" />
-                                        </td>
-                                        {/* 2. NAME */}
-                                        <td className="px-2 md:px-4 text-center">
-                                            <div className="h-3.5 bg-gray-200 rounded w-32 mx-auto" />
-                                        </td>
-                                        {/* 3. IMAGE */}
-                                        <td className="px-2 md:px-4 text-center">
-                                            <div className="w-12 h-12 bg-gray-200 mx-auto rounded border border-gray-100 shadow-sm" />
-                                        </td>
-                                        {/* 4. STOCK */}
-                                        <td className="px-2 md:px-4 text-center">
+                                        <td className="px-2 md:px-3 text-center"><div className="h-3.5 bg-gray-200 rounded w-12 mx-auto" /></td>
+                                        <td className="px-2 md:px-3 text-center"><div className="h-3 bg-gray-200 rounded w-16 mx-auto" /></td>
+                                        <td className="px-2 md:px-3 text-center"><div className="h-3.5 bg-gray-200 rounded w-20 mx-auto" /></td>
+                                        <td className="px-2 md:px-3 text-center"><div className="h-3 bg-gray-200 rounded w-8 mx-auto" /></td>
+                                        <td className="px-2 md:px-3 text-center"><div className="h-3 bg-gray-200 rounded w-10 mx-auto" /></td>
+                                        <td className="px-2 md:px-3 text-center"><div className="w-12 h-12 bg-gray-200 mx-auto rounded border border-gray-100 shadow-sm" /></td>
+                                        <td className="px-2 md:px-3 text-center"><div className="h-3 bg-gray-200 rounded w-10 mx-auto" /></td>
+                                        <td className="px-2 md:px-3 text-center">
                                             <div className="flex flex-col items-center justify-center gap-1.5">
                                                 <div className="w-3.5 h-3.5 bg-gray-200 rounded-full" />
                                                 <div className="h-2.5 bg-gray-200 rounded w-10" />
                                             </div>
                                         </td>
-                                        {/* 5. PRICE */}
-                                        <td className="px-2 md:px-4 text-center">
-                                            <div className="h-3.5 bg-gray-200 rounded w-14 mx-auto" />
-                                        </td>
-                                        {/* 6. ACTION */}
-                                        <td className="px-2 md:px-4 text-center">
+                                        <td className="px-2 md:px-3 text-center"><div className="h-3.5 bg-gray-200 rounded w-14 mx-auto" /></td>
+                                        <td className="px-2 md:px-3 text-center">
                                             <div className="flex items-center justify-center gap-1.5">
                                                 <div className="w-10 h-9 bg-gray-200 rounded-sm" />
+                                                <div className="w-8 h-8 bg-gray-200 rounded-sm" />
                                                 <div className="w-8 h-8 bg-gray-200 rounded-sm" />
                                             </div>
                                         </td>
@@ -513,40 +541,56 @@ export default function FavouriteProducts({ title }: { title?: React.ReactNode }
                                 ))
                             ) : sortedProducts.length === 0 ? (
                                 <tr>
-                                    <td colSpan={6} className="px-5 py-24 text-center">
+                                    <td colSpan={10} className="px-5 py-24 text-center">
                                         <p className="text-xs font-black text-gray-400 uppercase tracking-[0.2em]">{t("favorites.empty")}</p>
                                     </td>
                                 </tr>
                             ) : (
                                 sortedProducts.map((product) => {
                                     const brandName = product.brand || product.name.split(' ')[0] || "—";
+                                    const patternName = product.pattern || product.name || "—";
                                     const isOutOfStock = product.stock_status === "Out of Stock" || product.stock_status === "Not Available" || Number(product.stock_qty || 0) <= 0;
                                     const isLimited = product.stock_qty > 0 && product.stock_qty <= 10;
-                                    const stockColor = isOutOfStock ? "bg-red-500" : isLimited ? "bg-yellow-400" : "bg-green-500";
+                                    const stockColor = isOutOfStock ? "bg-red-500" : isLimited ? "bg-brand-yellow" : "bg-green-500";
                                     const stockLabel = isOutOfStock ? t("stock.not_available") : isLimited ? t("stock.limited") : t("stock.available");
 
                                     return (
                                         <tr key={product.product_id} className="hover:bg-brand-yellow/5 transition-colors group h-auto">
                                             {/* 1. BRAND */}
-                                            <td className="py-1 px-2 md:px-4 text-body font-normal text-black/80 text-center">
+                                            <td className="py-1 px-2 md:px-3 text-body-sm font-medium text-black/80 text-center">
                                                 {t(`data.${brandName}`) !== `data.${brandName}` ? t(`data.${brandName}`) : brandName}
                                             </td>
 
-                                            {/* 2. Name */}
-                                            <td className="py-1 px-2 md:px-4 text-body font-normal text-black/80 text-center">
+                                            {/* 2. SIZE */}
+                                            <td className="py-1 px-2 md:px-3 text-body-sm font-normal text-black text-center whitespace-nowrap">
                                                 <div className="flex items-center justify-center gap-1.5">
-                                                    <span className="uppercase tracking-tight leading-snug break-words">{product.name}</span>
+                                                    <span dir="ltr" className="text-body-sm font-normal text-black">{product.tyre_size || "—"}</span>
                                                     <div
                                                         onClick={() => handleShowProductDetail(product)}
-                                                        className={`w-3.5 h-3.5 bg-gray-900 rounded-full flex items-center justify-center text-[8px] font-black text-white cursor-pointer hover:bg-brand-yellow hover:text-black transition-all shadow-sm flex-shrink-0`}
+                                                        className="w-3.5 h-3.5 bg-gray-900 rounded-full flex items-center justify-center text-[8px] font-black text-white cursor-pointer hover:bg-brand-yellow hover:text-black transition-all shadow-sm flex-shrink-0"
                                                     >
                                                         i
                                                     </div>
                                                 </div>
                                             </td>
 
-                                            {/* 3. IMAGE */}
-                                            <td className="py-1 px-2 md:px-4 text-center">
+                                            {/* 3. PATTERN */}
+                                            <td className="py-1 px-2 md:px-3 text-body-sm font-medium text-black/80 text-center">
+                                                <span className="uppercase tracking-tight leading-snug break-words">{patternName}</span>
+                                            </td>
+
+                                            {/* 4. YEAR */}
+                                            <td className="py-1 px-2 md:px-3 text-body-sm font-normal text-black/60 text-center font-mono">
+                                                {product.year || "—"}
+                                            </td>
+
+                                            {/* 5. ORIGIN */}
+                                            <td className="py-1 px-2 md:px-3 text-body-sm font-medium text-black/80 text-center">
+                                                {product.origin ? (t(`data.${product.origin}`) !== `data.${product.origin}` ? t(`data.${product.origin}`) : product.origin) : "—"}
+                                            </td>
+
+                                            {/* 6. IMAGE */}
+                                            <td className="py-1 px-2 md:px-3 text-center">
                                                 <div className="w-12 h-12 mx-auto">
                                                     {product.image_url ? (
                                                         <div
@@ -563,7 +607,7 @@ export default function FavouriteProducts({ title }: { title?: React.ReactNode }
                                                                 className="w-12 h-12 object-contain rounded border border-gray-100 shadow-sm"
                                                             />
                                                             <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/img:opacity-100 transition-all duration-300 flex items-center justify-center rounded">
-                                                                <div className="w-5 h-5 bg-yellow-400 rounded-full flex items-center justify-center text-black font-bold text-caption shadow-lg transform scale-50 group-hover/img:scale-100 transition-transform duration-300">+</div>
+                                                                <div className="w-5 h-5 bg-brand-yellow rounded-full flex items-center justify-center text-black font-bold text-caption shadow-lg transform scale-50 group-hover/img:scale-100 transition-transform duration-300">+</div>
                                                             </div>
                                                         </div>
                                                     ) : (
@@ -572,70 +616,80 @@ export default function FavouriteProducts({ title }: { title?: React.ReactNode }
                                                 </div>
                                             </td>
 
-                                            {/* 4. STOCK */}
+                                            {/* 7. OFFER */}
+                                            <td className="py-1 px-2 md:px-3 text-center">
+                                                {product.offer ? (
+                                                    <span className="text-red-600 font-semibold text-caption uppercase tracking-tight block max-w-[150px] mx-auto">{product.offer}</span>
+                                                ) : (
+                                                    <span className="text-black/20">—</span>
+                                                )}
+                                            </td>
+
+                                            {/* 8. STOCK */}
                                             <td className="py-1 px-3 text-center">
-                                                <div className="flex flex-col items-center justify-center text-center gap-1.5">
-                                                    <span className={`w-3.5 h-3.5 rounded-full border border-white shadow-sm ${stockColor}`}></span>
-                                                    <span className="text-body-sm font-semibold text-black/80 uppercase leading-none tracking-tighter">{stockLabel}</span>
+                                                <div className="flex flex-col items-center justify-center text-center gap-1">
+                                                    <span className={`w-4 h-4 rounded-full border border-gray-100 shadow-sm ${stockColor}`}></span>
+                                                    <span className="text-caption font-semibold text-black/80 uppercase leading-none mt-1">{stockLabel}</span>
                                                 </div>
                                             </td>
 
-                                            {/* 5. Price */}
+                                            {/* 9. PRICE */}
                                             <td className="py-1 px-3 text-center whitespace-nowrap">
-                                                <span dir="ltr" className="inline-flex items-center gap-1 text-body-sm font-semibold text-black">
+                                                <div className="flex flex-col items-center justify-center">
                                                     {product.original_price && product.original_price > product.final_price ? (
-                                                        <div className="flex flex-col items-center">
-                                                            <span className="text-caption font-bold text-gray-400 line-through mb-0.5">
-                                                                <Price amount={product.original_price} />
+                                                        <>
+                                                            <span className="text-caption font-semibold text-black/50 mb-0.5">
+                                                                <Price amount={product.original_price} className="font-semibold line-through" />
                                                             </span>
-                                                            <span className="text-body-sm font-semibold text-black">
+                                                            <span className="text-body-sm font-semibold text-black tracking-tight rubik-sans">
                                                                 <Price amount={product.final_price} />
                                                             </span>
-                                                        </div>
+                                                        </>
                                                     ) : (
-                                                        <Price amount={product.final_price} />
+                                                        <span className="text-body-sm font-semibold text-black tracking-tight rubik-sans">
+                                                            <Price amount={product.final_price} />
+                                                        </span>
                                                     )}
-                                                </span>
+                                                </div>
                                             </td>
 
-                                            {/* 6. ACTION */}
+                                            {/* 10. ACTION */}
                                             <td className="py-1 px-2 text-center align-middle">
                                                 <div className="flex items-center justify-center gap-1.5">
-                                                    {/* Col 1: Qty */}
-                                                    {!isOutOfStock ? (
-                                                        <div className="w-10 h-9 border border-gray-200 rounded-sm focus-within:border-brand-yellow flex items-center justify-center text-label font-semibold text-black bg-white overflow-hidden">
-                                                            <input
-                                                                type="number"
-                                                                min="1"
-                                                                value={quantities[product.product_id] || 1}
-                                                                onChange={(e) => handleQtyChange(product.product_id, e.target.value)}
-                                                                className="w-full bg-transparent text-center text-body-sm font-semibold outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none p-0"
-                                                            />
-                                                        </div>
-                                                    ) : (
-                                                        <div className="w-10 h-9" />
+                                                    {!shouldHideCartActions && (
+                                                        !isOutOfStock ? (
+                                                            <div className="w-10 h-9 border border-gray-200 rounded-sm focus-within:border-brand-yellow flex items-center justify-center text-label font-semibold text-black bg-white overflow-hidden">
+                                                                <input
+                                                                    type="number"
+                                                                    min="1"
+                                                                    value={quantities[product.product_id] || 1}
+                                                                    onChange={(e) => handleQtyChange(product.product_id, e.target.value)}
+                                                                    className="w-full bg-transparent text-center text-body-sm font-semibold outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none p-0"
+                                                                />
+                                                            </div>
+                                                        ) : (
+                                                            <div className="w-10 h-9" />
+                                                        )
                                                     )}
-
-                                                    {/* Col 2: Cart or Enquiry */}
-                                                    {!isOutOfStock ? (
-                                                        <button
-                                                            onClick={() => onAddToCart(product)}
-                                                            disabled={addingToCart === product.sku}
-                                                            className="w-8 h-8 bg-brand-yellow hover:bg-brand-yellow-dark text-black rounded-sm flex items-center justify-center shadow-sm transition-all disabled:opacity-50 cursor-pointer"
-                                                            title={t("m.add-to-cart")}
-                                                        >
-                                                            <ShoppingCart size={15} strokeWidth={2.5} />
-                                                        </button>
-                                                    ) : (
-                                                        <button
-                                                            onClick={() => { setInquiryProduct(product); setIsInquiryModalOpen(true); }}
-                                                            className="w-8 h-8 bg-brand-yellow hover:bg-brand-yellow-dark text-black rounded-sm flex items-center justify-center shadow-sm transition-all cursor-pointer"
-                                                        >
-                                                            <Info size={15} strokeWidth={2.5} />
-                                                        </button>
+                                                    {!shouldHideCartActions && (
+                                                        !isOutOfStock ? (
+                                                            <button
+                                                                onClick={() => onAddToCart(product)}
+                                                                disabled={addingToCart === product.sku}
+                                                                className="w-8 h-8 bg-brand-yellow hover:bg-brand-yellow-dark text-black rounded-sm flex items-center justify-center shadow-sm transition-all disabled:opacity-50 cursor-pointer"
+                                                                title={t("m.add-to-cart")}
+                                                            >
+                                                                <ShoppingCart size={15} strokeWidth={2.5} />
+                                                            </button>
+                                                        ) : (
+                                                            <button
+                                                                onClick={() => { setInquiryProduct(product); setIsInquiryModalOpen(true); }}
+                                                                className="w-8 h-8 bg-brand-yellow hover:bg-brand-yellow-dark text-black rounded-sm flex items-center justify-center shadow-sm transition-all cursor-pointer"
+                                                            >
+                                                                <Info size={15} strokeWidth={2.5} />
+                                                            </button>
+                                                        )
                                                     )}
-
-                                                    {/* Col 3: Delete */}
                                                     <button
                                                         onClick={() => handleRemove(product)}
                                                         disabled={removing === product.product_id}

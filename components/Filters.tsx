@@ -335,7 +335,7 @@ const Filters: React.FC<FiltersProps> = ({
                                 setIsStatusOpen(!isStatusOpen);
                                 setIsOrderOpen(false);
                             }}
-                            className="h-[38px] w-full px-3 bg-white border border-gray-300 text-black text-xs font-bold flex items-center justify-between cursor-pointer focus:outline-none focus:border-yellow-400 rounded-md transition-colors"
+                            className="h-[38px] w-full px-3 bg-white border border-gray-300 text-black text-xs font-bold flex items-center justify-between cursor-pointer focus:outline-none focus:border-brand-yellow rounded-md transition-colors"
                         >
                             <span>{t(`data.${selectedStatusLabel}`) !== `data.${selectedStatusLabel}` ? t(`data.${selectedStatusLabel}`) : selectedStatusLabel}</span>
                             <svg className={`w-3 h-3 text-gray-500 transition-transform duration-200 ${isStatusOpen ? "rotate-180" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -358,8 +358,8 @@ const Filters: React.FC<FiltersProps> = ({
                                                     setIsStatusOpen(false);
                                                 }}
                                                 className={`w-full text-left px-4 py-2 text-xs transition-colors truncate ${status === optionValue
-                                                        ? "bg-yellow-400 text-black font-bold"
-                                                        : "text-gray-700 hover:bg-yellow-50 hover:text-yellow-600"
+                                                        ? "bg-brand-yellow text-black font-bold"
+                                                        : "text-gray-700 hover:bg-brand-yellow-light hover:text-black"
                                                     }`}
                                             >
                                                 {t(`data.${optionLabel}`) !== `data.${optionLabel}` ? t(`data.${optionLabel}`) : optionLabel}
@@ -388,7 +388,7 @@ const Filters: React.FC<FiltersProps> = ({
                                 }
                             }}
                             placeholder={t("m.search")}
-                            className="w-full h-[38px] px-3 bg-white border border-gray-300 text-xs text-black focus:outline-none focus:border-yellow-400 transition-colors rounded-md placeholder:text-gray-400"
+                            className="w-full h-[38px] px-3 bg-white border border-gray-300 text-xs text-black focus:outline-none focus:border-brand-yellow transition-colors rounded-md placeholder:text-gray-400"
                         />
                     </div>
                 </div>
@@ -397,7 +397,7 @@ const Filters: React.FC<FiltersProps> = ({
                 <div className="flex gap-2 min-w-fit">
                     <button
                         onClick={onApplySearch}
-                        className="h-[38px] px-6 bg-yellow-400 hover:bg-yellow-500 text-black text-xs font-bold uppercase tracking-wider transition-all rounded-md shadow-sm active:scale-95"
+                        className="h-[38px] px-6 bg-brand-yellow hover:bg-brand-yellow-dark text-black text-xs font-bold uppercase tracking-wider transition-all rounded-md shadow-sm active:scale-95"
                     >
                         {t("m.search")}
                     </button>

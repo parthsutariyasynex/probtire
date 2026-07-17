@@ -2,7 +2,7 @@
 import { useTranslation } from "@/hooks/useTranslation";
 import { useLocalePath } from "@/hooks/useLocalePath";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { redirectToLogin } from "@/utils/helpers";
 import Price from "@/app/components/Price";
 import { useSession } from "next-auth/react";
@@ -29,6 +29,35 @@ export default function OrderDetailsPage() {
     const [attachmentsError, setAttachmentsError] = useState<string | null>(null);
     const [isPrinting, setIsPrinting] = useState(false);
     const [openingAttachmentId, setOpeningAttachmentId] = useState<string | null>(null);
+    const [isCancelling, setIsCancelling] = useState(false);
+    const permissionDeniedRef = React.useRef(false);
+
+    const authToken = (session as any)?.accessToken;
+    const isSalesPerson = useMemo(() => Number((session as any)?.utypid) === 3, [session]);
+    const [isMultiCompany, setIsMultiCompany] = useState(false);
+    const [isSubOrMasterCompany, setIsSubOrMasterCompany] = useState(false);
+    useEffect(() => {
+        if (!authToken) { setIsMultiCompany(false); setIsSubOrMasterCompany(false); return; }
+        if (typeof sessionStorage === "undefined") return;
+        const ROLE_CACHE = "altalayi_user_type_v1";
+        const TOKEN_CACHE = "altalayi_role_token_v1";
+        if (sessionStorage.getItem(TOKEN_CACHE) === authToken) {
+            const cached = sessionStorage.getItem(ROLE_CACHE) || "Customer";
+            setIsMultiCompany(cached === "Multiple Company User");
+            setIsSubOrMasterCompany(cached === "Company Sub Account" || cached === "Master Company");
+            return;
+        }
+        fetch("/api/kleverapi/account-sidebar", {
+            headers: { Authorization: `Bearer ${authToken}` },
+        }).then(r => r.json()).then(data => {
+            const type = data?.user_type || "Customer";
+            sessionStorage.setItem(ROLE_CACHE, type);
+            sessionStorage.setItem(TOKEN_CACHE, authToken);
+            setIsMultiCompany(type === "Multiple Company User");
+            setIsSubOrMasterCompany(type === "Company Sub Account" || type === "Master Company");
+        }).catch(() => { });
+    }, [authToken]);
+    const shouldHideCartActions = (isSalesPerson || isMultiCompany) && !isSubOrMasterCompany;
 
     // Auth Guard
     useEffect(() => {
@@ -53,6 +82,14 @@ export default function OrderDetailsPage() {
                 },
             });
 
+            if (response.status === 403) {
+                if (!permissionDeniedRef.current) {
+                    permissionDeniedRef.current = true;
+                    toast.error(t("orderDetails.noPermission"));
+                    router.replace(lp("/my-orders"));
+                }
+                return;
+            }
 
             if (!response.ok) {
                 throw new Error("Failed to fetch order details");
@@ -217,6 +254,43 @@ export default function OrderDetailsPage() {
         }
     };
 
+    const handleCancelOrder = async () => {
+        const token = (session as any)?.accessToken;
+        if (!token) {
+            toast.error(t("orders.mustLoggedIn"));
+            return;
+        }
+
+        const confirmCancel = window.confirm(t("orderDetails.confirmCancel") || "Are you sure you want to cancel this order?");
+        if (!confirmCancel) return;
+
+        setIsCancelling(true);
+        const toastId = toast.loading(t("orderDetails.cancelling") || "Cancelling order...");
+        try {
+            const orderIdStr = (Array.isArray(orderId) ? orderId[0] : orderId) || "";
+            const res = await fetch(`/api/kleverapi/order/${encodeURIComponent(orderIdStr)}/cancel`, {
+                method: "POST",
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    "x-locale": locale
+                },
+            });
+
+            const data = await res.json();
+            if (!res.ok || !data.success) {
+                throw new Error(data.message || "Failed to cancel order");
+            }
+
+            toast.success(data.message || t("orderDetails.cancelSuccess") || "Order cancelled successfully!", { id: toastId });
+            // Refresh page to reflect status change
+            window.location.reload();
+        } catch (err: any) {
+            toast.error((err.message || t("orderDetails.cancelFailed")) || "Failed to cancel order", { id: toastId });
+        } finally {
+            setIsCancelling(false);
+        }
+    };
+
     const handleOpenAttachment = async (attachment: any) => {
         const token = (session as any)?.accessToken;
         if (!token) {
@@ -347,6 +421,8 @@ export default function OrderDetailsPage() {
     const shippingAddress = order.extension_attributes?.shipping_assignments?.[0]?.shipping?.address || order.shipping_address;
     const billingAddress = order.billing_address;
     const paymentMethod = order.payment?.additional_information?.[0] || order.payment?.method || "N/A";
+    const statusLower = order.status?.toLowerCase() || "";
+    const isCancelable = statusLower.includes("pending") || statusLower.includes("holded");
 
     return (
         <div className="min-h-screen flex flex-col w-full bg-surface font-rubik">
@@ -358,7 +434,7 @@ export default function OrderDetailsPage() {
                 <main className="flex-1 w-full px-4 md:px-6 lg:px-8 py-4 md:py-6 lg:py-5 bg-white min-w-0 text-xs">
                     {/* Header Section */}
                     <div className="flex flex-col mb-10">
-                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 md:mb-10 border-b-2 border-yellow-400 pb-2 gap-2 sm:gap-0">
+                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 md:mb-10 border-b-2 border-brand-yellow pb-2 gap-2 sm:gap-0">
                             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-4">
                                 <h1 className="text-h3 md:text-[26px] font-black text-black uppercase tracking-tight">
                                     {t("orderDetails.orderHash")} {order.increment_id}
@@ -378,17 +454,29 @@ export default function OrderDetailsPage() {
                         </div>
 
                         <div className="flex flex-col sm:flex-row justify-start items-stretch sm:items-center gap-3 w-full">
-                            <button
-                                onClick={handleReorder}
-                                className="bg-yellow-400 hover:bg-yellow-500 text-black font-black py-2.5 px-6 md:px-8 rounded-md text-label uppercase tracking-widest transition-all shadow-sm active:scale-95 border border-yellow-500 w-full sm:w-auto"
-                            >
-                                {t("orderDetails.reorder")}
+                            {!shouldHideCartActions && (
+                                <button
+                                    onClick={handleReorder}
+                                    className="bg-brand-yellow hover:bg-brand-yellow-dark text-black font-black py-2.5 px-6 md:px-8 rounded-md text-label uppercase tracking-widest transition-all shadow-sm active:scale-95 border border-brand-yellow-dark w-full sm:w-auto"
+                                >
+                                    {t("orderDetails.reorder")}
+                                </button>
+                            )}
 
-                            </button>
+                            {isCancelable && (
+                                <button
+                                    onClick={handleCancelOrder}
+                                    disabled={isCancelling}
+                                    className={`bg-brand-yellow hover:bg-brand-yellow-dark text-black font-black py-2.5 px-6 md:px-8 rounded-md text-label uppercase tracking-widest transition-all shadow-sm active:scale-95 border border-brand-yellow-dark w-full sm:w-auto ${isCancelling ? 'opacity-70 cursor-not-allowed' : ''}`}
+                                >
+                                    {isCancelling ? t("orderDetails.cancelling") : t("orderDetails.cancelOrder")}
+                                </button>
+                            )}
+
                             <button
                                 onClick={handlePrintOrder}
                                 disabled={isPrinting}
-                                className={`bg-white hover:bg-gray-50 text-black font-black py-2.5 px-6 md:px-8 rounded-md text-label uppercase tracking-widest transition-all border border-subtle shadow-sm flex items-center justify-center gap-2 no-print active:scale-95 w-full sm:w-auto ${isPrinting ? 'opacity-70 cursor-not-allowed' : ''}`}
+                                className={`bg-brand-yellow hover:bg-brand-yellow-dark text-black font-black py-2.5 px-6 md:px-8 rounded-md text-label uppercase tracking-widest transition-all border border-brand-yellow-dark shadow-sm flex items-center justify-center gap-2 no-print active:scale-95 w-full sm:w-auto ${isPrinting ? 'opacity-70 cursor-not-allowed' : ''}`}
                             >
                                 {isPrinting ? (
                                     <span>{t("common.loading")}</span>
@@ -400,7 +488,6 @@ export default function OrderDetailsPage() {
                                     </svg>
                                 )}
                                 {isPrinting ? t("orderDetails.printing") : t("orderDetails.printOrder")}
-
                             </button>
                         </div>
                     </div>
@@ -428,7 +515,7 @@ export default function OrderDetailsPage() {
                                 </thead>
                                 <tbody className="divide-y divide-subtle">
                                     {order.items?.map((item: any, idx: number) => (
-                                        <tr key={item.item_id || item.id} className={`text-xs hover:bg-yellow-50/30 transition-colors ${idx % 2 !== 0 ? 'bg-gray-50' : 'bg-white'}`}>
+                                        <tr key={item.item_id || item.id} className={`text-xs hover:bg-brand-yellow/5 transition-colors ${idx % 2 !== 0 ? 'bg-gray-50' : 'bg-white'}`}>
                                             <td className="px-3 md:px-6 py-3 md:py-5 text-black font-bold">
                                                 {item.name}
                                             </td>
@@ -522,7 +609,7 @@ export default function OrderDetailsPage() {
 
                     {/* Order Information Section */}
                     <div className="mb-10">
-                        <div className="border-b-2 border-yellow-400 inline-block pb-1 mb-10">
+                        <div className="border-b-2 border-brand-yellow inline-block pb-1 mb-10">
                             <h2 className="text-h3-sm md:text-subheading font-black text-black uppercase tracking-tight">
                                 {t("orderDetails.orderInfo")}
 
@@ -616,7 +703,7 @@ export default function OrderDetailsPage() {
 
                     {/* Order Attachments Section */}
                     <div className="mb-12">
-                        <div className="border-b-2 border-yellow-400 inline-block pb-1 mb-10">
+                        <div className="border-b-2 border-brand-yellow inline-block pb-1 mb-10">
                             <h2 className="text-h3-sm md:text-subheading font-black text-black uppercase tracking-tight">
                                 {t("orderDetails.orderAttachments")}
 
@@ -672,12 +759,12 @@ export default function OrderDetailsPage() {
                                                 const isOpening = openingAttachmentId === String(currentAttachmentId);
 
                                                 return (
-                                                    <tr key={currentAttachmentId} className={`hover:bg-yellow-50/30 transition-colors ${idx % 2 !== 0 ? 'bg-gray-50' : 'bg-white'}`}>
+                                                    <tr key={currentAttachmentId} className={`hover:bg-brand-yellow/5 transition-colors ${idx % 2 !== 0 ? 'bg-gray-50' : 'bg-white'}`}>
                                                         <td className="px-3 md:px-6 py-3 md:py-5 text-left">
                                                             <button
                                                                 onClick={() => handleOpenAttachment(attachment)}
                                                                 disabled={isOpening}
-                                                                className="text-yellow-600 hover:text-black font-black break-all text-left cursor-pointer inline-flex items-center gap-2 disabled:opacity-60 disabled:cursor-wait underline underline-offset-4"
+                                                                className="text-brand-yellow-dark hover:text-black font-black break-all text-left cursor-pointer inline-flex items-center gap-2 disabled:opacity-60 disabled:cursor-wait underline underline-offset-4"
                                                             >
                                                                 {attachment.file_name || "-"}
                                                             </button>
@@ -692,9 +779,34 @@ export default function OrderDetailsPage() {
                                                             {attachment.invoice_due ? formatDateDDMMYYYY(attachment.invoice_due) : "-"}
                                                         </td>
                                                         <td className="px-3 md:px-6 py-3 md:py-5 text-center">
-                                                            <span className="inline-flex px-2 py-1 bg-gray-100 text-gray-600 rounded-full text-caption font-black uppercase tracking-widest">
-                                                                {attachment.payment || attachment.payment_status || "-"}
-                                                            </span>
+                                                            {(() => {
+                                                                const paymentStatus = attachment.payment || attachment.payment_status || "";
+                                                                if (!paymentStatus || paymentStatus === "-") return "-";
+
+                                                                const statusLower = paymentStatus.toLowerCase();
+                                                                const isPaid = statusLower === "paid" || statusLower === "unpaid";
+                                                                const isMarkAsPaid = statusLower.includes("mark");
+
+                                                                if (isPaid) {
+                                                                    return (
+                                                                        <span className="text-black font-semibold text-xs">
+                                                                            {t(`data.${paymentStatus}`) !== `data.${paymentStatus}` ? t(`data.${paymentStatus}`) : paymentStatus}
+                                                                        </span>
+                                                                    );
+                                                                } else if (isMarkAsPaid) {
+                                                                    return (
+                                                                        <span className="text-blue-600 hover:underline font-semibold text-xs cursor-pointer">
+                                                                            {t("data.Mark as paid") || "Mark as paid"}
+                                                                        </span>
+                                                                    );
+                                                                }
+
+                                                                return (
+                                                                    <span className="text-black font-semibold text-xs">
+                                                                        {t(`data.${paymentStatus}`) !== `data.${paymentStatus}` ? t(`data.${paymentStatus}`) : paymentStatus}
+                                                                    </span>
+                                                                );
+                                                            })()}
                                                         </td>
                                                     </tr>
                                                 );

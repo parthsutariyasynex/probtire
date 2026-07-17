@@ -41,7 +41,7 @@ const FilterItem = memo(({
                         type="checkbox"
                         checked={isChecked}
                         onChange={(e) => onCheckboxChange(groupCode, option.value, e.target.checked)}
-                        className="peer appearance-none w-4 h-4 border-2 border-gray-300 rounded-sm checked:bg-yellow-400 checked:border-yellow-400 focus:outline-none focus:ring-2 focus:ring-yellow-400/50 focus:ring-offset-1 transition-all cursor-pointer"
+                        className="peer appearance-none w-4 h-4 border-2 border-gray-300 rounded-sm checked:bg-brand-yellow checked:border-brand-yellow focus:outline-none focus:ring-2 focus:ring-brand-yellow/50 focus:ring-offset-1 transition-all cursor-pointer"
                     />
                     <svg className="absolute w-3 h-3 text-black pointer-events-none opacity-0 peer-checked:opacity-100 transition-opacity" viewBox="0 0 14 10" fill="none">
                         <path d="M1 5L4.5 8.5L13 1" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
@@ -109,7 +109,7 @@ const FilterGroup = memo(({
                                         placeholder={`${t("m.search")} ${translatedGroupLabel}...`}
                                         value={searchTerm}
                                         onChange={(e) => setSearchTerm(e.target.value)}
-                                        className="w-full py-1.5 px-2 text-xs border border-gray-200 rounded-md outline-none focus:border-yellow-400 transition-colors"
+                                        className="w-full py-1.5 px-2 text-xs border border-gray-200 rounded-md outline-none focus:border-brand-yellow transition-colors"
                                     />
                                 );
                             })()}
@@ -234,22 +234,7 @@ function SidebarFilter({
         });
     }, []);
 
-    // Old RELEVANT_CODES — had mismatched codes (itemcode, types, oemmarking) that
-    // didn't match the normalized codes from the API (item_code, runflat, oem_marking).
-    // const RELEVANT_CODES = useMemo(() => new Set([
-    //     "brand", "tyre_size", "pattern", "year", "origin", "manufacturer", "manufacturer_label", "offers", "new_arrivals", "product_group", "itemcode", "types", "oemmarking", "warranty_period"
-    // ]), []);
-    const RELEVANT_CODES = useMemo(() => new Set([
-        "item_code", "brand", "product_group", "tyre_size", "pattern", "year",
-        "origin", "runflat", "oem_marking", "new_arrivals", "warranty_period"
-    ]), []);
-
-    const visibleFilterGroups = useMemo(() => {
-        if (Object.keys(selectedFilters).length === 0) return filterGroups;
-        return filterGroups.filter(g =>
-            selectedFilters[g.code] || RELEVANT_CODES.has(g.code.toLowerCase())
-        );
-    }, [filterGroups, selectedFilters, RELEVANT_CODES]);
+    const visibleFilterGroups = filterGroups;
 
     return (
         <aside

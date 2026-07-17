@@ -4,9 +4,6 @@ import { KLEVER_PRINT_ORDER_QUERY } from "@/src/graphql/queries";
 const MAGENTO_GRAPHQL = (process.env.NEXT_PUBLIC_MAGENTO_BASE_URL || "https://altalayi-live.btire.com") + "/graphql";
 
 // Map a kleverPrintOrder flat address → the REST order-address shape the detail UI reads
-// (firstname/lastname/company/street[]/city/region/postcode/country_id/telephone). The print
-// op returns a single `name`, so we surface it as firstname (lastname empty) — the UI renders
-// `{firstname} {lastname}`, so the full name still shows.
 function mapOrderAddress(a: any) {
     if (!a) return null;
     return {
@@ -22,19 +19,13 @@ function mapOrderAddress(a: any) {
     };
 }
 
-// GET — order detail. The route param is the order entity_id; native `customer.orders` can only
-// be filtered by `number` (increment_id) and doesn't expose entity_id, so it can't be looked up
-// by this param. `kleverPrintOrder(orderId: Int!)` IS keyed by entity_id and returns the full
-// order, so we use it and map to the existing REST order shape the detail page consumes.
+// GET — order detail via kleverPrintOrder (keyed by entity_id).
 export async function GET(
     request: Request,
     { params }: { params: Promise<{ orderId: string }> }
 ) {
     try {
         const { orderId } = await params;
-        // orderId may arrive as a plain numeric entity_id ("222") OR as the GraphQL order id from
-        // customer.orders, which is base64 of the entity_id ("MjIy" → "222", "MzY3Ng==" → "3676").
-        // kleverPrintOrder needs the numeric entity_id, so decode base64 ids first.
         let entityId: number;
         if (/^\d+$/.test(orderId)) {
             entityId = parseInt(orderId, 10);
@@ -62,10 +53,11 @@ export async function GET(
         const json = await res.json();
         if (Array.isArray(json?.errors) && json.errors.length > 0) {
             const msg = json.errors[0]?.message || "Magento GraphQL error";
-            // "not authorized" for an order that isn't this customer's → 404, matching old REST.
-            const status = /authorized/i.test(msg) ? 404 : 502;
             console.error("[order/:id GET] GraphQL error:", JSON.stringify(json.errors).slice(0, 300));
-            return NextResponse.json({ message: msg }, { status });
+            if (/permission|not authorized|authoriz/i.test(msg)) {
+                return NextResponse.json({ message: msg, permission_denied: true }, { status: 403 });
+            }
+            return NextResponse.json({ message: msg }, { status: 502 });
         }
 
         const o = json?.data?.kleverPrintOrder;

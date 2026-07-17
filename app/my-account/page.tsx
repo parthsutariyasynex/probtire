@@ -48,13 +48,14 @@ export default function MyAccountPage() {
     const { data: customer, loading } = useSelector((state: RootState) => state.customer);
     const token = useSelector((state: RootState) => state.auth.token);
 
-    // isSalesPerson / isMultiCompany: driven by account-sidebar user_type.
+    // Role flags driven by account-sidebar user_type.
     // Uses the same sessionStorage cache written by Navbar to avoid a redundant API call.
     const [isSalesPerson, setIsSalesPerson] = useState(false);
     const [isMultiCompany, setIsMultiCompany] = useState(false);
+    const [isCompanySubAccount, setIsCompanySubAccount] = useState(false);
     useEffect(() => {
         const accessToken = (session as any)?.accessToken as string | undefined;
-        if (!accessToken) { setIsSalesPerson(false); setIsMultiCompany(false); return; }
+        if (!accessToken) { setIsSalesPerson(false); setIsMultiCompany(false); setIsCompanySubAccount(false); return; }
         if (typeof sessionStorage === "undefined") return;
         const ROLE_CACHE = "altalayi_user_type_v1";
         const TOKEN_CACHE = "altalayi_role_token_v1";
@@ -62,6 +63,7 @@ export default function MyAccountPage() {
             const type = sessionStorage.getItem(ROLE_CACHE) || "Customer";
             setIsSalesPerson(type === "Sales Person");
             setIsMultiCompany(type === "Multiple Company User");
+            setIsCompanySubAccount(type === "Company Sub Account");
             return;
         }
         fetch("/api/kleverapi/account-sidebar", {
@@ -74,7 +76,8 @@ export default function MyAccountPage() {
             }
             setIsSalesPerson(type === "Sales Person");
             setIsMultiCompany(type === "Multiple Company User");
-        }).catch(() => {});
+            setIsCompanySubAccount(type === "Company Sub Account");
+        }).catch(() => { });
     }, [(session as any)?.accessToken]);
 
     const [isSubAccountSession, setIsSubAccountSession] = useState(false);
@@ -91,6 +94,13 @@ export default function MyAccountPage() {
             }
         }
     }, [pathname, router]);
+
+    // Redirect direct sub account login to the sub account My Account page
+    useEffect(() => {
+        if (isCompanySubAccount) {
+            router.replace(lp("/subaccount/my-account"));
+        }
+    }, [isCompanySubAccount]);
 
     const [businessOverview, setBusinessOverview] = useState<any>(null);
     const [targets, setTargets] = useState<any>(null);
@@ -291,10 +301,10 @@ export default function MyAccountPage() {
                                             <p>{t("account.contactName")}: {(customer as any).firstname} {(customer as any).lastname}</p>
                                             <p>{t("account.email")}: {(customer as any).email}</p>
                                             {customerMobile !== "N/A" && <p>{t("account.customerMobile")}: {customerMobile}</p>}
-                                            {!isSalesPerson && !isMultiCompany && customerCompany !== "N/A" && <p>{t("account.companyName")}: {customerCompany}</p>}
-                                            {!isSalesPerson && !isMultiCompany && customerCode !== "N/A" && <p>{t("account.customerCode")}: {customerCode}</p>}
-                                            {!isSalesPerson && !isMultiCompany && customerIndustry !== "N/A" && <p>{t("m.industry")}: {customerIndustry}</p>}
-                                            {!isSalesPerson && !isMultiCompany && customerLocation !== "N/A" && <p>{t("m.location")}: {customerLocation}</p>}
+                                            {!isSalesPerson && !isMultiCompany && !isCompanySubAccount && customerCompany !== "N/A" && <p>{t("account.companyName")}: {customerCompany}</p>}
+                                            {!isSalesPerson && !isMultiCompany && !isCompanySubAccount && customerCode !== "N/A" && <p>{t("account.customerCode")}: {customerCode}</p>}
+                                            {!isSalesPerson && !isMultiCompany && !isCompanySubAccount && customerIndustry !== "N/A" && <p>{t("m.industry")}: {customerIndustry}</p>}
+                                            {!isSalesPerson && !isMultiCompany && !isCompanySubAccount && customerLocation !== "N/A" && <p>{t("m.location")}: {customerLocation}</p>}
                                             <p>{t("account.contactInformation")}: {(customer as any).email} ,{customerMobile !== "N/A" ? customerMobile : ""}</p>
 
                                             <div className="flex flex-col md:flex-row gap-3 pt-4 md:pt-6">
@@ -308,8 +318,8 @@ export default function MyAccountPage() {
                                         </div>
                                     </div>
 
-                                    {/* Business Overview — hidden for Sales Person */}
-                                    {!isSalesPerson && !isMultiCompany && (
+                                    {/* Business Overview — hidden for Sales Person / Multiple Company / Sub Account */}
+                                    {!isSalesPerson && !isMultiCompany && !isCompanySubAccount && (
                                         <div className={`${cardBase} md:col-span-1 lg:col-span-2`}>
                                             <div className={sectionHeader + " flex justify-between items-center"}>
                                                 <span>{t("dashboard.businessOverview")}</span>
@@ -328,8 +338,8 @@ export default function MyAccountPage() {
                                         </div>
                                     )}
 
-                                    {/* Sales Data (Qty) — hidden for Sales Person */}
-                                    {!isSalesPerson && !isMultiCompany && (
+                                    {/* Sales Data (Qty) — hidden for Sales Person / Multiple Company / Sub Account */}
+                                    {!isSalesPerson && !isMultiCompany && !isCompanySubAccount && (
                                         <div className={`${cardBase} md:col-span-1 lg:col-span-2`}>
                                             <div className={sectionHeader}>
                                                 {t("m.sales-data-qty")}
@@ -341,8 +351,8 @@ export default function MyAccountPage() {
                                         </div>
                                     )}
 
-                                    {/* Targets & Achievements — hidden for Sales Person */}
-                                    {!isSalesPerson && !isMultiCompany && (
+                                    {/* Targets & Achievements — hidden for Sales Person / Multiple Company / Sub Account */}
+                                    {!isSalesPerson && !isMultiCompany && !isCompanySubAccount && (
                                         <div className={`${cardBase} md:col-span-1 lg:col-span-3`}>
                                             <div className={sectionHeader + " flex justify-between items-center"}>
                                                 <span>{t("m.targets-and-achievements")}</span>
@@ -365,8 +375,8 @@ export default function MyAccountPage() {
                                         </div>
                                     )}
 
-                                    {/* Customer Behavior — hidden for Sales Person */}
-                                    {!isSalesPerson && !isMultiCompany && (
+                                    {/* Customer Behavior — hidden for Sales Person / Multiple Company / Sub Account */}
+                                    {!isSalesPerson && !isMultiCompany && !isCompanySubAccount && (
                                         <div className={`${cardBase} md:col-span-2 lg:col-span-3`}>
                                             <div className={sectionHeader}>
                                                 {t("m.customer-behavior")}
@@ -384,9 +394,9 @@ export default function MyAccountPage() {
                             {/* CREDIT ACCOUNT INFORMATION */}
                             <CreditLimit />
 
-                            {/* ADDRESS BOOK — hidden for Sales Person */}
+                            {/* ADDRESS BOOK — hidden for Sales Person / Multiple Company / Sub Account */}
 
-                            {!isSalesPerson && !isMultiCompany && <div>
+                            {!isSalesPerson && !isMultiCompany && !isCompanySubAccount && <div>
                                 <h2 className="text-body-lg md:text-h3-sm font-bold text-black uppercase mb-3">{t("addressBook.title")}</h2>
                                 <hr className="border-gray-200 mb-6" />
 
@@ -438,7 +448,7 @@ export default function MyAccountPage() {
                                                     </Link>
                                                 ) : (
                                                     <Link href={lp("/customer/address")} className="w-full md:w-auto text-center bg-brand-yellow hover:bg-brand-yellow-dark text-black text-body font-bold px-4 md:px-8 py-2.5 uppercase transition-all rounded-none inline-block">
-                                                        {t("addressBook.addAddress")}
+                                                        {t("addressBook.editAddress")}
                                                     </Link>
                                                 )}
                                             </div>

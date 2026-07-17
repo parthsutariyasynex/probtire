@@ -140,7 +140,7 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
                                                     <Price amount={item.price} className="font-bold text-black" />
                                                 </div>
 
-                                                <div className="flex items-center border border-[#ddd] bg-white rounded-lg focus-within:ring-1 focus-within:ring-primary transition-all">
+                                                <div className="flex items-center border border-[#ddd] bg-white rounded-sm focus-within:ring-1 focus-within:ring-primary transition-all">
                                                     <button
                                                         onClick={() => updateCartItem(item.item_id, item.qty - 1)}
                                                         className="w-7 h-7 flex items-center justify-center text-gray-400 hover:text-black transition-all disabled:opacity-30"
@@ -211,7 +211,7 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
                         <button
                             onClick={handleConfirmDelete}
                             disabled={isRemoving}
-                            className="px-10 py-2.5 bg-[#fdb913] text-black font-black uppercase tracking-widest text-body-sm hover:bg-[#e5a811] transition-all rounded-sm min-w-[100px] flex items-center justify-center gap-2"
+                            className="px-10 py-2.5 bg-brand-yellow text-black font-black uppercase tracking-widest text-body-sm hover:bg-brand-yellow-dark transition-all rounded-sm min-w-[100px] flex items-center justify-center gap-2"
                         >
                             {isRemoving ? t("common.loading") : t("common.ok")}
                         </button>

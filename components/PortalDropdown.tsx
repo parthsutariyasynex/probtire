@@ -78,7 +78,7 @@ export default function PortalDropdown({
                 ref={triggerRef}
                 type="button"
                 onClick={handleToggle}
-                className={`flex items-center justify-between gap-2 cursor-pointer transition-all focus:outline-none ${buttonClassName || "bg-white border border-gray-200 rounded-md px-3 py-2 text-body font-bold text-black hover:border-gray-300 shadow-sm"} ${isOpen ? "border-brand-yellow z-[9999]" : ""}`}
+                className={`flex items-center gap-2 cursor-pointer transition-all focus:outline-none ${buttonClassName || "justify-between bg-white border border-gray-200 rounded-md px-3 py-2 text-body font-bold text-black hover:border-gray-300 shadow-sm"} ${isOpen ? "border-brand-yellow z-[9999]" : ""}`}
                 style={{ minWidth }}
             >
                 <span className="truncate" {...(ltrLabels ? { dir: "ltr", style: { unicodeBidi: "isolate" } } : {})}>{selected ? selected.label : placeholder}</span>

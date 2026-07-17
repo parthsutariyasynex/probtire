@@ -40,7 +40,7 @@ const AddToCartPopup: React.FC<AddToCartPopupProps> = ({ isOpen, onClose, produc
         >
             <div className="flex flex-col bg-white font-sans" dir={isRtl ? "rtl" : "ltr"}>
                 {/* Yellow Header */}
-                <div className="bg-[#fdb913] py-3 flex items-center justify-center relative rounded-t-2xl">
+                <div className="bg-brand-yellow py-3 flex items-center justify-center relative rounded-t-2xl">
                     <h2 className="text-xl font-bold text-black uppercase tracking-wider">
                         {t("cart.added_to_cart") || "ADDED TO CART"}
                     </h2>
@@ -65,7 +65,7 @@ const AddToCartPopup: React.FC<AddToCartPopupProps> = ({ isOpen, onClose, produc
                     <div className="flex w-full gap-2 md:gap-5">
                         <button
                             onClick={handleProceedToCart}
-                            className="flex-1 h-[36px] md:h-[46px] bg-[#fdb913] text-black font-bold text-body md:text-base uppercase tracking-wider rounded-lg hover:opacity-90 transition-opacity active:scale-[0.98]"
+                            className="flex-1 h-[36px] md:h-[46px] bg-brand-yellow text-black font-bold text-body md:text-base uppercase tracking-wider rounded-lg hover:opacity-90 transition-opacity active:scale-[0.98]"
                         >
                             {t("cart.proceed_to_cart") || "PROCEED TO CART"}
                         </button>

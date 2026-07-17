@@ -132,7 +132,7 @@ export default function NotificationsPage() {
     }
 
     return (
-        <div className="flex flex-col lg:flex-row flex-1 min-h-0 w-full">
+        <div className="min-h-screen flex flex-col lg:flex-row flex-1 min-h-0 w-full bg-surface font-rubik">
             {/* SIDEBAR */}
             <Sidebar />
 
@@ -142,6 +142,11 @@ export default function NotificationsPage() {
                             {t('notifications.title')}
                         </h1>
 
+                    {(!notifications || notifications.length === 0) && !isLoading ? (
+                        <p className="text-body text-[#333333] ltr:text-left rtl:text-right mt-4">
+                            {isRtl ? "لا توجد إشعارات متاحة." : "There are no notifications available"}
+                        </p>
+                    ) : (
                         <div className="border border-[#ddd] rounded-sm overflow-hidden bg-white">
                             {/* Desktop Table */}
                             <div className="hidden md:block overflow-x-auto">
@@ -174,7 +179,7 @@ export default function NotificationsPage() {
 
                                                         {formatDate(item.date_added_formatted, locale)}
                                                     </td>
-                                                    <td className={`px-4 py-2.5 text-body ltr:text-left rtl:text-right border border-[#ddd] align-middle ${!item.is_read ? "font-bold text-black" : "font-normal text-[#666666]"}`}>
+                                                    <td className={`px-4 py-2.5 text-body ltr:text-left rtl:text-right border border-[#ddd] align-middle ${!item.is_read ? "font-semibold text-black" : "font-normal text-[#666666]"}`}>
                                                         {getOrderLink(item) ? (
                                                             <Link href={getOrderLink(item)!} className="hover:text-brand-yellow transition-colors cursor-pointer underline-offset-2 hover:underline">
                                                                 {translateNotificationText(item.title, locale)}
@@ -188,11 +193,11 @@ export default function NotificationsPage() {
                                                         <div className="flex items-center justify-center gap-2 whitespace-nowrap text-[#333333]">
                                                             {!item.is_read && (
                                                                 <>
-                                                                    <button onClick={(e) => { e.stopPropagation(); markAsRead(item.notification_id); }} className="hover:text-brand-yellow transition-colors font-bold">{t('m.mark-as-read')}</button>
+                                                                    <button onClick={(e) => { e.stopPropagation(); markAsRead(item.notification_id); }} className="hover:text-brand-yellow transition-colors font-semibold">{t('m.mark-as-read')}</button>
                                                                     <span className="text-[#cccccc]">|</span>
                                                                 </>
                                                             )}
-                                                            <button onClick={(e) => { e.stopPropagation(); removeNotification(item.notification_id, item.is_read); }} disabled={deletingIds.includes(item.notification_id)} className="hover:text-brand-yellow cursor-pointer transition-colors font-bold disabled:opacity-50 disabled:cursor-not-allowed">
+                                                            <button onClick={(e) => { e.stopPropagation(); removeNotification(item.notification_id, item.is_read); }} disabled={deletingIds.includes(item.notification_id)} className="hover:text-brand-yellow cursor-pointer transition-colors font-semibold disabled:opacity-50 disabled:cursor-not-allowed">
                                                                 {deletingIds.includes(item.notification_id) ? t('common.loading') : t('m.remove')}
                                                             </button>
                                                         </div>
@@ -232,11 +237,11 @@ export default function NotificationsPage() {
                                                 <div className="flex items-center gap-2">
                                                     {!item.is_read && <div className="w-2 h-2 bg-brand-yellow rounded-full flex-shrink-0 mt-1"></div>}
                                                     {getOrderLink(item) ? (
-                                                        <Link href={getOrderLink(item)!} className={`text-body hover:text-brand-yellow transition-colors hover:underline ${!item.is_read ? "font-bold text-black" : "font-normal text-[#666666]"}`}>
+                                                        <Link href={getOrderLink(item)!} className={`text-body hover:text-brand-yellow transition-colors hover:underline ${!item.is_read ? "font-semibold text-black" : "font-normal text-[#666666]"}`}>
                                                             {translateNotificationText(item.title, locale)}
                                                         </Link>
                                                     ) : (
-                                                        <span className={`text-body ${!item.is_read ? "font-bold text-black" : "font-normal text-[#666666]"}`}>{translateNotificationText(item.title, locale)}</span>
+                                                        <span className={`text-body ${!item.is_read ? "font-semibold text-black" : "font-normal text-[#666666]"}`}>{translateNotificationText(item.title, locale)}</span>
                                                     )}
                                                 </div>
                                                 <span className="text-label text-gray-400 flex-shrink-0">{formatDate(item.date_added_formatted, locale)}</span>
@@ -244,7 +249,7 @@ export default function NotificationsPage() {
                                             <p className={`text-body-sm leading-relaxed mb-1.5 ${!item.is_read ? "font-medium text-black" : "text-[#666666]"}`}>
                                                 {translateNotificationText(item.description, locale)}
                                             </p>
-                                            <div className="flex items-center gap-3 text-label font-bold text-[#333333]">
+                                            <div className="flex items-center gap-3 text-label font-semibold text-[#333333]">
                                                 {!item.is_read && (
                                                     <>
                                                         <button onClick={(e) => { e.stopPropagation(); markAsRead(item.notification_id); }} className="hover:text-brand-yellow transition-colors">{t('m.mark-as-read')}</button>
@@ -314,7 +319,8 @@ export default function NotificationsPage() {
                                 </div>
                             </div>
                         </div>
-                    </main>
+                    )}
+                </main>
         </div>
     );
 }

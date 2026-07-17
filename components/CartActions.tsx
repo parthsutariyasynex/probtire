@@ -31,7 +31,7 @@ const CartActions: React.FC<CartActionsProps> = ({ itemsCount, onClearCart, onUp
                 </button>
                 <button
                     onClick={onUpdateCart}
-                    className="flex-1 md:flex-none px-6 py-3 bg-[#FFC107] text-black text-xs font-bold uppercase tracking-[0.2em] hover:bg-[#FFB300] transition-all cursor-pointer rounded-sm active:scale-95 shadow-md shadow-black/5"
+                    className="flex-1 md:flex-none px-6 py-3 bg-brand-yellow text-black text-xs font-bold uppercase tracking-[0.2em] hover:bg-brand-yellow-dark transition-all cursor-pointer rounded-sm active:scale-95 shadow-md shadow-black/5"
                 >
                     {t("cart.updateCart")}
                 </button>

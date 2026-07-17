@@ -138,13 +138,18 @@ export default function ProductsPage() {
   // isMultiCompany: read from sessionStorage cache (set by Navbar's account-sidebar fetch).
   // Falls back to its own fetch if the cache isn't populated yet.
   const [isMultiCompany, setIsMultiCompany] = useState(false);
+  // Master Company and Company Sub Account share utypid===3 with Sales Person but must see
+  // Cart, Actions, and Favourites — same as Navbar behaviour ("always visible").
+  const [isSubOrMasterCompany, setIsSubOrMasterCompany] = useState(false);
   useEffect(() => {
-    if (!authToken) { setIsMultiCompany(false); return; }
+    if (!authToken) { setIsMultiCompany(false); setIsSubOrMasterCompany(false); return; }
     if (typeof sessionStorage === "undefined") return;
     const ROLE_CACHE = "altalayi_user_type_v1";
     const TOKEN_CACHE = "altalayi_role_token_v1";
     if (sessionStorage.getItem(TOKEN_CACHE) === authToken) {
-      setIsMultiCompany(sessionStorage.getItem(ROLE_CACHE) === "Multiple Company User");
+      const cached = sessionStorage.getItem(ROLE_CACHE) || "Customer";
+      setIsMultiCompany(cached === "Multiple Company User");
+      setIsSubOrMasterCompany(cached === "Company Sub Account" || cached === "Master Company");
       return;
     }
     fetch("/api/kleverapi/account-sidebar", {
@@ -154,12 +159,13 @@ export default function ProductsPage() {
       sessionStorage.setItem(ROLE_CACHE, type);
       sessionStorage.setItem(TOKEN_CACHE, authToken);
       setIsMultiCompany(type === "Multiple Company User");
+      setIsSubOrMasterCompany(type === "Company Sub Account" || type === "Master Company");
     }).catch(() => { });
   }, [authToken]);
 
-  // shouldHideCartActions: true for Sales Person and Multi Company.
-  // Master Company and Sub Company are unaffected — they see Cart, Actions, and Favourites.
-  const shouldHideCartActions = isSalesPerson || isMultiCompany;
+  // shouldHideCartActions: true for Sales Person and Multiple Company User only.
+  // Master Company and Company Sub Account share utypid===3 but see Cart, Actions, Favourites.
+  const shouldHideCartActions = (isSalesPerson || isMultiCompany) && !isSubOrMasterCompany;
 
   const [searchParams, setSearchParamsState] = useState<URLSearchParams | null>(null);
   const handleParams = useCallback((sp: URLSearchParams) => setSearchParamsState(sp), []);
@@ -184,7 +190,6 @@ export default function ProductsPage() {
   const [selectedFilters, setSelectedFilters] = useState<Record<string, string[]>>({});
   const [selectedFilterLabels, setSelectedFilterLabels] = useState<Record<string, { value: string; label: string }[]>>({});
   const [apiFilters, setApiFilters] = useState<any[] | null>(null);
-  const [filtersLoading, setFiltersLoading] = useState<boolean>(true);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
   const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
@@ -318,8 +323,7 @@ export default function ProductsPage() {
       setDebouncedFilters({});
       setCurrentPage(1);
       setSortBy("none");
-      setApiFilters(null); // Reset filters for new category
-      setFiltersLoading(true);
+      setApiFilters(null);
     }
     prevCategoryIdRef.current = categoryId;
   }, [categoryId]);
@@ -348,9 +352,7 @@ export default function ProductsPage() {
         }
         const headers: HeadersInit = { "Content-Type": "application/json", "Authorization": `Bearer ${token}`, "x-locale": fetchLocale };
         const queryString = formatMagentoQueryParams(JSON.parse(debouncedFiltersKey), currentPage, sortBy);
-        // productsOnly=1 → backend skips the slow layered-nav filter pass.
-        // Filters are fetched independently below (see the filters effect).
-        const url = `/api/category-products?${queryString}&categoryId=${categoryId}&pageSize=${PAGE_SIZE}&lang=${fetchLocale}&productsOnly=1`;
+        const url = `/api/category-products?${queryString}&categoryId=${categoryId}&pageSize=${PAGE_SIZE}&lang=${fetchLocale}`;
         const __t0 = performance.now();
         const res = await fetch(url, { headers, signal: abortController.signal });
         if (!res.ok) {
@@ -370,9 +372,9 @@ export default function ProductsPage() {
         });
 
         if (abortController.signal.aborted) return;
-        // Products render immediately — independent of the filters request.
         setProducts(mappedProducts);
         setTotalCount(total);
+        if (Array.isArray(data.filters)) setApiFilters(data.filters);
       } catch (err: unknown) {
         if (err instanceof Error && err.name === "AbortError") return;
         setError(t("products.noProducts"));
@@ -385,42 +387,6 @@ export default function ProductsPage() {
     return () => abortController.abort();
   }, [router, currentPage, debouncedFiltersKey, sortBy, isInitialized, categoryId, authToken]);
 
-  // ── Filters: fetched independently of products so the list never waits on them.
-  // Depends only on categoryId/locale (NOT page/sort/selectedFilters) → one request
-  // per category, no refetch on pagination/sort/filter changes (req #1, #5, #11).
-  useEffect(() => {
-    if (!isInitialized || !categoryId) return;
-    const abortController = new AbortController();
-    const loadFilters = async () => {
-      try {
-        setFiltersLoading(true);
-        const token = authToken;
-        if (!token) return;
-        let fetchLocale = "en";
-        if (window.location.pathname.startsWith("/ar")) fetchLocale = "ar";
-        else {
-          const cookieMatch = document.cookie.match(/NEXT_LOCALE=([^;]+)/);
-          if (cookieMatch?.[1] === "ar") fetchLocale = "ar";
-        }
-        const headers: HeadersInit = { "Content-Type": "application/json", "Authorization": `Bearer ${token}`, "x-locale": fetchLocale };
-        const __t0 = performance.now();
-        const res = await fetch(`/api/category-filter-options?categoryId=${categoryId}&lang=${fetchLocale}`, { headers, signal: abortController.signal });
-        if (!res.ok) throw new Error(`API Error: ${res.status}`);
-        const data = await res.json();
-        console.log(`[products-timing] category-filter-options → ${res.status} in ${Math.round(performance.now() - __t0)}ms (X-Cache: ${res.headers.get("x-cache") || "n/a"})`);
-        if (abortController.signal.aborted) return;
-        setApiFilters(Array.isArray(data.filters) ? data.filters : []);
-      } catch (err: unknown) {
-        if (err instanceof Error && err.name === "AbortError") return;
-        setApiFilters([]); // stop the filter loading state on error
-        console.error("[products] filter-options error:", err);
-      } finally {
-        if (!abortController.signal.aborted) setFiltersLoading(false);
-      }
-    };
-    loadFilters();
-    return () => abortController.abort();
-  }, [categoryId, isInitialized, locale, authToken]);
 
   const handleFilterChange = useCallback(
     (filters: Record<string, string[]>, labels: Record<string, { value: string; label: string }[]>) => {
@@ -737,7 +703,7 @@ export default function ProductsPage() {
             selectedFilters={selectedFilters}
             isCollapsed={isSidebarCollapsed}
             setIsCollapsed={setIsSidebarCollapsed}
-            initialFilters={filtersLoading ? null : apiFilters}
+            initialFilters={loading && apiFilters === null ? null : apiFilters}
           />
         </div>
 
@@ -753,7 +719,7 @@ export default function ProductsPage() {
             <div className="flex-1 overflow-y-auto">
               {/* Render SidebarFilter content directly — override its aside wrapper via CSS */}
               <div className="[&>aside]:!w-full [&>aside]:!h-auto [&>aside]:!static [&>aside]:!border-0 [&>aside]:!overflow-visible [&>aside>div]:!static [&>aside>div]:!h-auto [&>aside>div:first-child]:!hidden">
-                <SidebarFilter onFilterChange={(f, l) => { handleFilterChange(f, l); setIsMobileFilterOpen(false); }} selectedFilters={selectedFilters} isCollapsed={false} setIsCollapsed={() => { }} initialFilters={filtersLoading ? null : apiFilters} />
+                <SidebarFilter onFilterChange={(f, l) => { handleFilterChange(f, l); setIsMobileFilterOpen(false); }} selectedFilters={selectedFilters} isCollapsed={false} setIsCollapsed={() => { }} initialFilters={loading && apiFilters === null ? null : apiFilters} />
               </div>
             </div>
             <div className="p-4 border-t border-gray-100 flex-shrink-0">
@@ -973,7 +939,7 @@ export default function ProductsPage() {
                           </td>
                           {showActionColumn && (
                             <td className="px-2 text-center align-middle min-w-[150px] whitespace-nowrap">
-                              {product?.is_action === "Yes" && (
+                              {String(product?.is_action).toLowerCase() === "yes" && (
                                 loadingSkus.has(product.sku) ? (
                                   <div className="flex items-center justify-center h-8">
                                     <CardSpinner />

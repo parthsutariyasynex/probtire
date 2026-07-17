@@ -262,9 +262,11 @@ const Sidebar = () => {
         );
     }
 
-    // Multi Company must not see Manage Accounts.
+    // Multi Company and Company Sub Account must not see Manage Accounts.
     // All other roles (including Sales Person) trust the backend is_visible flag.
-    const restrictedRole = sidebarData.user_type === "Multiple Company User";
+    const isSubAccount = sidebarData.user_type === "Company Sub Account";
+    const isMultiCompany = sidebarData.user_type === "Multiple Company User";
+    const restrictedRole = isSubAccount || isMultiCompany;
 
     const visibleItems = sidebarData.items
         .filter(item => {

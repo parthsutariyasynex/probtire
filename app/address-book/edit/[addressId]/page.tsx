@@ -217,7 +217,7 @@ export default function EditAddressPage() {
                                         <button
                                             type="submit"
                                             disabled={saving}
-                                            className="bg-[#ffb12b] hover:bg-[#e5a026] text-black text-body-lg font-bold px-6 md:px-10 py-3 uppercase transition-colors rounded-sm shadow-sm tracking-wide disabled:opacity-50 flex items-center justify-center w-full sm:w-auto sm:min-w-[180px]"
+                                            className="bg-brand-yellow hover:bg-brand-yellow-dark text-black text-body-lg font-bold px-6 md:px-10 py-3 uppercase transition-colors rounded-sm shadow-sm tracking-wide disabled:opacity-50 flex items-center justify-center w-full sm:w-auto sm:min-w-[180px]"
                                         >
                                             {saving ? (
                                                 t("common.loading")

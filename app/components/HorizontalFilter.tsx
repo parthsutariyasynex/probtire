@@ -96,7 +96,7 @@ const SearchableDropdown: React.FC<SearchableDropdownProps> = ({
 
     const renderDropdownList = () => (
         <>
-            <div className="px-3 sm:px-4 py-2 bg-brand-yellow border-b border-yellow-600/20">
+            <div className="px-3 sm:px-4 py-2 bg-brand-yellow border-b border-brand-yellow/20">
                 <span className="text-body-sm sm:text-body-lg font-semibold text-black uppercase tracking-tight">
                     {label.replace(" Options", "")}
                 </span>
@@ -135,7 +135,7 @@ const SearchableDropdown: React.FC<SearchableDropdownProps> = ({
                                 setSearchTerm("");
                             }}
                             className={`px-3 sm:px-4 py-2.5 sm:py-3 text-body-sm sm:text-body-lg font-semibold cursor-pointer transition-colors ${value === opt.value
-                                ? "bg-yellow-50 text-black border-l-4 border-brand-yellow"
+                                ? "bg-brand-yellow-light text-black border-l-4 border-brand-yellow"
                                 : "text-gray-700 hover:bg-gray-50 hover:text-black"
                                 }`}
                         >
@@ -157,7 +157,7 @@ const SearchableDropdown: React.FC<SearchableDropdownProps> = ({
                 ref={triggerRef}
                 onClick={handleToggle}
                 className={`flex items-center justify-between px-3 sm:px-4 py-2.5 w-full bg-white border rounded cursor-pointer transition-all h-full ${disabled ? "bg-gray-50 border-gray-200 cursor-not-allowed text-gray-400" :
-                    loading ? "border-brand-yellow bg-yellow-50 cursor-wait text-gray-800" :
+                    loading ? "border-brand-yellow bg-brand-yellow-light cursor-wait text-gray-800" :
                         "border-gray-300 hover:border-brand-yellow text-gray-800"
                     } ${isOpen ? "ring-2 ring-brand-yellow/20 border-brand-yellow" : ""}`}
             >
@@ -302,7 +302,6 @@ const HorizontalFilter: React.FC<HorizontalFilterProps> = ({ onSearch, initialVa
             fetchList("/tyre-size/height", setHeightList, setLoadingHeight, "All Heights");
             setRimList([]);
         }
-        onSearch(width, "", "");
     }, [width]);
 
     // 3. Cascade Rim — if height is "None", fetch rim by width only
@@ -319,15 +318,7 @@ const HorizontalFilter: React.FC<HorizontalFilterProps> = ({ onSearch, initialVa
             fetchList("/tyre-size/rim", setRimList, setLoadingRim, "All Rims");
         }
         if (width && height) setRim("");
-        onSearch(width, height === "None" ? "" : height, "");
     }, [width, height]);
-
-    // 4. Rim selected
-    useEffect(() => {
-        if (hasInitialized.current && rim) {
-            onSearch(width, height === "None" ? "" : height, rim);
-        }
-    }, [rim]);
 
     useEffect(() => { hasInitialized.current = true; }, []);
 
@@ -392,25 +383,25 @@ const HorizontalFilter: React.FC<HorizontalFilterProps> = ({ onSearch, initialVa
     return (
         <div className="w-full bg-white h-full px-2 sm:px-4 md:px-6 flex items-center justify-center gap-2 sm:gap-4 flex-nowrap overflow-visible relative">
             {/* Label */}
-            <div className="bg-brand-yellow px-4 md:px-6 py-2 md:py-2.5 rounded shadow-sm flex-shrink-0">
+            <label className="bg-brand-yellow px-4 md:px-6 py-2 md:py-2.5 rounded shadow-sm flex-shrink-0 select-none">
                 <span className="text-black font-semibold italic uppercase text-body-sm md:text-body-xl tracking-tight whitespace-nowrap">
                     {t("m.search-by-size")}
                 </span>
-            </div>
+            </label>
 
-            <div className="flex-1 min-w-[80px] max-w-[200px] h-[40px] md:h-[45px]">
+            <div className="w-[200px] flex-shrink-0 h-[40px] md:h-[45px]">
                 {loadingWidth ? <Skeleton className="w-full h-full" /> : (
                     <SearchableDropdown label="Width" placeholder={t("m.width")} options={widthList} value={width} onChange={setWidth} loading={loadingWidth} direction="up" />
                 )}
             </div>
 
-            <div className="flex-1 min-w-[80px] max-w-[200px] h-[40px] md:h-[45px]">
+            <div className="w-[200px] flex-shrink-0 h-[40px] md:h-[45px]">
                 {loadingHeight ? <Skeleton className="w-full h-full" /> : (
                     <SearchableDropdown label="Height" placeholder={t("m.height")} options={heightList} value={height} onChange={setHeight} loading={loadingHeight} emptyMessage={t("filter.noHeights")} direction="up" />
                 )}
             </div>
 
-            <div className="flex-1 min-w-[80px] max-w-[200px] h-[40px] md:h-[45px]">
+            <div className="w-[200px] flex-shrink-0 h-[40px] md:h-[45px]">
                 {loadingRim ? <Skeleton className="w-full h-full" /> : (
                     <SearchableDropdown label="Rim" placeholder={t("m.rim")} options={rimList} value={rim} onChange={setRim} loading={loadingRim} emptyMessage={t("filter.noRims")} direction="up" />
                 )}

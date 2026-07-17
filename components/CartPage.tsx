@@ -121,7 +121,7 @@ const CartPage: React.FC = () => {
                     <h1 className="text-xl md:text-2xl font-bold text-gray-900 uppercase tracking-widest mb-4">
                         {t("cart.noItems")}
                     </h1>
-                    <Link href={lp("/products")} className="inline-flex items-center gap-2 text-yellow-600 font-bold hover:underline">
+                    <Link href={lp("/products")} className="inline-flex items-center gap-2 text-brand-yellow-dark font-bold hover:underline">
                         {t("cart.goToProducts")}
                         <ArrowRight size={16} />
                     </Link>
@@ -140,7 +140,7 @@ const CartPage: React.FC = () => {
                     <h1 className="text-xl md:text-2xl font-bold text-gray-900 uppercase tracking-tight mb-2">
                         {t("cart.title")}
                     </h1>
-                    <div className="h-1 w-12 bg-yellow-400 mx-auto"></div>
+                    <div className="h-1 w-12 bg-brand-yellow mx-auto"></div>
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 xl:gap-16 items-start">
@@ -180,14 +180,14 @@ const CartPage: React.FC = () => {
                                     />
 
                                     {/* Multiple Address Section Bar */}
-                                    <div className="border border-[#FFC107] bg-white rounded-sm flex flex-col md:flex-row items-stretch justify-between overflow-hidden shadow-xl shadow-yellow-400/5">
+                                    <div className="border border-brand-yellow bg-white rounded-sm flex flex-col md:flex-row items-stretch justify-between overflow-hidden shadow-xl shadow-brand-yellow/5">
                                         <div className="px-6 py-4 flex items-center bg-gray-50/50 flex-1">
                                             <h4 className="text-caption font-bold text-gray-900 uppercase tracking-wider">{t("cart.multiAddressShipping")}</h4>
                                         </div>
                                         <button
                                             onClick={handleStartMultiShipping}
                                             disabled={isStartingMultiShipping}
-                                            className="bg-[#FFC107] text-black font-bold py-4 px-10 uppercase tracking-widest text-caption hover:bg-black hover:text-white transition-all duration-300 disabled:opacity-70 disabled:cursor-not-allowed w-full md:w-auto shadow-none"
+                                            className="bg-brand-yellow text-black font-bold py-4 px-10 uppercase tracking-widest text-caption hover:bg-black hover:text-white transition-all duration-300 disabled:opacity-70 disabled:cursor-not-allowed w-full md:w-auto shadow-none"
                                         >
                                             {isStartingMultiShipping ? (
                                                 t("common.loading")

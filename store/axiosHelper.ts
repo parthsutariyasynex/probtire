@@ -28,6 +28,19 @@ function getResponse(response: any) {
 }
 
 export function getToken() {
+    if (typeof window !== "undefined") {
+        const isSubAccount = localStorage.getItem("isSubAccount") === "true";
+        if (isSubAccount) {
+            const subDataStr = localStorage.getItem("subAccountData");
+            if (subDataStr) {
+                try {
+                    const parsed = JSON.parse(subDataStr);
+                    if (parsed.token) return parsed.token;
+                } catch {}
+            }
+        }
+    }
+
     // Try Redux first, then fallback to localStorage
     const reduxToken = store.getState().auth.token;
     if (reduxToken) return reduxToken;

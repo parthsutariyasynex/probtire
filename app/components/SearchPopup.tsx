@@ -177,7 +177,7 @@ const SearchPopup: React.FC<SearchPopupProps> = ({ isOpen, onClose }) => {
                         />
                         <button
                             type="submit"
-                            className="bg-brand-yellow hover:bg-yellow-500 text-black w-14 md:w-20 flex items-center justify-center transition-all duration-300 cursor-pointer active:scale-95 flex-shrink-0"
+                            className="bg-brand-yellow hover:bg-brand-yellow-dark text-black w-14 md:w-20 flex items-center justify-center transition-all duration-300 cursor-pointer active:scale-95 flex-shrink-0"
                         >
                             <Search size={22} strokeWidth={3} />
                         </button>

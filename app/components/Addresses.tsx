@@ -68,7 +68,7 @@ function AddressCard({ title, address, onEdit, buttonLabel, t, isRtl }: AddressC
               <div className="pt-4 mt-auto">
                 <button
                   type="button"
-                  className="bg-brand-yellow hover:bg-[#e0951d] text-black text-body-sm font-bold px-6 py-2 uppercase transition-all shadow-sm tracking-widest active:scale-95 flex items-center gap-2 cursor-pointer"
+                  className="bg-brand-yellow hover:bg-brand-yellow-dark text-black text-body-sm font-bold px-6 py-2 uppercase transition-all shadow-sm tracking-widest active:scale-95 flex items-center gap-2 cursor-pointer"
                   onClick={() => onEdit?.(address.id)}
                 >
                   {buttonLabel}

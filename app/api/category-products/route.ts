@@ -1,13 +1,15 @@
 import { getToken } from "next-auth/jwt";
 import { NextRequest } from "next/server";
 import { getLocaleFromRequest } from "@/lib/api/magento-url";
-import { KLEVER_CATEGORY_PRODUCTS_ONLY_QUERY } from "@/src/graphql/queries";
+import { KLEVER_CATEGORY_PRODUCTS_WITH_FILTERS_QUERY } from "@/src/graphql/queries";
 
 // Maps frontend filter param codes → kleverCategoryProducts named arg keys.
+// Covers both snake_case (legacy URL params) and camelCase (direct from kleverCategoryFilterOptions codes).
 // Multi-value selections (brand[0]=X&brand[1]=Y) are joined as comma-separated strings.
 const FILTER_CODE_TO_KLEVER: Record<string, string> = {
+    // snake_case legacy keys
     brand: "brand",
-    tyre_size: "color",
+    tyre_size: "tyreSize",
     origin: "manufacturer",
     product_group: "productGroup",
     warranty_period: "warrantyPeriod",
@@ -17,12 +19,21 @@ const FILTER_CODE_TO_KLEVER: Record<string, string> = {
     oemmarking: "oemMarking",
     year: "year",
     pattern: "pattern",
+    // camelCase / direct keys from kleverCategoryProducts filters block (sidebar)
+    color: "color",      // tyre size from kleverCategoryProducts filters uses code "color"
+    tyreSize: "tyreSize",
+    productGroup: "productGroup",
+    warrantyPeriod: "warrantyPeriod",
+    newArrivals: "newArrivals",
+    itemCode: "itemCode",
+    oemMarking: "oemMarking",
 };
 
 // Parse filter[0], filter[1] style params → kleverCategoryProducts named args.
 function parseFiltersForKlever(searchParams: URLSearchParams): Record<string, string> {
     const SKIP_PARAMS = new Set(["categoryId", "page", "pageSize", "lang", "productsOnly", "sortBy", "sortOrder"]);
-    const CLIENT_SIDE_FILTERS = new Set(["width", "height", "rim", "offers"]);
+    // const CLIENT_SIDE_FILTERS = new Set(["width", "height", "rim", "offers"]);
+    const CLIENT_SIDE_FILTERS = new Set(["offers"]);
     const collected: Record<string, string[]> = {};
 
     for (const [key, value] of searchParams.entries()) {
@@ -110,7 +121,7 @@ export async function GET(request: NextRequest) {
 
         // ── Cache lookup ─────────────────────────────────────────────────
         const now = Date.now();
-        const cacheKey = `${resolvedLocale}|${token || "guest"}|${categoryId}|${page}|${pageSize}|${filterKey}|${sortByParam || ""}`;
+        const cacheKey = `v2|${resolvedLocale}|${token || "guest"}|${categoryId}|${page}|${pageSize}|${filterKey}|${sortByParam || ""}`;
         const cached = responseCache.get(cacheKey);
         if (cached && cached.expires > now) {
             console.log("[category-products] cache HIT", cacheKey);
@@ -142,7 +153,7 @@ export async function GET(request: NextRequest) {
                 Store: resolvedLocale,
                 ...(token && { Authorization: `Bearer ${token}` }),
             },
-            body: JSON.stringify({ query: KLEVER_CATEGORY_PRODUCTS_ONLY_QUERY, variables }),
+            body: JSON.stringify({ query: KLEVER_CATEGORY_PRODUCTS_WITH_FILTERS_QUERY, variables }),
             cache: "no-store",
         });
 
@@ -165,15 +176,31 @@ export async function GET(request: NextRequest) {
         }
 
         // kleverCategoryProducts already returns the full product shape.
+        // Normalize is_action to always be "Yes"/"No" (Magento may return any casing).
         // Add stock_status (derived from stock_label) for components that read it.
         const products = (result.products || []).map((p: any) => ({
             ...p,
+            is_action: String(p.is_action || "").toLowerCase() === "yes" ? "Yes" : "No",
             stock_status: p.stock_label || (p.is_in_stock ? "Available" : "Not Available"),
         }));
+        const actionCount = products.filter((p: any) => p.is_action === "Yes").length;
+        console.log(`[category-products] is_action normalization: ${actionCount}/${products.length} products have is_action=Yes`);
+
+        const filters = ((result.filters || []) as any[])
+            .map((f: any) => ({
+                code: f.code || "",
+                label: f.label || "",
+                record_count: f.record_count ?? 0,
+                options: (f.options || []).map((o: any) => ({
+                    value: o.value,
+                    label: o.label,
+                    count: o.count,
+                })),
+            }));
 
         const responseBody = JSON.stringify({
             products,
-            filters: [],
+            filters,
             total_count: result.total_count || 0,
             page_size: result.page_size || parseInt(pageSize, 10),
             current_page: result.current_page || 1,

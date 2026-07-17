@@ -40,7 +40,7 @@ function mapOrder(item: any): Order {
     const date = formatOrderDate(item.created_at);
     const grandTotal = item.grand_total;
 
-    let orderedBy = item.ordered_by || "";
+    let orderedBy = (item.ordered_by || "").trim();
     if (!orderedBy && item.billing_address) {
         orderedBy = `${item.billing_address.firstname || ""} ${item.billing_address.lastname || ""}`.trim();
     }
@@ -48,6 +48,8 @@ function mapOrder(item: any): Order {
         orderedBy = `${item.customer_firstname || ""} ${item.customer_lastname || ""}`.trim();
     }
 
+    const company = (item.company_name || "").trim();
+    const companyCode = (item.company_code || "").trim();
     const status = formatOrderStatus(item.status || "");
 
     return {
@@ -56,6 +58,8 @@ function mapOrder(item: any): Order {
         date,
         grandTotal,
         orderedBy,
+        company,
+        companyCode,
         status,
         increment_id: item.increment_id || "",
         entity_id: (item.entity_id || item.order_id || item.increment_id || "").toString(),
@@ -92,6 +96,33 @@ function MyOrdersPageContent() {
     const [error, setError] = useState<string | null>(null);
     const [isExporting, setIsExporting] = useState(false);
     const [hasFetched, setHasFetched] = useState(false);
+
+    const authToken = (session as any)?.accessToken;
+    const isSalesPerson = useMemo(() => Number((session as any)?.utypid) === 3, [session]);
+    const [isMultiCompany, setIsMultiCompany] = useState(false);
+    const [isSubOrMasterCompany, setIsSubOrMasterCompany] = useState(false);
+    useEffect(() => {
+        if (!authToken) { setIsMultiCompany(false); setIsSubOrMasterCompany(false); return; }
+        if (typeof sessionStorage === "undefined") return;
+        const ROLE_CACHE = "altalayi_user_type_v1";
+        const TOKEN_CACHE = "altalayi_role_token_v1";
+        if (sessionStorage.getItem(TOKEN_CACHE) === authToken) {
+            const cached = sessionStorage.getItem(ROLE_CACHE) || "Customer";
+            setIsMultiCompany(cached === "Multiple Company User");
+            setIsSubOrMasterCompany(cached === "Company Sub Account" || cached === "Master Company");
+            return;
+        }
+        fetch("/api/kleverapi/account-sidebar", {
+            headers: { Authorization: `Bearer ${authToken}` },
+        }).then(r => r.json()).then(data => {
+            const type = data?.user_type || "Customer";
+            sessionStorage.setItem(ROLE_CACHE, type);
+            sessionStorage.setItem(TOKEN_CACHE, authToken);
+            setIsMultiCompany(type === "Multiple Company User");
+            setIsSubOrMasterCompany(type === "Company Sub Account" || type === "Master Company");
+        }).catch(() => { });
+    }, [authToken]);
+    const shouldHideCartActions = (isSalesPerson || isMultiCompany) && !isSubOrMasterCompany;
 
     // Filter states - derived from URL
     const searchInput = searchParams.get("orderNumber") || "All";
@@ -252,7 +283,23 @@ function MyOrdersPageContent() {
         updateURLParams(localSearch, localStatus, 1, size, companyInput);
     };
 
-    const handleViewOrder = (entityId: string) => {
+    const handleViewOrder = async (entityId: string) => {
+        const token = (session as any)?.accessToken;
+        if (!token) return;
+        try {
+            const res = await fetch(`/api/kleverapi/order/${entityId}`, {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    "x-locale": window.location.pathname.startsWith("/ar") ? "ar" : "en",
+                },
+            });
+            if (res.status === 403) {
+                toast.error(t("orderDetails.noPermission"));
+                return;
+            }
+        } catch {
+            // On network error fall through and navigate — detail page will handle it
+        }
         router.push(lp(`/sales/order/view/order_id/${entityId}`));
     };
 
@@ -422,6 +469,7 @@ function MyOrdersPageContent() {
                                 orders={orders}
                                 onViewOrder={handleViewOrder}
                                 onReorder={handleReorder}
+                                hideReorder={shouldHideCartActions}
                             />
                             {totalItems > 0 && (
                                 <Pagination

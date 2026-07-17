@@ -144,8 +144,9 @@ export const CUSTOMER_ADDRESSES_QUERY = /* GraphQL */ `
   }
 `;
 
-// Customer wishlist (native Magento) — backs the GraphQL /favorite-products list. items_v2 is
-// paginated; product carries the fields the favourites UI maps (sku/name/image/price/stock).
+// Step 1 of favourite products fetch — native Magento wishlist gives us the wishlist item IDs
+// (needed for add/delete), SKUs, and fallback price/stock/image. pattern/origin come back as
+// option IDs on native ProductInterface so we don't request them here (enriched in step 2).
 export const CUSTOMER_WISHLIST_QUERY = /* GraphQL */ `
   query CustomerWishlist($currentPage: Int!, $pageSize: Int!) {
     customer {
@@ -162,8 +163,7 @@ export const CUSTOMER_WISHLIST_QUERY = /* GraphQL */ `
               name
               url_key
               stock_status
-              pattern
-              origin
+              only_x_left_in_stock
               image { url }
               price_range {
                 minimum_price {
@@ -175,6 +175,44 @@ export const CUSTOMER_WISHLIST_QUERY = /* GraphQL */ `
           }
           page_info { current_page page_size total_pages }
         }
+      }
+    }
+  }
+`;
+
+// Step 2 of favourite products fetch — enriches native wishlist items with full Klever product
+// fields (brand, tyre_size, year, origin, pattern, offer, is_action, stock_qty, image_url, etc.)
+// by searching kleverCategoryProducts with the item codes extracted from the wishlist SKUs.
+// Pass a comma-separated itemCode string (e.g. "PSR02347,XYZ12345") to batch-fetch all items.
+export const KLEVER_FAVORITE_PRODUCTS_ENRICH_QUERY = /* GraphQL */ `
+  query KleverFavoriteProductsEnrich($categoryId: Int!, $itemCode: String!, $pageSize: Int!) {
+    kleverCategoryProducts(
+      categoryId: $categoryId
+      itemCode: $itemCode
+      pageSize: $pageSize
+      currentPage: 1
+    ) {
+      total_count
+      products {
+        product_id
+        sku
+        name
+        brand
+        tyre_size
+        year
+        origin
+        pattern
+        offer
+        image_url
+        final_price
+        regular_price
+        old_price
+        is_action
+        is_in_stock
+        stock_qty
+        stock_label
+        stock_color
+        item_code
       }
     }
   }
@@ -494,28 +532,6 @@ export const KLEVER_CATEGORY_FILTER_OPTIONS_QUERY = /* GraphQL */ `
   }
 `;
 
-// Sidebar layered-nav filters for a category. Uses kleverCategoryProducts(pageSize: 1) —
-// NOT kleverCategoryFilterOptions — because the dedicated op returns only 11 groups and
-// omits the category-wide "Promotions and Offers" (offers) group the sidebar needs.
-// pageSize:1 keeps the product payload negligible while returning the full filter set.
-// Backs /api/category-filter-options.
-export const KLEVER_CATEGORY_FILTER_OPTIONS_FROM_PRODUCTS_QUERY = /* GraphQL */ `
-  query CategoryFilterOptions($categoryId: Int!) {
-    kleverCategoryProducts(categoryId: $categoryId, pageSize: 1) {
-      filters {
-        code
-        label
-        record_count
-        options {
-          value
-          
-          label
-          count
-        }
-      }
-    }
-  }
-`;
 
 export const KLEVER_TYRE_SIZE_WIDTH_QUERY = /* GraphQL */ `
   query KleverTyreSizeWidth {
@@ -791,6 +807,35 @@ export const CUSTOMER_ORDERS_QUERY = /* GraphQL */ `
   }
 `;
 
+// Role-aware order list (custom Klever resolver).
+// Returns orders scoped to the caller's role:
+//   Sales Person  → all orders for companies they manage
+//   Master Company → all sub-account orders
+//   Customer       → own orders only
+// The resolver is planned but not yet deployed on this Magento instance.
+// Frontend code is written against it so it is ready when the backend ships.
+export const KLEVER_MY_ORDERS_QUERY = /* GraphQL */ `
+  query KleverMyOrders($pageSize: Int, $currentPage: Int) {
+    kleverMyOrders(pageSize: $pageSize, currentPage: $currentPage) {
+      total_count
+      items {
+        order_id
+        increment_id
+        status
+        status_label
+        created_at
+        grand_total
+        currency_code
+        total_item_count
+        company_name
+        company_code
+        ordered_by
+        sap_order_number
+      }
+    }
+  }
+`;
+
 
 export const KLEVER_ORDER_FILTER_OPTIONS_QUERY = /* GraphQL */ `
   query KleverOrderFilterOptions {
@@ -919,6 +964,8 @@ export const KLEVER_ORDER_UPLOAD_SEARCH_QUERY = /* GraphQL */ `
         created_at
         invoice_due
         payment_status
+        company_name
+        company_code
       }
       total_count
       page_size
@@ -1230,7 +1277,7 @@ export const KLEVER_MULTISHIPPING_SUCCESS_QUERY = /* GraphQL */ `
 // follow the no-inline-GraphQL convention. Validated live against the schema.)
 const _CATPROD_ARGS_DECL = `
     $categoryId: Int!, $pageSize: Int, $currentPage: Int,
-    $brand: String, $color: String, $origin: String, $manufacturer: String,
+    $brand: String, $color: String, $tyreSize: String, $origin: String, $manufacturer: String,
     $productGroup: String, $warrantyPeriod: String, $newArrivals: String,
     $itemCode: String, $oemMarking: String, $pattern: String, $year: String,
     $types: String, $offers: String, $width: String, $height: String,
@@ -1238,7 +1285,7 @@ const _CATPROD_ARGS_DECL = `
     $minPrice: Float, $maxPrice: Float, $sortBy: String, $sortOrder: String`;
 const _CATPROD_ARGS_USE = `
       categoryId: $categoryId, pageSize: $pageSize, currentPage: $currentPage,
-      brand: $brand, color: $color, origin: $origin, manufacturer: $manufacturer,
+      brand: $brand, color: $color, tyreSize: $tyreSize, origin: $origin, manufacturer: $manufacturer,
       productGroup: $productGroup, warrantyPeriod: $warrantyPeriod, newArrivals: $newArrivals,
       itemCode: $itemCode, oemMarking: $oemMarking, pattern: $pattern, year: $year,
       types: $types, offers: $offers, width: $width, height: $height,
@@ -1272,9 +1319,7 @@ export const KLEVER_CATEGORY_PRODUCTS_WITH_FILTERS_QUERY = /* GraphQL */ `
   }
 `;
 
-// Products-only variant — omits the `filters` block. The backend computes products and
-// filters as separate additive passes (~9s each), so dropping filters roughly halves
-// latency. Filters are fetched separately via /api/category-filter-options.
+// Products-only variant — omits the `filters` block.
 export const KLEVER_CATEGORY_PRODUCTS_ONLY_QUERY = /* GraphQL */ `
   query CategoryProductsOnly(${_CATPROD_ARGS_DECL}) {
     kleverCategoryProducts(${_CATPROD_ARGS_USE}) {

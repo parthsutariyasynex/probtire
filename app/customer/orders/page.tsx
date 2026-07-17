@@ -47,12 +47,15 @@ function mapOrderItem(item: any): Order {
     // Pass raw amount — OrdersTable renders it via <Price> component with dirham font
     const grandTotal = String(parseFloat(item.grand_total || item.total || 0));
 
-    // Ordered By → show name if available, empty string if not (not "-")
-    const orderedBy = item.ordered_by
-        || item.customer_name
+    // Ordered By → trim first (Magento may return " ")
+    const orderedBy = (item.ordered_by || "").trim()
+        || (item.customer_name || "").trim()
         || ((item.customer_firstname && item.customer_lastname)
-            ? `${item.customer_firstname} ${item.customer_lastname}`
+            ? `${item.customer_firstname} ${item.customer_lastname}`.trim()
             : "");
+
+    const company = (item.company_name || "").trim();
+    const companyCode = (item.company_code || "").trim();
 
     // Status → "approval_pending" → "Check Pending", others title-cased
     let status = item.status || item.order_status || "";
@@ -64,7 +67,7 @@ function mapOrderItem(item: any): Order {
             .replace(/\b\w/g, (c: string) => c.toUpperCase());
     }
 
-    return { id, sapOrderNumber, date, grandTotal, orderedBy, status };
+    return { id, sapOrderNumber, date, grandTotal, orderedBy, company, companyCode, status };
 }
 
 export default function MyOrdersPage() {

@@ -1,20 +1,23 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getLocaleFromRequest } from "@/lib/api/magento-url";
 import { getRequestToken } from "@/lib/api/auth-helper";
-import { KLEVER_SALESPERSON_ACCOUNTS_QUERY } from "@/src/graphql/queries";
+import { KLEVER_SUBACCOUNTS_QUERY, KLEVER_SALESPERSON_ACCOUNTS_QUERY } from "@/src/graphql/queries";
 import { KLEVER_CREATE_SUBACCOUNT_MUTATION } from "@/src/graphql/mutations";
 
 const MAGENTO_GRAPHQL = (process.env.NEXT_PUBLIC_MAGENTO_BASE_URL || "https://altalayi-live.btire.com") + "/graphql";
 
-// GET — list accounts assigned to the logged-in Sales Person (GraphQL: kleverSalespersonAccounts).
-// `kleverSubaccounts` is for parent-customer sub-accounts; Sales Person accounts use
-// the separate `kleverSalespersonAccounts` query.
+// GET — list accounts for the logged-in user.
+// ?type=sales_person → kleverSalespersonAccounts (Sales Person role)
+// default             → kleverSubaccounts (Master Company role)
 export async function GET(request: NextRequest) {
     try {
         const token = await getRequestToken(request);
         if (!token) {
             return NextResponse.json({ message: "Authentication required. Authorization header is missing." }, { status: 401 });
         }
+
+        const { searchParams } = new URL(request.url);
+        const isSalesPerson = searchParams.get("type") === "sales_person";
 
         const res = await fetch(MAGENTO_GRAPHQL, {
             method: "POST",
@@ -23,7 +26,7 @@ export async function GET(request: NextRequest) {
                 Store: getLocaleFromRequest(request),
                 Authorization: `Bearer ${token}`,
             },
-            body: JSON.stringify({ query: KLEVER_SALESPERSON_ACCOUNTS_QUERY }),
+            body: JSON.stringify({ query: isSalesPerson ? KLEVER_SALESPERSON_ACCOUNTS_QUERY : KLEVER_SUBACCOUNTS_QUERY }),
             cache: "no-store",
         });
 
@@ -41,7 +44,15 @@ export async function GET(request: NextRequest) {
             return NextResponse.json({ message: "Magento GraphQL error", details: json.errors }, { status: 502 });
         }
 
-        const r = json?.data?.kleverSalespersonAccounts;
+        if (isSalesPerson) {
+            const r = json?.data?.kleverSalespersonAccounts;
+            return NextResponse.json({
+                items: Array.isArray(r?.items) ? r.items : [],
+                total_count: r?.total_count ?? 0,
+            });
+        }
+
+        const r = json?.data?.kleverSubaccounts;
         return NextResponse.json({
             items: Array.isArray(r?.items) ? r.items : [],
             total_count: r?.total_count ?? 0,

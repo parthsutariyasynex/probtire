@@ -183,7 +183,7 @@ const MultiShippingShippingPage: React.FC = () => {
 
 
             <div className="max-w-[1440px] mx-auto pt-6 md:pt-10 px-3 sm:px-4">
-                <h1 className="text-subheading sm:text-h3 md:text-h2 font-[900] text-black text-center uppercase mb-2 md:mb-3 tracking-tighter">
+                <h1 className="text-subheading sm:text-h3 md:text-h2 font-bold text-black text-center uppercase mb-2 md:mb-3 tracking-tighter">
                     {t("multi.selectShipping")}
                 </h1>
 
@@ -195,14 +195,14 @@ const MultiShippingShippingPage: React.FC = () => {
 
                         return (
                             <div key={group.address.id} className="space-y-4">
-                                <p className="text-body-sm sm:text-body md:text-body-lg font-[900] text-black text-center tracking-tight">
+                                <p className="text-body-sm sm:text-body md:text-body-lg font-bold text-black text-center tracking-tight">
                                     {t("multi.address")} {index + 1} <span className="text-[#cccccc] font-medium">{t("common.of")} {groups.length}</span>
                                 </p>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
                                     {/* Shipping To Section */}
                                     <div className="bg-surface-muted min-h-[200px] md:min-h-[250px] flex flex-col">
                                         <div className="bg-subtle py-2.5 px-4 md:px-6 text-center">
-                                            <h2 className="text-label font-[900] text-black uppercase tracking-widest">
+                                            <h2 className="text-label font-bold text-black uppercase tracking-widest">
                                                 {t("multi.shippingTo")}
                                             </h2>
                                         </div>
@@ -219,7 +219,7 @@ const MultiShippingShippingPage: React.FC = () => {
                                     {/* Items Section */}
                                     <div className="bg-surface-muted min-h-[200px] md:min-h-[250px] flex flex-col">
                                         <div className="bg-subtle py-2.5 px-4 md:px-6 text-center">
-                                            <h2 className="text-label font-[900] text-black uppercase tracking-widest">
+                                            <h2 className="text-label font-bold text-black uppercase tracking-widest">
                                                 {t("multi.items")}
                                             </h2>
                                         </div>
@@ -258,7 +258,7 @@ const MultiShippingShippingPage: React.FC = () => {
                 <div className="mt-4 md:mt-6 bg-surface-muted p-4 sm:p-6 flex flex-col sm:flex-row justify-between items-center gap-3 sm:gap-4">
                     <button
                         onClick={() => router.push(lp('/multi-location-delivery'))}
-                        className="w-full sm:w-auto text-center bg-black text-white px-6 md:px-8 py-3 md:py-3.5 text-label font-black uppercase tracking-wider hover:opacity-90 transition-opacity"
+                        className="w-full sm:w-auto text-center bg-black text-white px-6 md:px-8 py-3 md:py-3.5 text-label font-bold uppercase tracking-wider hover:opacity-90 transition-opacity font-sans"
                     >
                         {t("multi.backToAddresses")}
                     </button>
@@ -286,7 +286,7 @@ const MultiShippingShippingPage: React.FC = () => {
                             }
                         }}
                         disabled={isLoading || isCheckoutLoading}
-                        className="w-full sm:w-auto text-center bg-brand-yellow text-black px-6 md:px-10 py-3 md:py-3.5 text-label font-black uppercase tracking-wider hover:bg-black hover:text-white transition-all shadow-sm disabled:opacity-50"
+                        className="w-full sm:w-auto text-center bg-brand-yellow text-black px-6 md:px-10 py-3 md:py-3.5 text-label font-bold uppercase tracking-wider hover:bg-black hover:text-white transition-all shadow-sm disabled:opacity-50 font-sans"
                     >
                         {t("multi.continueToBilling")}
                     </button>

@@ -771,8 +771,8 @@ const CheckoutPageUI: React.FC = () => {
             <main className="flex-1 w-full max-w-[1920px] mx-auto px-4 md:px-6 lg:px-8 py-4 md:py-6 lg:py-10 pt-2 md:pt-4">
                 {/* Header Section */}
                 <div className="flex flex-col items-center justify-center text-center gap-4 mb-12 relative">
-                    <Link href={lp("/checkout/cart")} className="lg:absolute left-0 top-1/2 lg:-translate-y-1/2 flex items-center gap-2 text-black hover:text-yellow-500 transition-all text-caption font-black uppercase tracking-[0.2em] group mb-4 lg:mb-0">
-                        <div className="w-8 h-8 rounded-full border border-black flex items-center justify-center group-hover:border-yellow-500 transition-all">
+                    <Link href={lp("/checkout/cart")} className="lg:absolute left-0 top-1/2 lg:-translate-y-1/2 flex items-center gap-2 text-black hover:text-brand-yellow transition-all text-caption font-black uppercase tracking-[0.2em] group mb-4 lg:mb-0">
+                        <div className="w-8 h-8 rounded-full border border-black flex items-center justify-center group-hover:border-brand-yellow transition-all">
                             <ArrowLeft size={14} strokeWidth={3} className="group-hover:-translate-x-1 transition-transform" />
                         </div>
                         <span className="hidden sm:inline text-sm mt-0.5">{t("m.back-to-shopping-cart")}</span>
@@ -797,7 +797,7 @@ const CheckoutPageUI: React.FC = () => {
                                     <input
                                         type="text"
                                         placeholder={t("m.search")}
-                                        className="w-full px-4 py-2.5 bg-gray-50/50 border border-subtle rounded-sm outline-none text-body-sm font-medium transition-all placeholder:text-gray-400 focus:bg-white focus:border-yellow-400 shadow-sm focus:ring-4 focus:ring-yellow-400/10"
+                                        className="w-full px-4 py-2.5 bg-gray-50/50 border border-subtle rounded-sm outline-none text-body-sm font-medium transition-all placeholder:text-gray-400 focus:bg-white focus:border-brand-yellow shadow-sm focus:ring-4 focus:ring-brand-yellow/10"
                                         value={searchQuery}
                                         onChange={(e) => setSearchQuery(e.target.value)}
                                     />
@@ -842,7 +842,7 @@ const CheckoutPageUI: React.FC = () => {
 
                                                     <div className="flex gap-3 pt-1">
                                                         <button
-                                                            className="text-[10px] md:text-[11px] font-[800] uppercase tracking-wider px-4 py-2 transition-all duration-300 border bg-black text-white border-black hover:bg-yellow-400 hover:text-black hover:border-yellow-400 rounded-sm active:scale-95 shadow-sm"
+                                                            className="text-[10px] md:text-[11px] font-[800] uppercase tracking-wider px-4 py-2 transition-all duration-300 border bg-black text-white border-black hover:bg-brand-yellow hover:text-black hover:border-brand-yellow rounded-sm active:scale-95 shadow-sm"
                                                             onClick={(e) => {
                                                                 e.stopPropagation();
                                                                 handleAddressSelect(addr.id);
@@ -881,7 +881,7 @@ const CheckoutPageUI: React.FC = () => {
                                 <div className="space-y-1.5 w-full">
                                     <input
                                         type="text"
-                                        className="w-full px-4 py-2.5 bg-gray-50/50 border border-subtle rounded-sm outline-none text-body font-medium transition-all placeholder:text-gray-400 focus:bg-white focus:border-yellow-400 focus:ring-4 focus:ring-yellow-400/10 shadow-sm"
+                                        className="w-full px-4 py-2.5 bg-gray-50/50 border border-subtle rounded-sm outline-none text-body font-medium transition-all placeholder:text-gray-400 focus:bg-white focus:border-brand-yellow focus:ring-4 focus:ring-brand-yellow/10 shadow-sm"
                                         value={poNumber}
                                         onChange={(e) => setPoNumber(e.target.value)}
                                         onBlur={handlePoNumberBlur}
@@ -912,7 +912,7 @@ const CheckoutPageUI: React.FC = () => {
                                                 {/* Drop Area */}
                                                 <div
                                                     className={`relative group p-6 border-2 border-dashed rounded-sm transition-all duration-300 flex flex-col items-center justify-center gap-3 cursor-pointer
-                                                        ${dragActive ? "border-yellow-400 bg-yellow-50/30 scale-[1.01]" : "border-subtle bg-gray-50/30 hover:bg-white hover:border-gray-300"}`}
+                                                        ${dragActive ? "border-brand-yellow bg-brand-yellow-light/30 scale-[1.01]" : "border-subtle bg-gray-50/30 hover:bg-white hover:border-gray-300"}`}
                                                     onDragEnter={handleDrag}
                                                     onDragLeave={handleDrag}
                                                     onDragOver={handleDrag}
@@ -1420,7 +1420,7 @@ const CheckoutPageUI: React.FC = () => {
                                                                     const val = parseInt(e.target.value);
                                                                     if (val > 0) updateCartItem(item.item_id, val);
                                                                 }}
-                                                                className="w-10 h-7 border border-subtle rounded-sm text-center text-body-sm font-semibold focus:outline-none focus:border-yellow-400 bg-gray-50/50"
+                                                                className="w-10 h-7 border border-subtle rounded-sm text-center text-body-sm font-semibold focus:outline-none focus:border-brand-yellow bg-gray-50/50"
                                                             />
                                                         </div>
                                                         <div className="text-body font-semibold text-black price currency-riyal">
@@ -1494,7 +1494,7 @@ const CheckoutPageUI: React.FC = () => {
                                         onClick={handlePlaceOrder}
                                         className={`w-full px-2 py-3 xl:py-4 text-sm font-semibold uppercase tracking-normal xl:tracking-[0.2em] leading-tight transition-all duration-300 shadow-md rounded text-center border ${isPlacingOrder
                                             ? "bg-gray-100 text-gray-400 cursor-not-allowed border-subtle"
-                                            : "bg-yellow-400 text-black hover:bg-black hover:text-white border-yellow-400 hover:border-black active:scale-[0.98]"
+                                            : "bg-brand-yellow text-black hover:bg-black hover:text-white border-brand-yellow hover:border-black active:scale-[0.98]"
                                             }`}
                                     >
                                         {isPlacingOrder ? (

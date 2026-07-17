@@ -34,6 +34,12 @@ export default function DashboardPage() {
 
     const [isSubAccountSession, setIsSubAccountSession] = useState(false);
     const [isMultiCompany, setIsMultiCompany] = useState(false);
+    const [userType, setUserType] = useState<string>(() => {
+        if (typeof window !== "undefined" && typeof sessionStorage !== "undefined") {
+            return sessionStorage.getItem("altalayi_user_type_v1") || "";
+        }
+        return "";
+    });
     const [dashboardData, setDashboardData] = useState<any>(null);
     const [loadingDashboard, setLoadingDashboard] = useState(true);
 
@@ -66,13 +72,16 @@ export default function DashboardPage() {
         const ROLE_CACHE = "altalayi_user_type_v1";
         const TOKEN_CACHE = "altalayi_role_token_v1";
         if (sessionStorage.getItem(TOKEN_CACHE) === accessToken) {
-            setIsMultiCompany(sessionStorage.getItem(ROLE_CACHE) === "Multiple Company User");
+            const cachedType = sessionStorage.getItem(ROLE_CACHE) || "";
+            setUserType(cachedType);
+            setIsMultiCompany(cachedType === "Multiple Company User");
             return;
         }
         fetch("/api/kleverapi/account-sidebar", {
             headers: { Authorization: `Bearer ${accessToken}` },
         }).then(r => r.json()).then(data => {
             const type = data?.user_type || "Customer";
+            setUserType(type);
             if (type !== "Guest") {
                 sessionStorage.setItem(ROLE_CACHE, type);
                 sessionStorage.setItem(TOKEN_CACHE, accessToken);
@@ -258,8 +267,15 @@ export default function DashboardPage() {
                         </div>
                     </section>
 
-                    {/* Summary Sections - Hide when comparing */}
-                    {!isMultiCompany && !isCompare && (
+                    {/* For sub-accounts, if NOT comparing, show "No record found!." */}
+                    {(isSubAccountSession || userType === "Company Sub Account") && !isCompare && (
+                        <div className="text-body font-normal text-black mt-4 ltr:text-left rtl:text-right">
+                            {isRtl ? "لم يتم العثور على نتائج." : "No record found!."}
+                        </div>
+                    )}
+
+                    {/* Summary Sections - Hide when comparing or if sub-account */}
+                    {!isMultiCompany && !isCompare && !(isSubAccountSession || userType === "Company Sub Account") && (
                         <div className="space-y-3 animate-in fade-in duration-700">
                             {/* TOTAL ORDER QTY SECTION */}
                             <section>
@@ -367,7 +383,7 @@ export default function DashboardPage() {
                     )}
 
                     {/* COMPARISON DETAILS SECTION (Chart & Table) */}
-                    {!isMultiCompany && isCompare && (
+                    {isCompare && (
                         <section className="bg-white overflow-hidden animate-in fade-in slide-in-from-bottom duration-500 mb-0">
                             <div className="py-3 border-b border-[#ddd] bg-gray-50/50">
                                 <h2 className="text-lg md:text-xl font-bold text-black uppercase tracking-tight ltr:text-left rtl:text-right">

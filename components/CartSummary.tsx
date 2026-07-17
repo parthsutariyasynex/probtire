@@ -29,6 +29,7 @@ const CartSummary: React.FC<CartSummaryProps> = ({
     const lp = useLocalePath();
     const { t } = useTranslation();
     const [couponCode, setCouponCode] = useState("");
+    const displayTaxLabel = taxLabel && taxLabel.includes("15") ? taxLabel : t("cart.vat");
 
     return (
         <div className="sm:sticky sm:top-28 self-start bg-white border border-[#ddd] rounded-sm shadow-sm overflow-hidden">
@@ -47,7 +48,7 @@ const CartSummary: React.FC<CartSummaryProps> = ({
 
                     {/* Subtotal */}
                     <div className="flex justify-between items-center py-3">
-                        <span className="text-[13px] font-[800] text-black uppercase tracking-normal">
+                        <span className="text-[13px] font-[800] text-black tracking-normal">
                             {t("cart.subtotal")}
                         </span>
                         <span className="text-[14px] font-[800] text-black">
@@ -58,7 +59,7 @@ const CartSummary: React.FC<CartSummaryProps> = ({
                     {/* Discount — only shown when > 0 */}
                     {discountAmount > 0 && (
                         <div className="flex justify-between items-center py-3">
-                            <span className="text-[13px] font-[800] text-green-600 uppercase tracking-normal">
+                            <span className="text-[13px] font-[800] text-green-600 tracking-normal">
                                 {t("m.discount")}
                             </span>
                             <span className="text-[14px] font-[800] text-green-600">
@@ -69,8 +70,8 @@ const CartSummary: React.FC<CartSummaryProps> = ({
 
                     {/* VAT */}
                     <div className="flex justify-between items-center py-3">
-                        <span className="text-[13px] font-[800] text-black uppercase tracking-normal">
-                            {taxLabel || t("cart.vat")}
+                        <span className="text-[13px] font-[800] text-black tracking-normal">
+                            {displayTaxLabel}
                         </span>
                         <span className="text-[14px] font-[800] text-black">
                             <Price amount={taxAmount} />
@@ -79,7 +80,7 @@ const CartSummary: React.FC<CartSummaryProps> = ({
 
                     {/* Shipping */}
                     <div className="flex justify-between items-center py-3">
-                        <span className="text-[13px] font-[800] text-black uppercase tracking-normal">
+                        <span className="text-[13px] font-[800] text-black tracking-normal">
                             {t("m.shipping")}
                         </span>
                         <span className="text-[14px] font-[800] text-black">
@@ -90,7 +91,7 @@ const CartSummary: React.FC<CartSummaryProps> = ({
 
                 {/* Grand Total — boxed by borders */}
                 <div className="flex justify-between items-center py-3 border-y border-[#ddd] my-2">
-                    <span className="text-[13px] font-[800] text-black uppercase tracking-normal">
+                    <span className="text-[13px] font-[800] text-black tracking-normal">
                         {t("common.grandTotal")}
                     </span>
                     <Price

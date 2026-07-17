@@ -3,6 +3,7 @@
 "use client";
 
 import { usePathname } from "next/navigation";
+import { useTranslation } from "@/hooks/useTranslation";
 
 // ─── Skeleton primitives ──────────────────────────────────────────────────────
 const Pulse = ({ className = "" }: { className?: string }) => (
@@ -93,6 +94,7 @@ export function ProductCardSkeleton() {
 //   <xl:  4-button mobile controls (favourites, search, sort, filter) +
 //         mobile card grid + pagination.
 export function ProductListingSkeleton({ count = 10 }: { count?: number }) {
+  const { isRtl } = useTranslation();
   // Real desktop header column widths (BASE + ACTION).
   const COL_WIDTHS = ["8%", "13%", "13%", "6%", "7%", "7%", "9%", "9%", "10%", "110px"];
 
@@ -175,7 +177,7 @@ export function ProductListingSkeleton({ count = 10 }: { count?: number }) {
         </div>
 
         {/* ── DESKTOP CONTROLS + TABLE (xl+) ── */}
-        <div className="hidden xl:flex flex-col bg-white rounded-none md:rounded-r-2xl shadow-sm border border-gray-200 border-l-0 overflow-hidden">
+        <div className="hidden xl:flex flex-col bg-white rounded-none md:rounded-r-lg shadow-sm border border-gray-200 border-l-0 overflow-hidden">
           {/* Desktop header strip — px-6 py-4, min-h-[60px], favourites btn + sort dropdown */}
           <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center gap-4 min-h-[60px]">
             <div className="flex items-center gap-4">
@@ -228,14 +230,13 @@ export function ProductListingSkeleton({ count = 10 }: { count?: number }) {
           </div>
         </div>
 
-        {/* Desktop fixed-bottom HorizontalFilter bar (xl+) */}
-        <div className="hidden xl:flex fixed bottom-0 left-0 right-0 z-[40] bg-white border-t-[4px] border-brand-yellow shadow-[0_-10px_30px_rgba(0,0,0,0.12)] h-[90px] items-center">
-          <div className="w-full pl-[300px]">
-            <div className="w-full max-w-[1400px] mx-auto px-4 flex items-center gap-3">
-              <Pulse className="flex-1 h-11 rounded-sm border border-gray-200" />
-              <Pulse className="flex-1 h-11 rounded-sm border border-gray-200" />
-              <Pulse className="flex-1 h-11 rounded-sm border border-gray-200" />
-              <Pulse className="h-11 w-32 rounded-sm" />
+        <div className={`hidden xl:flex fixed bottom-0 z-[40] bg-white border-t-[4px] border-brand-yellow shadow-[0_-10px_30px_rgba(0,0,0,0.12)] h-[90px] items-center ${isRtl ? "left-0 right-[300px]" : "left-[300px] right-0"}`}>
+          <div className="w-full">
+            <div className="w-full max-w-[1400px] mx-auto px-4 flex items-center justify-center gap-3">
+              <Pulse className="w-[200px] h-11 rounded-sm border border-gray-200 flex-shrink-0" />
+              <Pulse className="w-[200px] h-11 rounded-sm border border-gray-200 flex-shrink-0" />
+              <Pulse className="w-[200px] h-11 rounded-sm border border-gray-200 flex-shrink-0" />
+              <Pulse className="h-11 w-32 rounded-sm flex-shrink-0" />
             </div>
           </div>
         </div>
@@ -325,7 +326,7 @@ export function CartPageSkeleton({ items = 3 }: { items?: number }) {
           <div className="flex justify-center mb-2">
             <Pulse className="h-5 md:h-6 w-28" />
           </div>
-          <div className="h-1 w-12 bg-yellow-400 mx-auto" />
+          <div className="h-1 w-12 bg-brand-yellow mx-auto" />
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 xl:gap-16 items-start">
@@ -420,7 +421,7 @@ export function CartPageSkeleton({ items = 3 }: { items?: number }) {
                 </div>
 
                 {/* Multi-Address Shipping bar */}
-                <div className="border border-[#FFC107] bg-white rounded-sm flex flex-col md:flex-row items-stretch justify-between overflow-hidden shadow-xl shadow-yellow-400/5">
+                <div className="border border-brand-yellow bg-white rounded-sm flex flex-col md:flex-row items-stretch justify-between overflow-hidden shadow-xl shadow-brand-yellow/5">
                   <div className="px-6 py-4 flex items-center bg-gray-50/50 flex-1">
                     <Pulse className="h-3 w-44" />
                   </div>
@@ -721,7 +722,7 @@ export function OrderDetailSkeleton() {
     <div className="flex-1 w-full px-4 md:px-6 lg:px-8 py-10 min-w-0 text-xs space-y-10">
       {/* Header Section */}
       <div className="flex flex-col mb-10">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 md:mb-10 border-b-2 border-yellow-400 pb-2 gap-2 sm:gap-0 w-full">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 md:mb-10 border-b-2 border-brand-yellow pb-2 gap-2 sm:gap-0 w-full">
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-4">
             <Pulse className="h-8 w-56 rounded bg-black/10" />
             <Pulse className="h-6 w-20 rounded-full" />
@@ -805,7 +806,7 @@ export function OrderDetailSkeleton() {
 
       {/* Order Information Section */}
       <div className="mb-10">
-        <div className="border-b-2 border-yellow-400 inline-block pb-1 mb-10">
+        <div className="border-b-2 border-brand-yellow inline-block pb-1 mb-10">
           <Pulse className="h-5 w-40 rounded" />
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-8">
@@ -827,7 +828,7 @@ export function OrderDetailSkeleton() {
 
       {/* Order Attachments Section */}
       <div className="mb-12">
-        <div className="border-b-2 border-yellow-400 inline-block pb-1 mb-10">
+        <div className="border-b-2 border-brand-yellow inline-block pb-1 mb-10">
           <Pulse className="h-5 w-44 rounded" />
         </div>
         <div className="bg-white border border-subtle rounded-md overflow-hidden shadow-sm">
@@ -1006,20 +1007,20 @@ export function FavouriteProductsSkeleton({ count = 10 }: { count?: number }) {
         ))}
       </div>
 
-      {/* Desktop table (xl+) */}
+      {/* Desktop table (xl+) — 10 columns: Brand, Size, Pattern, Year, Origin, Image, Offer, Stock, Price, Action */}
       <div className="hidden xl:flex flex-col bg-white rounded-sm shadow-sm border border-subtle overflow-hidden">
         <div className="flex-1 overflow-x-auto">
-          <table className="w-full border-collapse table-fixed min-w-[950px]">
+          <table className="w-full border-collapse table-fixed min-w-[900px]">
             <colgroup>
-              {["12%", "38%", "10%", "12%", "13%", "15%"].map((w, i) => (
+              {["8%", "13%", "13%", "6%", "7%", "7%", "9%", "9%", "10%", "110px"].map((w, i) => (
                 <col key={i} style={{ width: w }} />
               ))}
             </colgroup>
             <thead>
               <tr className="bg-gray-50/80 h-[48px] border-b border-[#ddd]">
-                {Array.from({ length: 6 }).map((_, i) => (
-                  <th key={i} className="px-2 md:px-4 text-center">
-                    <Pulse className="h-3 w-12 mx-auto" />
+                {Array.from({ length: 10 }).map((_, i) => (
+                  <th key={i} className="px-2 md:px-3 text-center">
+                    <Pulse className="h-3 w-10 mx-auto" />
                   </th>
                 ))}
               </tr>
@@ -1028,32 +1029,49 @@ export function FavouriteProductsSkeleton({ count = 10 }: { count?: number }) {
               {Array.from({ length: count }).map((_, i) => (
                 <tr key={i} className="h-[52px]">
                   {/* 1. BRAND */}
-                  <td className="px-2 md:px-4 text-center">
+                  <td className="px-2 md:px-3 text-center">
                     <Pulse className="h-3.5 w-12 mx-auto" />
                   </td>
-                  {/* 2. NAME */}
-                  <td className="px-2 md:px-4 text-center">
-                    <Pulse className="h-3.5 w-32 mx-auto" />
+                  {/* 2. SIZE */}
+                  <td className="px-2 md:px-3 text-center">
+                    <Pulse className="h-3 w-16 mx-auto" />
                   </td>
-                  {/* 3. IMAGE */}
-                  <td className="px-2 md:px-4 text-center">
+                  {/* 3. PATTERN */}
+                  <td className="px-2 md:px-3 text-center">
+                    <Pulse className="h-3.5 w-20 mx-auto" />
+                  </td>
+                  {/* 4. YEAR */}
+                  <td className="px-2 md:px-3 text-center">
+                    <Pulse className="h-3 w-8 mx-auto" />
+                  </td>
+                  {/* 5. ORIGIN */}
+                  <td className="px-2 md:px-3 text-center">
+                    <Pulse className="h-3 w-10 mx-auto" />
+                  </td>
+                  {/* 6. IMAGE */}
+                  <td className="px-2 md:px-3 text-center">
                     <Pulse className="w-12 h-12 mx-auto rounded border border-gray-100 shadow-sm" />
                   </td>
-                  {/* 4. STOCK */}
-                  <td className="px-2 md:px-4 text-center">
+                  {/* 7. OFFER */}
+                  <td className="px-2 md:px-3 text-center">
+                    <Pulse className="h-3 w-10 mx-auto" />
+                  </td>
+                  {/* 8. STOCK */}
+                  <td className="px-2 md:px-3 text-center">
                     <div className="flex flex-col items-center justify-center gap-1.5">
                       <Pulse className="w-3.5 h-3.5 rounded-full" />
                       <Pulse className="h-2.5 w-10" />
                     </div>
                   </td>
-                  {/* 5. PRICE */}
-                  <td className="px-2 md:px-4 text-center">
+                  {/* 9. PRICE */}
+                  <td className="px-2 md:px-3 text-center">
                     <Pulse className="h-3.5 w-14 mx-auto" />
                   </td>
-                  {/* 6. ACTION */}
-                  <td className="px-2 md:px-4 text-center">
+                  {/* 10. ACTION */}
+                  <td className="px-2 md:px-3 text-center">
                     <div className="flex items-center justify-center gap-1.5">
                       <Pulse className="w-10 h-9 rounded-sm" />
+                      <Pulse className="w-8 h-8 rounded-sm" />
                       <Pulse className="w-8 h-8 rounded-sm" />
                     </div>
                   </td>
@@ -1399,7 +1417,7 @@ export function QuickOrderSkeleton() {
         </div>
 
         {/* "Add Multiple Products" section h2 — yellow-400 left border */}
-        <div className="mb-6 md:mb-10 border-l-[6px] border-yellow-400 pl-4 md:pl-6">
+        <div className="mb-6 md:mb-10 border-l-[6px] border-brand-yellow pl-4 md:pl-6">
           <Pulse className="h-6 md:h-8 w-64 md:w-80" />
         </div>
 
@@ -2159,7 +2177,7 @@ export function AddressBookSkeleton() {
             </tbody>
           </table>
         </div>
-        
+
         {/* Pagination footer (outside the table wrapper) */}
         <div className="mt-6">
           <div className="w-full flex flex-col md:flex-row items-center justify-between py-3 md:py-4 px-1 gap-6 border-t border-gray-100">
@@ -2372,7 +2390,7 @@ export function AboutSkeleton() {
 // Matches /locations: Google-map block (h-[200px] sm:h-[280px] md:h-[350px])
 // + max-w-[1280px] main area with title + 3-col region grid (RegionCard) +
 // contact form (2-col input grid + textarea + submit button).
-export function LocationsSkeleton({ regions = 6 }: { regions?: number }) {
+export function LocationsSkeleton({ regions = 3 }: { regions?: number }) {
   return (
     <div className="min-h-screen bg-white font-sans">
       {/* Map section */}

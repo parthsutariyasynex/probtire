@@ -1,13 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getRequestToken } from "@/lib/api/auth-helper";
 import { getLocaleFromRequest } from "@/lib/api/magento-url";
-// Commented out — kleverTyreSizeWidth resolver is not available on the current backend.
-// import { KLEVER_TYRE_SIZE_WIDTH_QUERY } from "@/src/graphql/queries";
-import { STANDARD_TYRE_SIZE_AGGREGATION_QUERY } from "@/src/graphql/queries";
+import { KLEVER_TYRE_SIZE_WIDTH_QUERY } from "@/src/graphql/queries";
 
-// Tyre-size width options via standard Magento products aggregations.
-// Replaces the missing kleverTyreSizeWidth resolver.
-// Response shape kept the same: { status, options: [{ value, label }] }.
 const CACHE_TTL_MS = 10 * 60 * 1000;
 const cache = new Map<string, { body: any; expires: number }>();
 
@@ -24,13 +19,6 @@ export async function GET(request: NextRequest) {
     try {
         const domain = process.env.NEXT_PUBLIC_MAGENTO_BASE_URL || "https://altalayi-live.btire.com";
 
-        // Old klever query — resolver doesn't exist on this backend
-        // const res = await fetch(`${domain}/graphql`, {
-        //     ...headers,
-        //     body: JSON.stringify({ query: KLEVER_TYRE_SIZE_WIDTH_QUERY }),
-        // });
-        // const raw = json?.data?.kleverTyreSizeWidth;
-
         const res = await fetch(`${domain}/graphql`, {
             method: "POST",
             headers: {
@@ -38,10 +26,7 @@ export async function GET(request: NextRequest) {
                 Store: locale,
                 ...(token && token !== "null" && { Authorization: `Bearer ${token}` }),
             },
-            body: JSON.stringify({
-                query: STANDARD_TYRE_SIZE_AGGREGATION_QUERY,
-                variables: {},
-            }),
+            body: JSON.stringify({ query: KLEVER_TYRE_SIZE_WIDTH_QUERY }),
             cache: "no-store",
         });
 
@@ -51,11 +36,8 @@ export async function GET(request: NextRequest) {
             return NextResponse.json({ status: "error", options: [] }, { status: 502 });
         }
 
-        const aggregations = json?.data?.products?.aggregations || [];
-        const widthAgg = aggregations.find((a: any) => a.attribute_code === "width");
-        const options = (widthAgg?.options || []).map((o: any) => ({ value: o.label, label: o.label }));
-
-        const body = { status: "success", options };
+        const raw = json?.data?.kleverTyreSizeWidth;
+        const body = { status: raw?.status ?? "success", options: raw?.options ?? [] };
         cache.set(locale, { body, expires: now + CACHE_TTL_MS });
         return NextResponse.json(body, { headers: { "X-Cache": "MISS" } });
     } catch (err: any) {

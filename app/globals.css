@@ -19,7 +19,6 @@
 @theme {
   /* ── Fonts ──────────────────────────────────────────────────────────────── */
   --font-sans:  var(--font-rubik), system-ui, sans-serif;
-  --font-rubik: var(--font-rubik), system-ui, sans-serif;
 
   /* ── Brand Colors ───────────────────────────────────────────────────────── */
   --color-brand-yellow:       #F5B21B;   /* bg/text/border-brand-yellow        */
@@ -115,7 +114,8 @@
 }
 
 @layer utilities {
-  .rubik-sans {
+  .rubik-sans,
+  .font-rubik {
     font-family: var(--font-rubik), sans-serif;
   }
 

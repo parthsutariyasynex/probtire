@@ -44,6 +44,16 @@ async function resolveAuthToken(): Promise<string | null> {
     // (and removes it on logout/expiry), so for an already-logged-in user this is the
     // fast path and means the ONLY session fetch is the SessionProvider's own hydration.
     if (typeof window !== "undefined") {
+        const isSubAccount = localStorage.getItem("isSubAccount") === "true";
+        if (isSubAccount) {
+            const subDataStr = localStorage.getItem("subAccountData");
+            if (subDataStr) {
+                try {
+                    const parsed = JSON.parse(subDataStr);
+                    if (parsed.token) return parsed.token;
+                } catch {}
+            }
+        }
         const localToken = localStorage.getItem("token");
         if (localToken) return localToken;
     }

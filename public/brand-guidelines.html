@@ -1,0 +1,803 @@
+<title>Al Talayi — Brand Guidelines</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+
+:root{
+  /* ── Brand tokens (mirrors globals.css @theme) ── */
+  --yellow:       #F5B21B;
+  --yellow-dark:  #E0A218;
+  --yellow-light: #FEF3C7;
+  --canvas:       #F4F4F4;
+  --surface:      #FCFCFC;
+  --surface-muted:#F8F8F8;
+  --subtle:       #EBEBEB;
+  --input-border: #E5E7EB;
+  /* ── Tailwind grays in active use ── */
+  --gray-50:  #F9FAFB;
+  --gray-100: #F3F4F6;
+  --gray-200: #E5E7EB;
+  --gray-300: #D1D5DB;
+  --gray-400: #9CA3AF;
+  --gray-500: #6B7280;
+  --gray-600: #4B5563;
+  --gray-700: #374151;
+  --gray-900: #111827;
+  --black:    #000000;
+  --white:    #FFFFFF;
+  /* ── Type ── */
+  --font: system-ui,-apple-system,'Segoe UI',Arial,sans-serif;
+  --mono: 'SF Mono','Fira Code',ui-monospace,'Courier New',monospace;
+}
+
+html{scroll-behavior:smooth}
+body{font-family:var(--font);color:var(--black);background:var(--white);line-height:1.5;min-width:320px}
+
+/* ── Simulated site chrome ── */
+.site-header{background:var(--white);border-bottom:1px solid var(--gray-100);box-shadow:0 1px 4px rgba(0,0,0,.06);padding:0 48px;height:64px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50}
+.site-logo{display:flex;align-items:center;gap:10px}
+.site-logo svg{height:36px;width:auto}
+.site-logo-label{font-size:9px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--gray-400);margin-top:2px}
+.site-nav-pills{display:flex;gap:6px}
+.site-nav-pill{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:4px 12px;border:1px solid var(--gray-200);color:var(--gray-600);cursor:pointer;border-radius:2px;text-decoration:none}
+.site-nav-pill:hover,.site-nav-pill.active{background:var(--black);color:var(--white);border-color:var(--black)}
+
+/* ── Yellow nav bar (mirrors the actual secondary nav) ── */
+.site-subnav{background:var(--yellow);padding:0 48px;min-height:48px;display:flex;align-items:center;gap:0;position:sticky;top:64px;z-index:40}
+.site-subnav a{padding:0 28px;min-height:48px;display:flex;align-items:center;font-size:13px;font-weight:600;text-transform:capitalize;color:var(--black);text-decoration:none;transition:background .15s;letter-spacing:.01em}
+.site-subnav a:hover{background:rgba(0,0,0,.08)}
+.site-subnav a.active{font-weight:800}
+
+/* ── Page layout ── */
+.page{background:var(--canvas);min-height:100vh}
+
+/* ── Section structure ── */
+.sec{padding:72px 48px;border-bottom:1px solid var(--subtle)}
+.sec-white{background:var(--white)}
+.sec-canvas{background:var(--canvas)}
+.sec-black{background:var(--black);color:var(--white)}
+.inner{max-width:960px}
+
+.eyebrow{font-size:10px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:var(--yellow-dark);display:block;margin-bottom:10px}
+.sec-black .eyebrow{color:var(--yellow)}
+.sec-h{font-size:28px;font-weight:800;letter-spacing:-.01em;text-wrap:balance;margin-bottom:12px;line-height:1.15;text-transform:uppercase;letter-spacing:.03em}
+.sec-p{font-size:14px;color:var(--gray-600);max-width:560px;line-height:1.65}
+.sec-black .sec-p{color:var(--gray-400)}
+
+/* ── Hero ── */
+.hero{background:var(--white);padding:64px 48px 56px;border-bottom:4px solid var(--yellow)}
+.hero-inner{max-width:960px;display:grid;grid-template-columns:1fr 1fr;gap:64px;align-items:center}
+.hero-lhs{}
+.hero-tag{font-size:10px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:var(--gray-400);display:block;margin-bottom:16px;border-left:3px solid var(--yellow);padding-left:10px}
+.hero-h{font-size:36px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;line-height:1.1;text-wrap:balance}
+.hero-h em{color:var(--yellow-dark);font-style:normal}
+.hero-sub{font-size:13px;color:var(--gray-500);margin-top:12px;line-height:1.6}
+.hero-chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:20px}
+.hero-chip{padding:4px 10px;border:1px solid var(--gray-200);font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--gray-500)}
+.hero-rhs{display:flex;flex-direction:column;gap:16px}
+.hero-stat{padding:20px 24px;border:1px solid var(--gray-100);background:var(--gray-50);display:flex;flex-direction:column;gap:4px}
+.hero-stat-n{font-size:28px;font-weight:800;color:var(--black);font-variant-numeric:tabular-nums}
+.hero-stat-n span{color:var(--yellow-dark)}
+.hero-stat-l{font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--gray-400)}
+
+/* ── Logo section ── */
+.logo-row{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--subtle);border:1px solid var(--subtle);margin-top:36px}
+.logo-cell{padding:40px 32px;display:flex;flex-direction:column;gap:14px;align-items:flex-start}
+.logo-cell svg{width:140px;height:auto}
+.logo-cell-lbl{font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--gray-400)}
+
+/* ── Color palette ── */
+.pal{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:1px;background:var(--subtle);border:1px solid var(--subtle);margin-top:24px}
+.pal-cell{background:var(--white);display:flex;flex-direction:column}
+.pal-chip{height:96px}
+.pal-info{padding:10px 12px}
+.pal-name{font-size:11px;font-weight:700;display:block;margin-bottom:2px}
+.pal-hex{font-size:11px;font-family:var(--mono);color:var(--gray-500);display:block}
+.pal-use{font-size:10px;color:var(--gray-400);margin-top:3px;display:block;line-height:1.4}
+.grp{font-size:9px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--gray-400);margin:36px 0 10px;display:block}
+.grp:first-child{margin-top:0}
+
+/* ── Type scale ── */
+.ts-wrap{border:1px solid var(--subtle);overflow:hidden;margin-top:32px}
+.ts-head{display:grid;grid-template-columns:110px 48px 56px 1fr;gap:12px;padding:8px 20px;background:var(--gray-50);border-bottom:1px solid var(--subtle)}
+.ts-head span{font-size:9px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--gray-400)}
+.ts-row{display:grid;grid-template-columns:110px 48px 56px 1fr;gap:12px;align-items:center;padding:14px 20px;border-bottom:1px solid var(--subtle)}
+.ts-row:last-child{border-bottom:none}
+.ts-row:hover{background:var(--gray-50)}
+.ts-meta{font-size:11px;font-family:var(--mono);color:var(--gray-400)}
+
+/* ── Component demos ── */
+.comp-lbl{font-size:9px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--gray-400);padding-bottom:8px;border-bottom:1px solid var(--subtle);margin-bottom:14px;display:block}
+.demo{padding:24px;border:1px solid var(--gray-100);background:var(--canvas);display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.demo.white{background:var(--white)}
+.demo.dark{background:var(--black)}
+
+/* Actual site buttons */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:0 20px;height:40px;font-family:var(--font);font-size:11px;font-weight:800;letter-spacing:.15em;text-transform:uppercase;border:none;cursor:pointer;text-decoration:none;transition:background .2s,color .2s}
+.btn-yellow{background:var(--yellow);color:var(--black)}
+.btn-yellow:hover{background:var(--black);color:var(--white)}
+.btn-black{background:var(--black);color:var(--white)}
+.btn-black:hover{background:var(--gray-700)}
+.btn-outline{background:transparent;color:var(--black);border:1.5px solid var(--black)}
+.btn-outline:hover{background:var(--black);color:var(--white)}
+.btn-ghost{background:transparent;color:var(--gray-500);padding:0 14px;height:40px}
+.btn-ghost:hover{color:var(--black)}
+.btn-danger{background:var(--black);color:var(--white)}
+.btn[disabled]{opacity:.4;cursor:not-allowed}
+.btn:focus-visible{outline:2px solid var(--yellow);outline-offset:2px}
+
+/* Nav tab toggle (login page) */
+.tab-toggle{display:flex;border:1px solid var(--gray-200);overflow:hidden}
+.tab-toggle button{flex:1;padding:14px;font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;border:none;cursor:pointer;transition:background .15s}
+.tab-active{background:var(--black);color:var(--white)}
+.tab-inactive{background:var(--white);color:var(--gray-900)}
+.tab-inactive:hover{background:var(--gray-50)}
+
+/* Inputs */
+.field{display:flex;flex-direction:column;gap:5px}
+.field-lbl{font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--gray-900)}
+.field-lbl .req{color:#DC2626}
+.input{height:48px;background:var(--white);border:1px solid var(--gray-300);padding:0 12px;font-family:var(--font);font-size:13px;color:var(--black);outline:none;transition:border-color .15s;width:220px}
+.input:focus{border-color:var(--gray-600)}
+.input.err{border-color:#EF4444}
+.field-err{font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#DC2626}
+
+/* Product card */
+.prod-card{background:var(--white);border:1px solid var(--gray-100);box-shadow:0 1px 3px rgba(0,0,0,.06);padding:10px;display:flex;flex-direction:column;gap:6px;width:200px;border-radius:8px}
+.prod-card-img{background:var(--gray-50);height:80px;display:flex;align-items:center;justify-content:center;border:1px solid var(--gray-100);border-radius:6px}
+.prod-brand{font-size:10px;font-weight:700;color:var(--gray-400);text-transform:uppercase;letter-spacing:.08em}
+.prod-name{font-size:12px;font-weight:800;color:var(--gray-900);text-transform:uppercase;letter-spacing:.01em;line-height:1.3}
+.prod-size{font-size:11px;font-weight:700;color:var(--black)}
+.prod-stock{display:flex;align-items:center;gap:5px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em}
+.prod-stock-dot{width:7px;height:7px;border-radius:50%}
+.prod-price-row{display:flex;align-items:center;justify-content:space-between;border-top:1px solid var(--gray-100);padding-top:8px;margin-top:2px}
+.prod-price{font-size:15px;font-weight:800;color:var(--black);font-variant-numeric:tabular-nums}
+.prod-was{font-size:11px;color:var(--gray-400);text-decoration:line-through;font-variant-numeric:tabular-nums}
+.prod-actions{display:flex;gap:2px}
+.qty-btn{width:36px;height:36px;border:1px solid var(--gray-300);background:var(--white);font-size:14px;font-weight:700;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0}
+.qty-btn:hover{border-color:var(--black)}
+.qty-val{width:36px;height:36px;border:1px solid var(--gray-300);border-left:none;border-right:none;text-align:center;font-size:12px;font-weight:600;outline:none;background:var(--white)}
+.atc{width:36px;height:36px;background:var(--yellow);display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0}
+.atc:hover{background:var(--black)}
+.atc:hover svg{stroke:var(--white)}
+.fav{width:36px;height:36px;background:var(--gray-100);display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0}
+.fav:hover{background:var(--yellow)}
+
+/* Nav badge */
+.nav-badge{width:22px;height:22px;background:var(--yellow);color:var(--black);font-size:10px;font-weight:800;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;border:2px solid var(--white)}
+
+/* Filter header */
+.filter-head{background:var(--yellow);padding:16px 20px;display:flex;align-items:center;justify-content:space-between}
+.filter-head-title{font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:.04em}
+.filter-clear{font-size:10px;font-weight:700;text-transform:uppercase;text-decoration:underline;color:rgba(0,0,0,.6);cursor:pointer}
+.filter-close{background:var(--black);color:var(--white);font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;padding:10px 20px;border:none;cursor:pointer;border-radius:6px;width:100%}
+
+/* Table */
+.tbl-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;padding:8px 14px;font-size:9px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--gray-400);background:var(--gray-50);border-bottom:1px solid var(--subtle)}
+td{padding:10px 14px;border-bottom:1px solid var(--subtle);color:var(--gray-600);vertical-align:top}
+td:first-child{font-family:var(--mono);font-size:11px;color:var(--black);white-space:nowrap}
+tr:last-child td{border-bottom:none}
+
+/* Token cards */
+.tok-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:12px;margin-top:28px}
+.tok{border:1px solid var(--subtle);padding:16px;background:var(--white);display:flex;flex-direction:column;gap:8px}
+.tok-vis{width:40px;height:40px;background:var(--black)}
+.tok-n{font-size:11px;font-weight:700}
+.tok-v{font-size:11px;font-family:var(--mono);color:var(--gray-500)}
+
+/* Voice section */
+.voice-ex{display:flex;flex-direction:column;gap:8px;margin-top:20px}
+.voice-row{display:grid;grid-template-columns:64px 1fr 1fr;gap:12px;align-items:center;padding:10px 16px;border:1px solid var(--subtle)}
+.voice-row.use{border-left:3px solid var(--yellow-dark)}
+.vtag{font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase}
+.vtag-avoid{color:#DC2626}
+.vtag-use{color:var(--yellow-dark)}
+.vcopy.struck{font-size:13px;color:var(--gray-400);text-decoration:line-through}
+.vcopy{font-size:13px;color:var(--black)}
+.vnote{font-size:11px;color:var(--gray-400)}
+
+/* Rules */
+.rules{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:28px}
+.rule{padding:18px 20px;border:1px solid var(--subtle)}
+.rule-do{border-left:3px solid var(--yellow-dark)}
+.rule-dont{border-left:3px solid #DC2626}
+.rule-h{font-size:9px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;margin-bottom:10px}
+.rule-do .rule-h{color:var(--yellow-dark)}
+.rule-dont .rule-h{color:#DC2626}
+.rule ul{list-style:none;display:flex;flex-direction:column;gap:6px}
+.rule li{font-size:12px;color:var(--gray-600);padding-left:12px;position:relative;line-height:1.45}
+.rule li::before{content:'→';position:absolute;left:0;font-size:10px;color:var(--gray-300)}
+
+/* Separator */
+.div{height:1px;background:var(--subtle);margin:36px 0}
+
+/* Responsive */
+@media(max-width:900px){
+  .site-header,.site-subnav,.hero,.sec{padding-left:24px;padding-right:24px}
+  .hero-inner{grid-template-columns:1fr;gap:32px}
+  .logo-row{grid-template-columns:1fr 1fr}
+  .rules{grid-template-columns:1fr}
+  .ts-head,.ts-row{grid-template-columns:90px 44px 1fr}
+  .ts-head span:nth-child(3),.ts-row .ts-meta:nth-child(3){display:none}
+  .pal{grid-template-columns:repeat(2,1fr)}
+}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{transition:none!important}}
+</style>
+
+<!-- Logo templates -->
+<template id="T-LIGHT">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 4220.65 1432.54">
+  <polygon style="fill:#111827" points="3591.28,1223.13 4220.65,1223.13 4220.65,1062.95 3822.33,1062.95 3822.33,961.01 4156.86,961.01 4156.86,807.61 3822.33,807.61 3822.33,715.38 4213.33,715.38 4213.33,555.2 3591.28,555.2"/>
+  <polygon style="fill:#111827" points="2265.68,726.07 2265.68,555.19 1563.13,555.19 1563.13,726.07 1799.41,726.07 1799.41,1223.13 2030.45,1223.13 2030.45,726.07"/>
+  <path style="fill:#111827" d="M3460.6 760.05c0-36.9-9.24-71.02-27.71-102.43-18.47-31.38-46-56.31-82.59-74.74-36.58-18.45-80.68-27.67-132.24-27.67h-440.13v667.93h231.04v-243.68h85.71l127.54 243.68h259.28l-159.95-279.6c45.29-15.53 79.8-39.81 103.5-72.81 23.69-33.02 35.55-69.9 35.55-110.68zm-235.23 8.73c0 17.48-6.26 32.21-18.82 44.18-12.54 11.98-27.89 17.96-45.99 17.96h-151.59v-123.3h151.59c18.1 0 33.45 5.83 45.99 17.48 12.55 11.64 18.82 26.21 18.82 43.68z"/>
+  <polygon style="fill:#111827" points="2629.07,555.2 2414.51,555.2 2414.51,1223.14 2629.07,1223.14"/>
+  <path style="fill:#D20000" d="M1449.47 348.32c0-66.85-17.76-127.43-53.28-181.75-35.51-54.31-83.56-96.43-144.13-126.39-37.56-18.55-77.32-32.02-119.54-38.39-45.85-6.91-87.33 5.67-103.65 48.27l-89.21 200.31c-17.84 32.32-5.43 76.24 10.53 92.74 20.9 21.6 31.34 47.71 31.34 78.34v20.88c0 32.06-10.13 58.86-30.29 80.44-20.21 21.6-45.63 32.38-76.26 32.38h-71.04l-132.12 296.65h236.59c30.61 0 56.04 10.81 76.24 32.38 20.18 21.61 30.29 48.4 30.29 80.43v20.89c0 32.05-10.11 58.85-30.29 80.43-20.2 21.61-45.63 32.38-76.24 32.38H661.51L512.65 1334.37h651.9c76.58 0 146.92-15.98 211-48.04 64.04-32.02 114.54-76.94 151.46-134.74 36.88-57.78 55.36-124.3 55.36-199.5 0-197.74-91.24-317.54-273.67-359.33v-8.35c160.13-45.96 240.24-157.36 240.24-334.25z"/>
+  <path style="fill:#111827" d="M404.16 1310.51l360.69-810.12c47.69-107.09-.48-232.56-107.58-280.24-107.08-47.69-232.56.48-280.24 107.56L16.34 1137.83c-44.73 106.19 3.17 229.07 108.91 276.17 105.76 47.08 229.12.44 278.11-103.85l.8.36z"/>
+</svg>
+</template>
+<template id="T-DARK">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 4220.65 1432.54">
+  <polygon style="fill:#fff" points="3591.28,1223.13 4220.65,1223.13 4220.65,1062.95 3822.33,1062.95 3822.33,961.01 4156.86,961.01 4156.86,807.61 3822.33,807.61 3822.33,715.38 4213.33,715.38 4213.33,555.2 3591.28,555.2"/>
+  <polygon style="fill:#fff" points="2265.68,726.07 2265.68,555.19 1563.13,555.19 1563.13,726.07 1799.41,726.07 1799.41,1223.13 2030.45,1223.13 2030.45,726.07"/>
+  <path style="fill:#fff" d="M3460.6 760.05c0-36.9-9.24-71.02-27.71-102.43-18.47-31.38-46-56.31-82.59-74.74-36.58-18.45-80.68-27.67-132.24-27.67h-440.13v667.93h231.04v-243.68h85.71l127.54 243.68h259.28l-159.95-279.6c45.29-15.53 79.8-39.81 103.5-72.81 23.69-33.02 35.55-69.9 35.55-110.68zm-235.23 8.73c0 17.48-6.26 32.21-18.82 44.18-12.54 11.98-27.89 17.96-45.99 17.96h-151.59v-123.3h151.59c18.1 0 33.45 5.83 45.99 17.48 12.55 11.64 18.82 26.21 18.82 43.68z"/>
+  <polygon style="fill:#fff" points="2629.07,555.2 2414.51,555.2 2414.51,1223.14 2629.07,1223.14"/>
+  <path style="fill:#D20000" d="M1449.47 348.32c0-66.85-17.76-127.43-53.28-181.75-35.51-54.31-83.56-96.43-144.13-126.39-37.56-18.55-77.32-32.02-119.54-38.39-45.85-6.91-87.33 5.67-103.65 48.27l-89.21 200.31c-17.84 32.32-5.43 76.24 10.53 92.74 20.9 21.6 31.34 47.71 31.34 78.34v20.88c0 32.06-10.13 58.86-30.29 80.44-20.21 21.6-45.63 32.38-76.26 32.38h-71.04l-132.12 296.65h236.59c30.61 0 56.04 10.81 76.24 32.38 20.18 21.61 30.29 48.4 30.29 80.43v20.89c0 32.05-10.11 58.85-30.29 80.43-20.2 21.61-45.63 32.38-76.24 32.38H661.51L512.65 1334.37h651.9c76.58 0 146.92-15.98 211-48.04 64.04-32.02 114.54-76.94 151.46-134.74 36.88-57.78 55.36-124.3 55.36-199.5 0-197.74-91.24-317.54-273.67-359.33v-8.35c160.13-45.96 240.24-157.36 240.24-334.25z"/>
+  <path style="fill:#fff" d="M404.16 1310.51l360.69-810.12c47.69-107.09-.48-232.56-107.58-280.24-107.08-47.69-232.56.48-280.24 107.56L16.34 1137.83c-44.73 106.19 3.17 229.07 108.91 276.17 105.76 47.08 229.12.44 278.11-103.85l.8.36z"/>
+</svg>
+</template>
+
+<!-- ── Simulated site chrome ── -->
+<header class="site-header">
+  <div class="site-logo">
+    <div id="header-logo" style="height:36px;display:flex;align-items:center;"></div>
+  </div>
+  <nav class="site-nav-pills">
+    <a href="#logo" class="site-nav-pill active">Logo</a>
+    <a href="#colors" class="site-nav-pill">Colors</a>
+    <a href="#type" class="site-nav-pill">Type</a>
+    <a href="#tokens" class="site-nav-pill">Tokens</a>
+    <a href="#components" class="site-nav-pill">Components</a>
+    <a href="#voice" class="site-nav-pill">Voice</a>
+  </nav>
+</header>
+<div class="site-subnav">
+  <a href="#logo" class="active">Brand Guidelines</a>
+  <a href="#components">v1.0 — July 2026</a>
+  <a href="#voice">Internal Reference</a>
+</div>
+
+<div class="page">
+
+  <!-- ── Hero ── -->
+  <div class="hero">
+    <div class="hero-inner">
+      <div class="hero-lhs">
+        <span class="hero-tag">Al Talayi / B.Tire — Next.js Rebuild</span>
+        <h1 class="hero-h">Brand &amp; Design <em>System</em></h1>
+        <p class="hero-sub">A single reference for every color, typeface decision, component pattern, and copy rule used in the Next.js storefront. Built from the live codebase — not aspirational.</p>
+        <div class="hero-chips">
+          <span class="hero-chip">Version 1.0</span>
+          <span class="hero-chip">July 2026</span>
+          <span class="hero-chip">Next.js 15</span>
+          <span class="hero-chip">Tailwind v4</span>
+          <span class="hero-chip">RTL Ready</span>
+        </div>
+      </div>
+      <div class="hero-rhs">
+        <div class="hero-stat">
+          <span class="hero-stat-n"><span>#F5B21B</span></span>
+          <span class="hero-stat-l">Single brand accent — amber yellow</span>
+        </div>
+        <div class="hero-stat">
+          <span class="hero-stat-n">8</span>
+          <span class="hero-stat-l">CSS custom properties in @theme</span>
+        </div>
+        <div class="hero-stat">
+          <span class="hero-stat-n">Rubik</span>
+          <span class="hero-stat-l">Brand typeface — loaded via next/font</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Logo ── -->
+  <section class="sec sec-white" id="logo">
+    <div class="inner">
+      <span class="eyebrow">01 — Identity</span>
+      <h2 class="sec-h">Logo</h2>
+      <p class="sec-p">The B.Tire mark combines a bold geometric "B" in brand red with a precision wordmark. Both elements must appear together at their designed ratio — the B mark alone is not a standalone identity element.</p>
+    </div>
+
+    <div class="logo-row" style="margin-top:36px;">
+      <div class="logo-cell" style="background:#fff;">
+        <div class="logo-light"></div>
+        <span class="logo-cell-lbl">On white — primary</span>
+      </div>
+      <div class="logo-cell" style="background:#F4F4F4;">
+        <div class="logo-light"></div>
+        <span class="logo-cell-lbl">On canvas</span>
+      </div>
+      <div class="logo-cell" style="background:#F5B21B;">
+        <div class="logo-light"></div>
+        <span class="logo-cell-lbl" style="color:rgba(0,0,0,.45);">On brand yellow</span>
+      </div>
+      <div class="logo-cell" style="background:#111827;">
+        <div class="logo-dark"></div>
+        <span class="logo-cell-lbl" style="color:#444;">On dark — reversed</span>
+      </div>
+    </div>
+
+    <div class="rules" style="max-width:960px;margin-top:0;">
+      <div class="rule rule-do">
+        <p class="rule-h">Use</p>
+        <ul>
+          <li>Always use the vector file — never raster exports or screenshots</li>
+          <li>Maintain clearspace equal to the height of the B mark on all sides</li>
+          <li>Use only on the four approved background colours shown above</li>
+          <li>Keep the wordmark and B mark proportional at all sizes</li>
+        </ul>
+      </div>
+      <div class="rule rule-dont">
+        <p class="rule-h">Avoid</p>
+        <ul>
+          <li>Stretching, rotating, or cropping any part of the logo</li>
+          <li>Recolouring the B mark to anything other than red (#D20000) or white</li>
+          <li>Placing on photographic backgrounds without a solid colour panel behind</li>
+          <li>Using the wordmark without the B mark, or vice versa</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Colors ── -->
+  <section class="sec sec-canvas" id="colors">
+    <div class="inner">
+      <span class="eyebrow">02 — Color</span>
+      <h2 class="sec-h">Color System</h2>
+      <p class="sec-p">Amber yellow is the single brand accent. Everything else is black, white, or a step in the gray scale. This restraint keeps the accent meaningful — if every element shouts yellow, nothing does.</p>
+
+      <span class="grp">Brand tokens — defined in globals.css @theme</span>
+      <div class="pal">
+        <div class="pal-cell">
+          <div class="pal-chip" style="background:#F5B21B;"></div>
+          <div class="pal-info"><span class="pal-name">Brand Yellow</span><span class="pal-hex">#F5B21B</span><span class="pal-use">bg/text/border-brand-yellow — nav bar, CTA buttons, cart badge, active states, filter headers</span></div>
+        </div>
+        <div class="pal-cell">
+          <div class="pal-chip" style="background:#E0A218;"></div>
+          <div class="pal-info"><span class="pal-name">Yellow Dark</span><span class="pal-hex">#E0A218</span><span class="pal-use">bg/text/border-brand-yellow-dark — hover on yellow elements</span></div>
+        </div>
+        <div class="pal-cell">
+          <div class="pal-chip" style="background:#FEF3C7;border-bottom:1px solid #EBEBEB;"></div>
+          <div class="pal-info"><span class="pal-name">Yellow Light</span><span class="pal-hex">#FEF3C7</span><span class="pal-use">bg/text/border-brand-yellow-light — tinted badge fills, info backgrounds</span></div>
+        </div>
+        <div class="pal-cell">
+          <div class="pal-chip" style="background:#D20000;"></div>
+          <div class="pal-info"><span class="pal-name">Brand Red</span><span class="pal-hex">#D20000</span><span class="pal-use">Logo B mark · error states · form validation · destructive actions · out-of-stock indicator</span></div>
+        </div>
+        <div class="pal-cell">
+          <div class="pal-chip" style="background:#F4F4F4;border-bottom:1px solid #EBEBEB;"></div>
+          <div class="pal-info"><span class="pal-name">Canvas</span><span class="pal-hex">#F4F4F4</span><span class="pal-use">bg-canvas — page background, login page bg</span></div>
+        </div>
+        <div class="pal-cell">
+          <div class="pal-chip" style="background:#FCFCFC;border-bottom:1px solid #EBEBEB;"></div>
+          <div class="pal-info"><span class="pal-name">Surface</span><span class="pal-hex">#FCFCFC</span><span class="pal-use">bg-surface — card surfaces, panel backgrounds</span></div>
+        </div>
+        <div class="pal-cell">
+          <div class="pal-chip" style="background:#EBEBEB;border-bottom:1px solid #ddd;"></div>
+          <div class="pal-info"><span class="pal-name">Subtle</span><span class="pal-hex">#EBEBEB</span><span class="pal-use">border-subtle / bg-subtle — dividers, table borders, section separators</span></div>
+        </div>
+        <div class="pal-cell">
+          <div class="pal-chip" style="background:#E5E7EB;border-bottom:1px solid #ddd;"></div>
+          <div class="pal-info"><span class="pal-name">Input Border</span><span class="pal-hex">#E5E7EB</span><span class="pal-use">border-input-border — form field default border</span></div>
+        </div>
+      </div>
+
+      <span class="grp" style="margin-top:40px;">Tailwind gray scale — actively used (not yet in @theme)</span>
+      <div class="pal">
+        <div class="pal-cell">
+          <div class="pal-chip" style="background:#F9FAFB;border-bottom:1px solid #EBEBEB;"></div>
+          <div class="pal-info"><span class="pal-name">gray-50</span><span class="pal-hex">#F9FAFB</span><span class="pal-use">Hover backgrounds, empty state areas</span></div>
+        </div>
+        <div class="pal-cell">
+          <div class="pal-chip" style="background:#F3F4F6;border-bottom:1px solid #EBEBEB;"></div>
+          <div class="pal-info"><span class="pal-name">gray-100</span><span class="pal-hex">#F3F4F6</span><span class="pal-use">Card borders, dividers — used more than border-subtle in components</span></div>
+        </div>
+        <div class="pal-cell">
+          <div class="pal-chip" style="background:#E5E7EB;border-bottom:1px solid #ddd;"></div>
+          <div class="pal-info"><span class="pal-name">gray-200</span><span class="pal-hex">#E5E7EB</span><span class="pal-use">Stronger borders, tab dividers, dropdown borders</span></div>
+        </div>
+        <div class="pal-cell">
+          <div class="pal-chip" style="background:#9CA3AF;"></div>
+          <div class="pal-info"><span class="pal-name">gray-400</span><span class="pal-hex">#9CA3AF</span><span class="pal-use">Secondary icons, placeholder hints, micro labels</span></div>
+        </div>
+        <div class="pal-cell">
+          <div class="pal-chip" style="background:#6B7280;"></div>
+          <div class="pal-info"><span class="pal-name">gray-500</span><span class="pal-hex">#6B7280</span><span class="pal-use">Descriptive body text, secondary copy</span></div>
+        </div>
+        <div class="pal-cell">
+          <div class="pal-chip" style="background:#374151;"></div>
+          <div class="pal-info"><span class="pal-name">gray-700</span><span class="pal-hex">#374151</span><span class="pal-use">Menu items, medium-weight UI text</span></div>
+        </div>
+        <div class="pal-cell">
+          <div class="pal-chip" style="background:#111827;"></div>
+          <div class="pal-info"><span class="pal-name">gray-900</span><span class="pal-hex">#111827</span><span class="pal-use">Primary headings, form labels — preferred over pure black for text</span></div>
+        </div>
+        <div class="pal-cell">
+          <div class="pal-chip" style="background:#000000;"></div>
+          <div class="pal-info"><span class="pal-name">Black</span><span class="pal-hex">#000000</span><span class="pal-use">Secondary CTA buttons, hover state of yellow buttons, nav text on yellow bar</span></div>
+        </div>
+      </div>
+
+      <span class="grp" style="margin-top:40px;">Semantic</span>
+      <div class="pal">
+        <div class="pal-cell">
+          <div class="pal-chip" style="background:#D20000;"></div>
+          <div class="pal-info"><span class="pal-name">Error / Destructive</span><span class="pal-hex">#D20000</span><span class="pal-use">Form errors, required stars, input border on invalid state, out-of-stock dot, remove hover — same as Brand Red</span></div>
+        </div>
+        <div class="pal-cell">
+          <div class="pal-chip" style="background:#22C55E;"></div>
+          <div class="pal-info"><span class="pal-name">Success</span><span class="pal-hex">#22C55E</span><span class="pal-use">Tailwind green-500 — add-to-cart flash, in-stock dot. Use the Tailwind class directly: <code style="font-family:var(--mono);">bg-green-500</code></span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Typography ── -->
+  <section class="sec sec-white" id="type">
+    <div class="inner">
+      <span class="eyebrow">03 — Typography</span>
+      <h2 class="sec-h">Typography</h2>
+      <p class="sec-p">Rubik loaded via <code style="font-family:var(--mono);font-size:11px;background:var(--gray-100);padding:2px 5px;">next/font/google</code>. The single most defining type trait of this UI is its all-caps, wide-tracking label style — applied consistently to every button, table header, field label, and section eyebrow.</p>
+
+      <div style="margin-top:32px;padding:24px;background:var(--gray-50);border:1px solid var(--gray-100);display:flex;flex-direction:column;gap:10px;">
+        <span style="font-size:9px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--gray-400);display:block;margin-bottom:4px;">Rubik — Specimen</span>
+        <span style="font-size:24px;font-weight:700;letter-spacing:-.01em;">A B C D E F G H I J K L M N O P Q R S T U V W X Y Z</span>
+        <span style="font-size:16px;color:var(--gray-600);">a b c d e f g h i j k l m n o p q r s t u v w x y z</span>
+        <span style="font-size:14px;color:var(--gray-600);font-variant-numeric:tabular-nums;">0 1 2 3 4 5 6 7 8 9 &nbsp; — . , : / % + −</span>
+        <div style="display:flex;gap:20px;flex-wrap:wrap;margin-top:4px;">
+          <span style="font-size:12px;font-weight:400;color:var(--gray-500);">Regular 400</span>
+          <span style="font-size:12px;font-weight:500;color:var(--gray-500);">Medium 500</span>
+          <span style="font-size:12px;font-weight:600;color:var(--gray-500);">SemiBold 600</span>
+          <span style="font-size:12px;font-weight:700;color:var(--gray-500);">Bold 700</span>
+          <span style="font-size:12px;font-weight:800;color:var(--gray-500);">ExtraBold 800</span>
+          <span style="font-size:12px;font-weight:900;color:var(--gray-500);">Black 900</span>
+        </div>
+      </div>
+
+      <div style="margin-top:28px;padding:20px 24px;background:var(--yellow-light);border:1px solid #E0A218;border-left:3px solid var(--yellow-dark);">
+        <p style="font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--yellow-dark);margin-bottom:6px;">Signature style</p>
+        <p style="font-size:13px;color:var(--gray-700);line-height:1.55;">Nearly every UI label, button, column header, and eyebrow uses <strong>uppercase + tracking-widest + font-bold or font-black</strong>. This is the most consistent and recognisable typographic trait across the storefront — preserve it in all new components.</p>
+      </div>
+
+      <div class="ts-head" style="margin-top:28px;">
+        <span>Token</span><span>Size</span><span>Leading</span><span>Specimen + usage</span>
+      </div>
+      <div class="ts-wrap" style="margin-top:0;">
+        <div class="ts-row"><span class="ts-meta">h1-lg</span><span class="ts-meta">42px</span><span class="ts-meta">1.1</span><span style="font-size:38px;font-weight:800;letter-spacing:-.02em;line-height:1.1;text-transform:uppercase;">TYRES</span></div>
+        <div class="ts-row"><span class="ts-meta">h1</span><span class="ts-meta">32px</span><span class="ts-meta">1.2</span><span style="font-size:29px;font-weight:800;letter-spacing:.03em;line-height:1.2;text-transform:uppercase;">ALL TYRES</span></div>
+        <div class="ts-row"><span class="ts-meta">h2</span><span class="ts-meta">24px</span><span class="ts-meta">1.3</span><span style="font-size:22px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;">Filter Options</span></div>
+        <div class="ts-row"><span class="ts-meta">h3</span><span class="ts-meta">20px</span><span class="ts-meta">1.4</span><span style="font-size:18px;font-weight:700;text-transform:uppercase;letter-spacing:.02em;">Cart Summary</span></div>
+        <div class="ts-row"><span class="ts-meta">h4 / subheading</span><span class="ts-meta">17–18px</span><span class="ts-meta">1.4</span><span style="font-size:16px;font-weight:600;text-transform:uppercase;letter-spacing:.02em;">Section Title</span></div>
+        <div class="ts-row"><span class="ts-meta">body-xl</span><span class="ts-meta">15px</span><span class="ts-meta">1.5</span><span style="font-size:14px;">Michelin Pilot Sport 4 — 205/55 R16 91W</span></div>
+        <div class="ts-row"><span class="ts-meta">body-lg</span><span class="ts-meta">14px</span><span class="ts-meta">1.5</span><span style="font-size:13px;">Standard body — product descriptions, cart copy, account details</span></div>
+        <div class="ts-row"><span class="ts-meta">body</span><span class="ts-meta">13px</span><span class="ts-meta">1.5</span><span style="font-size:12px;">Default interface text — menu items, labels, helper text</span></div>
+        <div class="ts-row"><span class="ts-meta">body-sm</span><span class="ts-meta">12px</span><span class="ts-meta">1.5</span><span style="font-size:11px;color:var(--gray-500);">Small captions, secondary metadata, price strikethrough</span></div>
+        <div class="ts-row"><span class="ts-meta">label</span><span class="ts-meta">11px</span><span class="ts-meta">1.2</span><span style="font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;">FIELD LABEL · COLUMN HEADER · EYEBROW</span></div>
+        <div class="ts-row"><span class="ts-meta">caption</span><span class="ts-meta">10px</span><span class="ts-meta">1.4</span><span style="font-size:9px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--gray-400);">BRAND NAME · STOCK STATUS · METADATA</span></div>
+        <div class="ts-row"><span class="ts-meta">micro</span><span class="ts-meta">9px</span><span class="ts-meta">1.4</span><span style="font-size:8px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:var(--gray-400);">WELCOME BACK · LOGGED IN AS</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Tokens ── -->
+  <section class="sec sec-canvas" id="tokens">
+    <div class="inner">
+      <span class="eyebrow">04 — Tokens</span>
+      <h2 class="sec-h">Radius &amp; Spacing</h2>
+      <p class="sec-p">The UI skews square — radius-sm (3px) on buttons and inputs, radius-none on quantity controls and table cells. Only cards and modals use larger values. Never use <code style="font-family:var(--mono);font-size:11px;background:var(--gray-200);padding:1px 5px;">rounded-lg</code> on interactive controls.</p>
+
+      <div class="tok-grid">
+        <div class="tok"><div class="tok-vis" style="border-radius:0;"></div><span class="tok-n">none / 0</span><span class="tok-v">0px</span><span style="font-size:10px;color:var(--gray-400);margin-top:2px;">Qty controls, table cells, image thumbs</span></div>
+        <div class="tok"><div class="tok-vis" style="border-radius:2px;"></div><span class="tok-n">radius-xs</span><span class="tok-v">2px</span><span style="font-size:10px;color:var(--gray-400);margin-top:2px;">Badges, chips, tags</span></div>
+        <div class="tok"><div class="tok-vis" style="border-radius:3px;"></div><span class="tok-n">radius-sm</span><span class="tok-v">3px</span><span style="font-size:10px;color:var(--gray-400);margin-top:2px;">Buttons, inputs, selects — most common</span></div>
+        <div class="tok"><div class="tok-vis" style="border-radius:6px;"></div><span class="tok-n">radius-md</span><span class="tok-v">6px</span><span style="font-size:10px;color:var(--gray-400);margin-top:2px;">Dropdowns, small cards</span></div>
+        <div class="tok"><div class="tok-vis" style="border-radius:8px;"></div><span class="tok-n">rounded-lg (TW)</span><span class="tok-v">8px</span><span style="font-size:10px;color:var(--gray-400);margin-top:2px;">Product cards, filter panels, pagination</span></div>
+        <div class="tok"><div class="tok-vis" style="border-radius:12px;"></div><span class="tok-n">radius-lg</span><span class="tok-v">12px</span><span style="font-size:10px;color:var(--gray-400);margin-top:2px;">Cart drawer, modals</span></div>
+        <div class="tok"><div class="tok-vis" style="border-radius:9999px;width:40px;height:40px;"></div><span class="tok-n">full</span><span class="tok-v">9999px</span><span style="font-size:10px;color:var(--gray-400);margin-top:2px;">Nav user avatar, cart badge, language pill</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Components ── -->
+  <section class="sec sec-white" id="components">
+    <div class="inner">
+      <span class="eyebrow">05 — Components</span>
+      <h2 class="sec-h">UI Components</h2>
+      <p class="sec-p">Extracted from the live codebase. Every example below reflects the actual className patterns in production — not aspirational.</p>
+    </div>
+
+    <!-- Nav bar -->
+    <div style="margin-top:40px;max-width:960px;">
+      <span class="comp-lbl">Navigation — actual site chrome</span>
+      <!-- Simulated nav bar -->
+      <div style="border:1px solid var(--gray-100);overflow:hidden;">
+        <div style="background:var(--white);border-bottom:1px solid var(--gray-100);box-shadow:0 1px 4px rgba(0,0,0,.06);padding:0 20px;height:56px;display:flex;align-items:center;justify-content:space-between;">
+          <div style="height:28px;" class="logo-nav-demo"></div>
+          <div style="display:flex;align-items:center;gap:12px;">
+            <!-- User pill -->
+            <div style="display:flex;align-items:center;gap:6px;background:var(--white);border:1px solid #ddd;border-radius:9999px;padding:4px 12px 4px 4px;box-shadow:0 2px 8px -3px rgba(0,0,0,.12);">
+              <div style="width:26px;height:26px;background:var(--yellow);border-radius:50%;display:flex;align-items:center;justify-content:center;">
+                <svg width="14" height="14" fill="none" stroke="var(--black)" stroke-width="2.5" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+              </div>
+              <div style="display:flex;flex-direction:column;">
+                <span style="font-size:8px;color:rgba(0,0,0,.4);font-weight:700;letter-spacing:.14em;text-transform:uppercase;line-height:1;">Welcome Back</span>
+                <span style="font-size:12px;font-weight:700;letter-spacing:-.01em;line-height:1.3;margin-top:2px;">Ahmed Al Rashid</span>
+              </div>
+            </div>
+            <!-- Cart badge -->
+            <div style="position:relative;display:flex;align-items:center;">
+              <svg width="22" height="22" fill="none" stroke="var(--black)" stroke-width="2" viewBox="0 0 24 24"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>
+              <span class="nav-badge" style="position:absolute;top:-10px;right:-12px;">4</span>
+            </div>
+          </div>
+        </div>
+        <!-- Yellow secondary nav -->
+        <div style="background:var(--yellow);padding:0 20px;min-height:44px;display:flex;align-items:center;gap:0;">
+          <span style="padding:0 20px;min-height:44px;display:flex;align-items:center;font-size:12px;font-weight:700;text-transform:capitalize;color:var(--black);">All Tyres</span>
+          <span style="padding:0 20px;min-height:44px;display:flex;align-items:center;font-size:12px;font-weight:700;text-transform:capitalize;color:var(--black);background:rgba(0,0,0,.1);">Car Tyres</span>
+          <span style="padding:0 20px;min-height:44px;display:flex;align-items:center;font-size:12px;font-weight:700;text-transform:capitalize;color:var(--black);">4x4 / SUV</span>
+          <span style="padding:0 20px;min-height:44px;display:flex;align-items:center;font-size:12px;font-weight:700;text-transform:capitalize;color:var(--black);">Truck</span>
+        </div>
+      </div>
+      <p style="font-size:11px;color:var(--gray-400);margin-top:8px;font-weight:600;letter-spacing:.04em;">bg-white header + bg-brand-yellow secondary nav. Active category shown with rgba(0,0,0,.1) overlay.</p>
+    </div>
+
+    <!-- Buttons -->
+    <div style="margin-top:36px;max-width:960px;">
+      <span class="comp-lbl">Buttons</span>
+      <div class="demo">
+        <button class="btn btn-yellow">Add to Cart</button>
+        <button class="btn btn-black">View Details</button>
+        <button class="btn btn-outline">Compare</button>
+        <button class="btn btn-ghost">Cancel</button>
+        <button class="btn btn-yellow" disabled>Disabled</button>
+      </div>
+      <div style="padding:16px 20px;background:var(--gray-50);border:1px solid var(--gray-100);border-top:none;font-size:11px;color:var(--gray-500);line-height:1.7;">
+        Primary: <code style="font-family:var(--mono);background:var(--gray-200);padding:1px 4px;">bg-brand-yellow text-black hover:bg-black hover:text-white</code>&nbsp;·&nbsp;
+        All buttons: <code style="font-family:var(--mono);background:var(--gray-200);padding:1px 4px;">rounded-sm uppercase tracking-widest font-black</code>
+      </div>
+    </div>
+
+    <!-- Login tab toggle -->
+    <div style="margin-top:28px;max-width:960px;">
+      <span class="comp-lbl">Login page — tab toggle + form</span>
+      <div class="demo white" style="align-items:flex-start;gap:24px;flex-wrap:wrap;">
+        <div style="width:320px;border:1px solid var(--gray-100);overflow:hidden;box-shadow:0 10px 40px rgba(0,0,0,.08);">
+          <div style="padding:20px 24px 12px;">
+            <h2 style="font-size:14px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--gray-900);">Sign In / Register</h2>
+          </div>
+          <div style="padding:0 24px;">
+            <div class="tab-toggle">
+              <button class="tab-active">OTP Login</button>
+              <button class="tab-inactive" style="border-left:1px solid var(--gray-100);">Password</button>
+            </div>
+          </div>
+          <div style="padding:16px 24px 24px;display:flex;flex-direction:column;gap:12px;">
+            <div class="field">
+              <label class="field-lbl">Mobile Number <span class="req">*</span></label>
+              <div dir="ltr" style="display:flex;height:48px;background:var(--white);border:1px solid var(--gray-300);">
+                <div style="display:flex;align-items:center;gap:6px;padding:0 12px;border-right:1px solid var(--gray-100);min-width:90px;">
+                  <span style="font-size:11px;font-weight:800;color:#D20000;">+966</span>
+                  <span style="font-size:10px;color:var(--gray-400);">▼</span>
+                </div>
+                <input style="flex:1;padding:0 12px;font-size:13px;outline:none;border:none;background:transparent;" placeholder="5XX XXX XXXX" />
+              </div>
+            </div>
+            <button class="btn btn-yellow" style="width:100%;justify-content:center;height:44px;">Send OTP</button>
+            <div style="text-align:right;"><span style="font-size:12px;font-weight:700;color:var(--gray-700);cursor:pointer;text-decoration:underline;text-underline-offset:2px;">Forgot password?</span></div>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px;">
+          <p style="font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--gray-400);margin-bottom:4px;">Notes</p>
+          <p style="font-size:12px;color:var(--gray-600);line-height:1.5;">→ Canvas bg (#F4F4F4) behind the card</p>
+          <p style="font-size:12px;color:var(--gray-600);line-height:1.5;">→ Active tab: bg-black text-white</p>
+          <p style="font-size:12px;color:var(--gray-600);line-height:1.5;">→ Input focus: border-gray-600 (not amber)</p>
+          <p style="font-size:12px;color:var(--gray-600);line-height:1.5;">→ Country code: #D20000 (Brand Red)</p>
+          <p style="font-size:12px;color:var(--gray-600);line-height:1.5;">→ Card: rounded-sm shadow-lg border-gray-100</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Product card -->
+    <div style="margin-top:28px;max-width:960px;">
+      <span class="comp-lbl">Product card — products page</span>
+      <div class="demo" style="align-items:flex-start;gap:14px;">
+        <!-- In stock -->
+        <div class="prod-card">
+          <div class="prod-card-img">
+            <svg width="48" height="48" viewBox="0 0 48 48" fill="none"><circle cx="24" cy="24" r="22" stroke="#E5E7EB" stroke-width="2"/><circle cx="24" cy="24" r="12" stroke="#E5E7EB" stroke-width="2"/><circle cx="24" cy="24" r="3.5" fill="#E5E7EB"/><line x1="24" y1="2" x2="24" y2="46" stroke="#E5E7EB" stroke-width="1.5"/><line x1="2" y1="24" x2="46" y2="24" stroke="#E5E7EB" stroke-width="1.5"/></svg>
+          </div>
+          <span class="prod-brand">Michelin</span>
+          <span class="prod-name">Pilot Sport 4</span>
+          <span class="prod-size">205/55 R16</span>
+          <div class="prod-stock">
+            <span class="prod-stock-dot" style="background:#22C55E;"></span>
+            <span style="color:var(--gray-600);">In Stock</span>
+          </div>
+          <div class="prod-price-row">
+            <div>
+              <span class="prod-price">SAR 420</span>
+              <span class="prod-was">SAR 490</span>
+            </div>
+            <div class="prod-actions">
+              <button class="qty-btn">−</button>
+              <input class="qty-val" value="1" type="number"/>
+              <button class="qty-btn" style="border-left:none;">+</button>
+              <button class="atc">
+                <svg width="14" height="14" fill="none" stroke="var(--black)" stroke-width="2.5" viewBox="0 0 24 24"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/></svg>
+              </button>
+              <button class="fav">
+                <svg width="13" height="13" fill="none" stroke="var(--gray-500)" stroke-width="2" viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>
+              </button>
+            </div>
+          </div>
+        </div>
+        <!-- Out of stock -->
+        <div class="prod-card" style="opacity:.5;">
+          <div class="prod-card-img">
+            <svg width="48" height="48" viewBox="0 0 48 48" fill="none"><circle cx="24" cy="24" r="22" stroke="#E5E7EB" stroke-width="2"/><circle cx="24" cy="24" r="12" stroke="#E5E7EB" stroke-width="2"/><circle cx="24" cy="24" r="3.5" fill="#E5E7EB"/><line x1="24" y1="2" x2="24" y2="46" stroke="#E5E7EB" stroke-width="1.5"/><line x1="2" y1="24" x2="46" y2="24" stroke="#E5E7EB" stroke-width="1.5"/></svg>
+          </div>
+          <span class="prod-brand">Bridgestone</span>
+          <span class="prod-name">Turanza T005</span>
+          <span class="prod-size">215/60 R16</span>
+          <div class="prod-stock">
+            <span class="prod-stock-dot" style="background:#EF4444;"></span>
+            <span style="color:var(--gray-600);">Out of Stock</span>
+          </div>
+          <div class="prod-price-row">
+            <span class="prod-price">SAR 380</span>
+            <button class="btn btn-yellow btn-sm" style="height:32px;font-size:10px;padding:0 12px;">Notify Me</button>
+          </div>
+        </div>
+        <!-- Just added -->
+        <div class="prod-card">
+          <div class="prod-card-img">
+            <svg width="48" height="48" viewBox="0 0 48 48" fill="none"><circle cx="24" cy="24" r="22" stroke="#E5E7EB" stroke-width="2"/><circle cx="24" cy="24" r="12" stroke="#E5E7EB" stroke-width="2"/><circle cx="24" cy="24" r="3.5" fill="#E5E7EB"/></svg>
+          </div>
+          <span class="prod-brand">Continental</span>
+          <span class="prod-name">ContiPremiumContact 7</span>
+          <span class="prod-size">225/45 R17</span>
+          <div class="prod-stock"><span class="prod-stock-dot" style="background:#22C55E;"></span><span style="color:var(--gray-600);">In Stock</span></div>
+          <div class="prod-price-row">
+            <span class="prod-price">SAR 510</span>
+            <div class="prod-actions">
+              <button class="qty-btn">−</button>
+              <input class="qty-val" value="2" type="number"/>
+              <button class="qty-btn" style="border-left:none;">+</button>
+              <!-- Added state — green flash -->
+              <button class="atc" style="background:#22C55E;">
+                <svg width="14" height="14" fill="none" stroke="white" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p style="font-size:11px;color:var(--gray-400);margin-top:8px;font-weight:600;">Qty controls are <code style="font-family:var(--mono);background:var(--gray-100);padding:1px 4px;">rounded-none</code>. Add-to-cart flashes <code style="font-family:var(--mono);background:var(--gray-100);padding:1px 4px;">bg-green-500</code> on success, then returns to yellow.</p>
+    </div>
+
+    <!-- Filter header -->
+    <div style="margin-top:28px;max-width:960px;">
+      <span class="comp-lbl">Filter / drawer header pattern</span>
+      <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-start;">
+        <div style="width:240px;border:1px solid var(--gray-200);overflow:hidden;">
+          <div class="filter-head">
+            <span class="filter-head-title">Filter Options</span>
+            <span class="filter-clear">Clear All</span>
+          </div>
+          <div style="padding:16px;background:var(--white);font-size:12px;color:var(--gray-400);">… filter options …</div>
+          <div style="padding:12px;border-top:1px solid var(--gray-100);">
+            <button class="filter-close">Show Results</button>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:6px;padding-top:4px;">
+          <p style="font-size:11px;color:var(--gray-600);line-height:1.6;">→ Header: <code style="font-family:var(--mono);background:var(--gray-100);font-size:10px;padding:1px 4px;">bg-brand-yellow</code></p>
+          <p style="font-size:11px;color:var(--gray-600);line-height:1.6;">→ Close/confirm: <code style="font-family:var(--mono);background:var(--gray-100);font-size:10px;padding:1px 4px;">bg-black text-white rounded-lg</code></p>
+          <p style="font-size:11px;color:var(--gray-600);line-height:1.6;">→ This pattern applies to both search-by-size and filter drawers</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Voice ── -->
+  <section class="sec sec-canvas" id="voice">
+    <div class="inner">
+      <span class="eyebrow">06 — Voice &amp; Tone</span>
+      <h2 class="sec-h">Voice &amp; Tone</h2>
+      <p class="sec-p">Al Talayi serves B2B fleet and retail buyers. Be direct, precise, and respect their time. Every error message, confirmation, and empty state is a customer touchpoint — treat them with the same care as the product page.</p>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-top:32px;">
+        <div style="padding:20px;background:var(--white);border:1px solid var(--subtle);border-top:3px solid var(--yellow-dark);">
+          <p style="font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;margin-bottom:8px;">Direct</p>
+          <p style="font-size:12px;color:var(--gray-600);line-height:1.6;">State facts. Drop hedges. "Ships today" — not "May ship today if ordered soon."</p>
+        </div>
+        <div style="padding:20px;background:var(--white);border:1px solid var(--subtle);border-top:3px solid var(--yellow-dark);">
+          <p style="font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;margin-bottom:8px;">Expert</p>
+          <p style="font-size:12px;color:var(--gray-600);line-height:1.6;">Speak the buyer's language — tyre size codes, load ratings, speed indices. Explain what's unfamiliar; never dumb it down.</p>
+        </div>
+        <div style="padding:20px;background:var(--white);border:1px solid var(--subtle);border-top:3px solid var(--yellow-dark);">
+          <p style="font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;margin-bottom:8px;">Actionable</p>
+          <p style="font-size:12px;color:var(--gray-600);line-height:1.6;">Errors name the fix. Confirmations give the next step. No apologies, no corporate filler, no dead ends.</p>
+        </div>
+      </div>
+
+      <div class="div"></div>
+
+      <span style="font-size:9px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--gray-400);display:block;margin-bottom:16px;">Copy examples</span>
+
+      <div class="voice-ex">
+        <div class="voice-row"><span class="vtag vtag-avoid">Avoid</span><span class="vcopy struck">We're sorry, an error occurred. Please try again later.</span><span class="vnote">Vague — no fix.</span></div>
+        <div class="voice-row use"><span class="vtag vtag-use">Use</span><span class="vcopy">Payment failed — check your card details and try again.</span><span class="vnote">Cause + action.</span></div>
+      </div>
+      <div class="voice-ex" style="margin-top:8px;">
+        <div class="voice-row"><span class="vtag vtag-avoid">Avoid</span><span class="vcopy struck">Your order has been successfully processed!</span><span class="vnote">No next step.</span></div>
+        <div class="voice-row use"><span class="vtag vtag-use">Use</span><span class="vcopy">Order placed. Confirmation email on its way to you.</span><span class="vnote">Confirms + sets expectation.</span></div>
+      </div>
+      <div class="voice-ex" style="margin-top:8px;">
+        <div class="voice-row"><span class="vtag vtag-avoid">Avoid</span><span class="vcopy struck">No products found for your search criteria.</span><span class="vnote">Dead end.</span></div>
+        <div class="voice-row use"><span class="vtag vtag-use">Use</span><span class="vcopy">No tyres match 205/55 R16 in your region — try a wider size or check another branch.</span><span class="vnote">Specific + path forward.</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer style="background:var(--black);padding:32px 48px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;">
+    <div style="display:flex;align-items:center;gap:14px;">
+      <div class="footer-logo" style="height:24px;display:flex;align-items:center;"></div>
+      <span style="font-size:11px;color:#444;font-weight:600;letter-spacing:.04em;">Brand Guidelines v1.0 · July 2026</span>
+    </div>
+    <span style="font-size:10px;color:#333;font-weight:700;letter-spacing:.12em;text-transform:uppercase;">Internal Use Only</span>
+  </footer>
+
+</div>
+
+<script>
+(function(){
+  var light = document.getElementById('T-LIGHT').content;
+  var dark  = document.getElementById('T-DARK').content;
+
+  function injectSvg(selector, tpl, h) {
+    document.querySelectorAll(selector).forEach(function(el){
+      var clone = tpl.cloneNode(true);
+      var svg = clone.querySelector('svg');
+      if(svg){ svg.style.height = h; svg.style.width = 'auto'; }
+      el.appendChild(clone);
+    });
+  }
+
+  injectSvg('#header-logo',   light, '32px');
+  injectSvg('.logo-light',    light, '36px');
+  injectSvg('.logo-dark',     dark,  '36px');
+  injectSvg('.logo-nav-demo', light, '28px');
+  injectSvg('.footer-logo',   dark,  '22px');
+
+  // Active nav on scroll
+  var sections = document.querySelectorAll('section[id]');
+  var pills    = document.querySelectorAll('.site-nav-pill,.site-subnav a');
+  var io = new IntersectionObserver(function(entries){
+    entries.forEach(function(e){
+      if(e.isIntersecting){
+        pills.forEach(function(p){
+          var match = p.getAttribute('href') === '#' + e.target.id;
+          p.style.background = match && p.classList.contains('site-nav-pill') ? 'var(--black)' : '';
+          p.style.color      = match && p.classList.contains('site-nav-pill') ? 'var(--white)' : '';
+          if(p.classList.contains('site-nav-pill')){
+            p.style.borderColor = match ? 'var(--black)' : '';
+          }
+        });
+      }
+    });
+  },{threshold:0.35});
+  sections.forEach(function(s){ io.observe(s); });
+})();
+</script>

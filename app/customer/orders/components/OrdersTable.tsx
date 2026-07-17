@@ -9,6 +9,8 @@ export interface Order {
     date: string;
     grandTotal: string;
     orderedBy: string;
+    company: string;
+    companyCode: string;
     status: string;
 }
 
@@ -20,7 +22,7 @@ const OrdersTable: React.FC<OrdersTableProps> = ({ orders }) => {
     return (
         <div className="w-full bg-white border border-subtle rounded-xl shadow-sm overflow-hidden transition-all duration-300 hover:shadow-md">
             <div className="overflow-x-auto">
-                <table className="w-full text-body text-left border-collapse min-w-[900px]">
+                <table className="w-full text-body text-left border-collapse min-w-[1100px]">
                     <thead>
                         <tr className="bg-gray-50/80 text-black text-label font-black uppercase tracking-widest h-[60px] border-b border-subtle">
                             <th className="px-6 py-4 ltr:text-left rtl:text-right">Order #</th>
@@ -28,6 +30,8 @@ const OrdersTable: React.FC<OrdersTableProps> = ({ orders }) => {
                             <th className="px-6 py-4 text-center whitespace-nowrap">Date</th>
                             <th className="px-6 py-4 text-right whitespace-nowrap">Grand Total</th>
                             <th className="px-6 py-4 text-center">Ordered By</th>
+                            <th className="px-6 py-4 text-center">Company</th>
+                            <th className="px-6 py-4 text-center">Company Code</th>
                             <th className="px-6 py-4 text-center">Status</th>
                             <th className="px-6 py-4 text-center">Action</th>
                         </tr>
@@ -37,9 +41,9 @@ const OrdersTable: React.FC<OrdersTableProps> = ({ orders }) => {
                             orders.map((order, idx) => (
                                 <tr
                                     key={order.id + idx}
-                                    className="hover:bg-yellow-50/20 transition-colors group h-[70px]"
+                                    className="hover:bg-brand-yellow/5 transition-colors group h-[70px]"
                                 >
-                                    <td className="px-6 py-4 font-black text-black ltr:text-left rtl:text-right group-hover:text-yellow-700 transition-colors">
+                                    <td className="px-6 py-4 font-black text-black ltr:text-left rtl:text-right group-hover:text-brand-yellow-dark transition-colors">
                                         {order.id}
                                     </td>
                                     <td className="px-6 py-4 text-gray-500 font-medium ltr:text-left rtl:text-right">
@@ -52,7 +56,13 @@ const OrdersTable: React.FC<OrdersTableProps> = ({ orders }) => {
                                         <Price amount={order.grandTotal} />
                                     </td>
                                     <td className="px-6 py-4 text-gray-500 font-bold text-center">
-                                        {order.orderedBy}
+                                        {order.orderedBy || "—"}
+                                    </td>
+                                    <td className="px-6 py-4 text-gray-500 font-bold text-center">
+                                        {order.company || "—"}
+                                    </td>
+                                    <td className="px-6 py-4 text-gray-500 font-bold text-center">
+                                        {order.companyCode || "—"}
                                     </td>
                                     <td className="px-6 py-4 text-center">
                                         <span className={`px-3 py-1 rounded-full text-caption font-black uppercase tracking-widest ${order.status?.toLowerCase() === 'complete' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>
@@ -61,11 +71,11 @@ const OrdersTable: React.FC<OrdersTableProps> = ({ orders }) => {
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap text-center">
                                         <div className="flex items-center justify-center gap-4 text-label font-black uppercase tracking-wider">
-                                            <button className="text-gray-800 hover:text-yellow-600 transition-colors flex items-center gap-1">
+                                            <button className="text-gray-800 hover:text-brand-yellow-dark transition-colors flex items-center gap-1">
                                                 View
                                             </button>
                                             <span className="text-gray-200">|</span>
-                                            <button className="text-gray-800 hover:text-yellow-600 transition-colors flex items-center gap-1">
+                                            <button className="text-gray-800 hover:text-brand-yellow-dark transition-colors flex items-center gap-1">
                                                 Reorder
                                             </button>
                                         </div>
@@ -74,7 +84,7 @@ const OrdersTable: React.FC<OrdersTableProps> = ({ orders }) => {
                             ))
                         ) : (
                             <tr>
-                                <td colSpan={7} className="px-6 py-24 text-center">
+                                <td colSpan={9} className="px-6 py-24 text-center">
                                     <p className="text-gray-400 text-xs italic tracking-[0.2em] uppercase font-black">
                                         We couldn&apos;t find any records.
                                     </p>

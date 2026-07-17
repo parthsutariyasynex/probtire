@@ -228,7 +228,7 @@ const MultiShippingBillingPage: React.FC = () => {
                     <button
                         onClick={() => router.push(lp('/multi-location-delivery/shipping'))}
                         disabled={isSubmitting}
-                        className="w-full sm:w-auto text-center bg-black text-white px-6 md:px-10 py-3.5 md:py-4 text-label font-black uppercase tracking-[0.15em] hover:opacity-90 transition-opacity disabled:opacity-50"
+                        className="w-full sm:w-auto text-center bg-black text-white px-6 md:px-10 py-3.5 md:py-4 text-label font-bold uppercase tracking-[0.15em] hover:opacity-90 transition-opacity disabled:opacity-50 font-sans"
                     >
                         {t("multi.backToShipping")}
                     </button>
@@ -236,7 +236,7 @@ const MultiShippingBillingPage: React.FC = () => {
                     <button
                         onClick={handleGoToReview}
                         disabled={isSubmitting || !selectedAddressId || !selectedPaymentCode}
-                        className="w-full sm:w-auto justify-center bg-brand-yellow text-black px-8 md:px-12 py-3.5 md:py-4 text-label font-black uppercase tracking-[0.15em] hover:bg-black hover:text-white transition-all shadow-sm flex items-center gap-2 disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed"
+                        className="w-full sm:w-auto justify-center bg-brand-yellow text-black px-8 md:px-12 py-3.5 md:py-4 text-label font-bold uppercase tracking-[0.15em] hover:bg-black hover:text-white transition-all shadow-sm flex items-center gap-2 disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed font-sans"
                     >
                         {t("multi.goToReview")}
                     </button>

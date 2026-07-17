@@ -309,7 +309,7 @@ const MultiLocationDeliveryPage: React.FC = () => {
                                                 return (
                                                     <td
                                                         key={addr.id}
-                                                        className={`py-3 md:py-6 px-2 md:px-4 border-r border-gray-300 align-middle cursor-pointer transition-colors ${currentVal > 0 ? 'bg-yellow-50/10' : 'hover:bg-gray-50'}`}
+                                                        className={`py-3 md:py-6 px-2 md:px-4 border-r border-gray-300 align-middle cursor-pointer transition-colors ${currentVal > 0 ? 'bg-brand-yellow/5' : 'hover:bg-gray-50'}`}
                                                         onClick={() => handleAddressSelect(item.item_id, addr.id)}
                                                     >
                                                         <div className="flex flex-col items-center">
