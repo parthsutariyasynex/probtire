@@ -4,7 +4,7 @@ import { getRequestToken } from "@/lib/api/auth-helper";
 import { KLEVER_SUBACCOUNTS_QUERY, KLEVER_SALESPERSON_ACCOUNTS_QUERY } from "@/src/graphql/queries";
 import { KLEVER_CREATE_SUBACCOUNT_MUTATION } from "@/src/graphql/mutations";
 
-const MAGENTO_GRAPHQL = (process.env.NEXT_PUBLIC_MAGENTO_BASE_URL || "https://altalayi-live.btire.com") + "/graphql";
+const MAGENTO_GRAPHQL = (process.env.NEXT_PUBLIC_MAGENTO_BASE_URL || "") + "/graphql";
 
 // GET — list accounts for the logged-in user.
 // ?type=sales_person → kleverSalespersonAccounts (Sales Person role)

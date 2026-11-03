@@ -4,7 +4,7 @@ import { getRequestToken } from "@/lib/api/auth-helper";
 import { getCustomerCartId } from "@/lib/api/customer-cart";
 import { SET_SHIPPING_METHODS_ON_CART_MUTATION } from "@/src/graphql/mutations";
 
-const MAGENTO_GRAPHQL = (process.env.NEXT_PUBLIC_MAGENTO_BASE_URL || "https://altalayi-live.btire.com") + "/graphql";
+const MAGENTO_GRAPHQL = (process.env.NEXT_PUBLIC_MAGENTO_BASE_URL || "") + "/graphql";
 
 // POST — set the cart's shipping method (GraphQL: setShippingMethodsOnCart).
 // Needs the masked cart_id. Body: { carrier_code, method_code }. The consumer

@@ -4,7 +4,7 @@ import { getRequestToken } from "@/lib/api/auth-helper";
 import { getCustomerCartId } from "@/lib/api/customer-cart";
 import { CART_TOTALS_QUERY } from "@/src/graphql/queries";
 
-const MAGENTO_GRAPHQL = (process.env.NEXT_PUBLIC_MAGENTO_BASE_URL || "https://altalayi-live.btire.com") + "/graphql";
+const MAGENTO_GRAPHQL = (process.env.NEXT_PUBLIC_MAGENTO_BASE_URL || "") + "/graphql";
 
 // GET — checkout totals (GraphQL: native cart.prices; kleverCheckoutTotals doesn't
 // exist on the schema). Maps Money objects → the flat CheckoutTotals shape the

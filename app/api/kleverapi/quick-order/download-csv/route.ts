@@ -3,7 +3,7 @@
 // import { getRequestToken } from "@/lib/api/auth-helper";
 // import { KLEVER_QUICK_ORDER_DOWNLOAD_CSV_QUERY } from "@/src/graphql/queries";
 
-// const MAGENTO_GRAPHQL = (process.env.NEXT_PUBLIC_MAGENTO_BASE_URL || "https://altalayi-live.btire.com") + "/graphql";
+// const MAGENTO_GRAPHQL = (process.env.NEXT_PUBLIC_MAGENTO_BASE_URL || "") + "/graphql";
 
 // // GET — quick-order sample CSV (GraphQL: kleverQuickOrderDownloadCsv).
 // // Returns JSON { file_name, file_content (base64), content_type, total_products };

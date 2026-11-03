@@ -4,7 +4,7 @@ import { getRequestToken } from "@/lib/api/auth-helper";
 import { getCustomerCartId } from "@/lib/api/customer-cart";
 import { CART_PAYMENT_METHODS_QUERY } from "@/src/graphql/queries";
 
-const MAGENTO_GRAPHQL = (process.env.NEXT_PUBLIC_MAGENTO_BASE_URL || "https://altalayi-live.btire.com") + "/graphql";
+const MAGENTO_GRAPHQL = (process.env.NEXT_PUBLIC_MAGENTO_BASE_URL || "") + "/graphql";
 
 // GET — available payment methods (GraphQL: cart.available_payment_methods).
 // Returns an array of { code, title } — the useCheckout consumer reads data.methods

@@ -249,6 +249,7 @@ export default function Navbar() {
     if (isValidLocale(first) || STORE_CODE_RE.test(first)) return "/" + segs.slice(1).join("/") || "/";
     return path || "/";
   };
+
   const isAuthenticated = status === "authenticated";
   const { cart, refetchCart } = useCart();
   const [navLinks, setNavLinks] = useState<NavLink[]>([]);
@@ -256,6 +257,20 @@ export default function Navbar() {
   const [navLoading, setNavLoading] = useState(true);
   const [storeDropOpen, setStoreDropOpen] = useState(false);
   const storeDropRef = useRef<HTMLDivElement>(null);
+
+  const cleanPath = stripPrefix(pathname);
+  const activeNavItem = navLinks.find((item) => {
+    const href = resolveNavHref(item);
+    return pathname === href || pathname?.startsWith(href + "/");
+  });
+  const isTyresPage = activeNavItem?.code === "all_tyres" || activeNavItem?.code === "all-tyres" || activeNavItem?.label?.toLowerCase().includes("tyre");
+  const isProductsListingPage = Boolean(
+    (cleanPath === "/products" ||
+     cleanPath === "/" ||
+     (cleanPath.endsWith(".html") && !cleanPath.includes("about") && !cleanPath.includes("contact")) ||
+     isTyresPage) &&
+    !cleanPath.match(/^\/products\/.+/)
+  );
 
   const { data: customerData } = useSelector((state: RootState) => state.customer);
   const dispatch = useDispatch();
@@ -306,6 +321,10 @@ export default function Navbar() {
       setShouldHideCartActions(type === "Sales Person" || type === "Multiple Company User");
     }).catch(() => {});
   }, [(session as any)?.accessToken]);
+
+  const showSearchIcon = Boolean(
+    isAuthenticated && !shouldHideCartActions && pathname !== "/login" && !isProductsListingPage
+  );
 
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -615,7 +634,7 @@ export default function Navbar() {
 
 
             {/* Search Icon */}
-            {isAuthenticated && !shouldHideCartActions && pathname !== "/login" && (
+            {showSearchIcon && (
               <button
                 onClick={() => setIsSearchOpen(true)}
                 className="hidden lg:flex relative cursor-pointer hover:opacity-70 transition-opacity items-center justify-center -mb-1 focus:outline-none"
@@ -753,7 +772,7 @@ export default function Navbar() {
 
               {isAuthenticated && pathname !== "/login" && (
                 <>
-                  {!shouldHideCartActions && (
+                  {showSearchIcon && (
                     <button
                       onClick={() => { setIsSearchOpen(true); setIsMenuOpen(false); }}
                       className="py-2.5 text-body-sm font-bold text-gray-700 flex items-center gap-3 w-full text-start"

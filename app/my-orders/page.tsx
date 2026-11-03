@@ -122,7 +122,8 @@ function MyOrdersPageContent() {
             setIsSubOrMasterCompany(type === "Company Sub Account" || type === "Master Company");
         }).catch(() => { });
     }, [authToken]);
-    const shouldHideCartActions = (isSalesPerson || isMultiCompany) && !isSubOrMasterCompany;
+    const shouldHideCartActions = false;
+    const showCompanyFilters = true;
 
     // Filter states - derived from URL
     const searchInput = searchParams.get("orderNumber") || "All";
@@ -134,12 +135,22 @@ function MyOrdersPageContent() {
     // Local states for inputs to handle debounce
     const [localSearch, setLocalSearch] = useState(searchInput);
     const [localStatus, setLocalStatus] = useState(statusInput);
+    const [localCompany, setLocalCompany] = useState(companyInput);
+    const [localCompanyCode, setLocalCompanyCode] = useState("");
+
+    // Effective company: typed code takes precedence over dropdown selection
+    const effectiveCompany = useMemo(() => {
+        if (localCompanyCode.trim()) return localCompanyCode.trim();
+        if (localCompany !== "All") return localCompany;
+        return "All";
+    }, [localCompany, localCompanyCode]);
 
     // Sync local state when URL changes
     useEffect(() => {
         setLocalSearch(searchInput);
         setLocalStatus(statusInput);
-    }, [searchInput, statusInput]);
+        setLocalCompany(companyInput);
+    }, [searchInput, statusInput, companyInput]);
 
     useEffect(() => {
         if (authStatus === "unauthenticated") {
@@ -255,23 +266,25 @@ function MyOrdersPageContent() {
 
     // Auto search with debounce
     useEffect(() => {
-        if (localSearch === searchInput && localStatus === statusInput) return;
+        if (localSearch === searchInput && localStatus === statusInput && effectiveCompany === companyInput) return;
 
         const timer = setTimeout(() => {
-            updateURLParams(localSearch, localStatus, 1, pageSize, companyInput);
+            updateURLParams(localSearch, localStatus, 1, pageSize, effectiveCompany);
         }, 500);
 
         return () => clearTimeout(timer);
-    }, [localSearch, localStatus, updateURLParams, searchInput, statusInput, pageSize, companyInput]);
+    }, [localSearch, localStatus, effectiveCompany, updateURLParams, searchInput, statusInput, companyInput, pageSize]);
 
     const handleSearchClick = () => {
-        updateURLParams(localSearch, localStatus, 1, pageSize, companyInput);
+        updateURLParams(localSearch, localStatus, 1, pageSize, effectiveCompany);
     };
 
     const handleResetClick = () => {
         toast.dismiss();
         setLocalSearch("All");
         setLocalStatus("All");
+        setLocalCompany("All");
+        setLocalCompanyCode("");
         router.push(lp("/sales/order/history"));
     };
 
@@ -383,7 +396,7 @@ function MyOrdersPageContent() {
     };
 
     const totalPages = Math.ceil(totalItems / pageSize);
-    const isFiltered = !!(localSearch !== "All" || localStatus !== "All" || searchParams.get("orderNumber") || searchParams.get("status"));
+    const isFiltered = !!(localSearch !== "All" || localStatus !== "All" || effectiveCompany !== "All" || searchParams.get("orderNumber") || searchParams.get("status") || searchParams.get("companyCode"));
 
     if (authStatus === "loading") {
         return (
@@ -403,7 +416,7 @@ function MyOrdersPageContent() {
             <div className="flex flex-col lg:flex-row flex-1 w-full">
                 <Sidebar />
 
-                <main className="flex-1 w-full px-4 md:px-6 lg:px-8 py-4 md:py-6 lg:py-5 bg-surface">
+                <main className="flex-1 w-full px-4 md:px-6 lg:px-8 py-4 md:py-6 lg:py-5 bg-white">
                     <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-5">
                         <div className="flex items-center gap-4 flex-1 min-w-0">
                             <h1 className="text-h3 md:text-[26px] font-bold text-black uppercase tracking-wide whitespace-nowrap">
@@ -439,6 +452,11 @@ function MyOrdersPageContent() {
                         onReset={handleResetClick}
                         isFiltered={isFiltered}
                         statusCounts={statusCounts}
+                        company={localCompany}
+                        onCompanyChange={setLocalCompany}
+                        companyCode={localCompanyCode}
+                        onCompanyCodeChange={setLocalCompanyCode}
+                        showCompanyFilters={showCompanyFilters}
                     />
 
                     {/* Loading (initial mount or fetch) with no data yet → show the table skeleton

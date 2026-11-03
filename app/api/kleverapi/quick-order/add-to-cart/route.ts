@@ -3,7 +3,7 @@
 // import { getRequestToken } from "@/lib/api/auth-helper";
 // import { KLEVER_QUICK_ORDER_ADD_TO_CART_MUTATION } from "@/src/graphql/mutations";
 
-// const MAGENTO_GRAPHQL = (process.env.NEXT_PUBLIC_MAGENTO_BASE_URL || "https://altalayi-live.btire.com") + "/graphql";
+// const MAGENTO_GRAPHQL = (process.env.NEXT_PUBLIC_MAGENTO_BASE_URL || "") + "/graphql";
 
 // // POST — add quick-order items to the cart (GraphQL: kleverQuickOrderAddToCart).
 // // Body: { items: [{ sku, qty }] }. Returns { success, message, items_count, grand_total, redirect_url }.

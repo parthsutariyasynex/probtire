@@ -129,14 +129,15 @@ export function ProductListingSkeleton({ count = 10 }: { count?: number }) {
       </div>
 
       {/* Right content area */}
-      <div className="flex-1 flex flex-col w-full">
+      <div className="flex-1 flex flex-col w-full relative xl:pb-[90px] px-3 sm:px-4 lg:px-6 xl:px-0 pt-3 sm:pt-4 lg:pt-5 xl:pt-0">
 
         {/* ── MOBILE CONTROLS (xl:hidden) — 4 buttons: favs, search, sort, filter ── */}
         <div className="xl:hidden flex flex-col gap-2 mb-3">
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-            {Array.from({ length: 4 }).map((_, i) => (
-              <Pulse key={i} className="h-[44px] rounded-xl border border-gray-200" />
-            ))}
+            <Pulse className="h-[44px] rounded-sm border border-gray-200" />
+            <Pulse className="h-[44px] rounded-sm bg-brand-yellow/30 border border-brand-yellow/40" />
+            <Pulse className="h-[44px] rounded-sm border border-gray-200" />
+            <Pulse className="h-[44px] rounded-sm border border-gray-200" />
           </div>
           {/* Reserved chip area (stable height to avoid layout shift) */}
           <div className="min-h-[38px]" />
@@ -232,11 +233,12 @@ export function ProductListingSkeleton({ count = 10 }: { count?: number }) {
 
         <div className={`hidden xl:flex fixed bottom-0 z-[40] bg-white border-t-[4px] border-brand-yellow shadow-[0_-10px_30px_rgba(0,0,0,0.12)] h-[90px] items-center ${isRtl ? "left-0 right-[300px]" : "left-[300px] right-0"}`}>
           <div className="w-full">
-            <div className="w-full max-w-[1400px] mx-auto px-4 flex items-center justify-center gap-3">
-              <Pulse className="w-[200px] h-11 rounded-sm border border-gray-200 flex-shrink-0" />
-              <Pulse className="w-[200px] h-11 rounded-sm border border-gray-200 flex-shrink-0" />
-              <Pulse className="w-[200px] h-11 rounded-sm border border-gray-200 flex-shrink-0" />
-              <Pulse className="h-11 w-32 rounded-sm flex-shrink-0" />
+            <div className="w-full max-w-[1400px] mx-auto px-4 flex items-center justify-center gap-2 sm:gap-4 flex-nowrap">
+              <Pulse className="w-32 h-[44px] rounded bg-brand-yellow/30 flex-shrink-0" />
+              <Pulse className="w-[200px] h-[44px] rounded-sm border border-gray-200 flex-shrink-0" />
+              <Pulse className="w-[200px] h-[44px] rounded-sm border border-gray-200 flex-shrink-0" />
+              <Pulse className="w-[200px] h-[44px] rounded-sm border border-gray-200 flex-shrink-0" />
+              <Pulse className="h-[44px] w-28 rounded bg-brand-yellow/30 border-none flex-shrink-0" />
             </div>
           </div>
         </div>
@@ -1119,22 +1121,22 @@ export function NotificationsSkeleton({ count = 15 }: { count?: number }) {
       <div className="border border-[#ddd] rounded-sm overflow-hidden bg-white">
         {/* Desktop table */}
         <div className="hidden md:block overflow-x-auto">
-          <table className="w-full text-left border-collapse table-fixed min-w-[600px]">
+          <table className="w-full text-left border-collapse table-fixed min-w-[700px]">
             <thead>
               <tr className="bg-brand-yellow text-black text-label uppercase font-bold tracking-widest h-10">
-                <th className="px-4 py-2 border border-[#ddd] text-center w-[15%]"><Pulse className="h-3 w-16 mx-auto rounded" /></th>
-                <th className="px-4 py-2 border border-[#ddd] text-center w-[20%]"><Pulse className="h-3 w-16 mx-auto rounded" /></th>
-                <th className="px-4 py-2 border border-[#ddd] text-center w-[45%]"><Pulse className="h-3 w-24 mx-auto rounded" /></th>
-                <th className="px-4 py-2 border border-[#ddd] text-center w-[20%]"><Pulse className="h-3 w-16 mx-auto rounded" /></th>
+                <th className="px-3 sm:px-4 py-2 border border-[#ddd] text-center w-[15%] min-w-[105px]"><Pulse className="h-3 w-16 mx-auto rounded" /></th>
+                <th className="px-3 sm:px-4 py-2 border border-[#ddd] text-center w-[20%] min-w-[130px]"><Pulse className="h-3 w-16 mx-auto rounded" /></th>
+                <th className="px-3 sm:px-4 py-2 border border-[#ddd] text-center w-[41%] min-w-[200px]"><Pulse className="h-3 w-24 mx-auto rounded" /></th>
+                <th className="px-2 sm:px-3 py-2 border border-[#ddd] text-center w-[24%] min-w-[160px]"><Pulse className="h-3 w-16 mx-auto rounded" /></th>
               </tr>
             </thead>
             <tbody className="bg-white">
               {Array.from({ length: count }).map((_, i) => (
                 <tr key={i} className="border-b border-[#ddd] last:border-0">
-                  <td className="px-4 py-1.5 border-r border-[#ddd]"><Pulse className="h-3 w-28 mx-auto rounded" /></td>
-                  <td className="px-4 py-1.5 border-r border-[#ddd]"><Pulse className="h-3 w-32 mx-auto rounded" /></td>
-                  <td className="px-4 py-1.5 border-r border-[#ddd]"><Pulse className="h-3 w-full rounded" /></td>
-                  <td className="px-4 py-1.5"><Pulse className="h-3 w-20 mx-auto rounded" /></td>
+                  <td className="px-3 sm:px-4 py-1.5 border-r border-[#ddd]"><Pulse className="h-3 w-28 mx-auto rounded" /></td>
+                  <td className="px-3 sm:px-4 py-1.5 border-r border-[#ddd]"><Pulse className="h-3 w-32 mx-auto rounded" /></td>
+                  <td className="px-3 sm:px-4 py-1.5 border-r border-[#ddd]"><Pulse className="h-3 w-full rounded" /></td>
+                  <td className="px-2 sm:px-3 py-1.5"><Pulse className="h-3 w-20 mx-auto rounded" /></td>
                 </tr>
               ))}
             </tbody>

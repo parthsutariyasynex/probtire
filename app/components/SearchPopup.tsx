@@ -16,13 +16,22 @@ interface SearchPopupProps {
 function parseTyreSize(input: string): { width: string; height: string; rim: string } {
     const cleaned = input.replace(/\s+/g, "").toUpperCase();
 
-    // Format: 195/65R15 or 195/65 R 15
-    const slashMatch = cleaned.match(/^(\d{3})\/?(\d{2})?R?(\d{2,3})?$/i);
+    // Format with slash: 195/65R15 or 195/65 R 15 or 195/65
+    const slashMatch = cleaned.match(/^(\d{3})\/(\d{2})?R?(\d{2,3})?$/i);
     if (slashMatch) {
         return { width: slashMatch[1] || "", height: slashMatch[2] || "", rim: slashMatch[3] || "" };
     }
 
-    // Pure digits: 195 → width, 19565 → width+height, 1956515 → width+height+rim
+    // Pure digits or digits with R: 1956515, 19565R15, 19565, 195
+    const matchNoSlash = cleaned.match(/^(\d{3})(\d{2})?R?(\d{2,3})?$/i);
+    if (matchNoSlash && matchNoSlash[1]) {
+        return {
+            width: matchNoSlash[1] || "",
+            height: matchNoSlash[2] || "",
+            rim: matchNoSlash[3] || "",
+        };
+    }
+
     const digits = cleaned.replace(/\D/g, "");
     if (digits.length >= 7) {
         return { width: digits.slice(0, 3), height: digits.slice(3, 5), rim: digits.slice(5) };
@@ -46,6 +55,22 @@ const SearchPopup: React.FC<SearchPopupProps> = ({ isOpen, onClose }) => {
     const [isSearching, setIsSearching] = useState(false);
     const [noResults, setNoResults] = useState(false);
 
+    const handleClose = () => {
+        setQuery("");
+        setSuggestions([]);
+        setNoResults(false);
+        onClose();
+    };
+
+    // Clear search query whenever popup closes or opens
+    React.useEffect(() => {
+        if (!isOpen) {
+            setQuery("");
+            setSuggestions([]);
+            setNoResults(false);
+        }
+    }, [isOpen]);
+
     const handleSearch = (e?: React.FormEvent, term?: string) => {
         if (e) e.preventDefault();
         const searchVal = term || query;
@@ -58,11 +83,10 @@ const SearchPopup: React.FC<SearchPopupProps> = ({ isOpen, onClose }) => {
         if (parsed.width) params.set("width", parsed.width);
         if (parsed.height) params.set("height", parsed.height);
         if (parsed.rim) params.set("rim", parsed.rim);
+        if (!parsed.width) params.set("search", searchVal.trim());
 
         router.push(lp(`/products?${params.toString()}`));
-        onClose();
-        setQuery("");
-        setSuggestions([]);
+        handleClose();
     };
 
     const handleSuggestionClick = (suggestion: { label: string; sku: string }) => {
@@ -74,10 +98,7 @@ const SearchPopup: React.FC<SearchPopupProps> = ({ isOpen, onClose }) => {
         if (!parsed.width && suggestion.sku) params.set("search", suggestion.sku);
 
         router.push(lp(`/products?${params.toString()}`));
-        onClose();
-        setQuery("");
-        setSuggestions([]);
-        setNoResults(false);
+        handleClose();
     };
 
     // Fetch tyre size suggestions
@@ -110,16 +131,40 @@ const SearchPopup: React.FC<SearchPopupProps> = ({ isOpen, onClose }) => {
                         let size = item.tyre_size || item.size || item.color || "";
 
                         // If no tyre_size field, try to extract size from product name
-                        // Matches patterns like: 265/70 R195, 195/65R15, 195 R15, 205/55 R16
+                        // Matches patterns like: 265/70 R19.5, 195/65R15, 195 R15, 205/55 R16, 195/65
                         if (!size && item.name) {
-                            const match = item.name.match(/(\d{3}\/?\d{0,2}\s*R\s*\d{2,3})/i);
-                            if (match) size = match[1].trim();
+                            const match = item.name.match(/(\d{3}\/?\d{0,2}\s*R?\s*\d{0,3}(?:\.\d)?)/i);
+                            if (match && match[1] && match[1].length >= 3) {
+                                size = match[1].trim();
+                            } else {
+                                size = item.name;
+                            }
                         }
 
                         if (size && !seen.has(size)) {
                             seen.add(size);
                             results.push({ label: size, sku: item.sku || "" });
                         }
+                    });
+
+                    // Fallback to displaying full names if no size labels extracted
+                    if (results.length === 0 && items.length > 0) {
+                        items.forEach((item: any) => {
+                            const label = item.name || item.sku || "";
+                            if (label && !seen.has(label)) {
+                                seen.add(label);
+                                results.push({ label, sku: item.sku || "" });
+                            }
+                        });
+                    }
+
+                    const cleanQ = query.trim().toLowerCase();
+                    results.sort((a, b) => {
+                        const aStarts = a.label.toLowerCase().startsWith(cleanQ);
+                        const bStarts = b.label.toLowerCase().startsWith(cleanQ);
+                        if (aStarts && !bStarts) return -1;
+                        if (!aStarts && bStarts) return 1;
+                        return a.label.localeCompare(b.label);
                     });
 
                     setSuggestions(results);
@@ -149,7 +194,7 @@ const SearchPopup: React.FC<SearchPopupProps> = ({ isOpen, onClose }) => {
     return (
         <Popup
             isOpen={isOpen}
-            onClose={onClose}
+            onClose={handleClose}
             maxWidth="max-w-3xl"
             className="!rounded-2xl overflow-visible h-fit"
             scrollable={false}
@@ -158,7 +203,7 @@ const SearchPopup: React.FC<SearchPopupProps> = ({ isOpen, onClose }) => {
             <div className="relative p-6 md:p-10" dir={isRtl ? "rtl" : "ltr"}>
                 {/* Close Button */}
                 <button
-                    onClick={onClose}
+                    onClick={handleClose}
                     className={`absolute -top-3 ${isRtl ? "-left-3" : "-right-3"} w-8 h-8 bg-white border border-gray-200 rounded-full flex items-center justify-center shadow-lg hover:bg-red-600 hover:border-red-600 transition-all duration-300 z-[1001] cursor-pointer group hover:scale-110 active:scale-90`}
                 >
                     <X size={16} className="text-gray-900 group-hover:text-white transition-colors" />
@@ -177,7 +222,7 @@ const SearchPopup: React.FC<SearchPopupProps> = ({ isOpen, onClose }) => {
                         />
                         <button
                             type="submit"
-                            className="bg-brand-yellow hover:bg-brand-yellow-dark text-black w-14 md:w-20 flex items-center justify-center transition-all duration-300 cursor-pointer active:scale-95 flex-shrink-0"
+                            className="bg-brand-yellow hover:bg-brand-yellow-dark text-[#1c1c1c] w-14 md:w-20 flex items-center justify-center transition-all duration-300 cursor-pointer active:scale-95 flex-shrink-0"
                         >
                             <Search size={22} strokeWidth={3} />
                         </button>

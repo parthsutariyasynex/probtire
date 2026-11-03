@@ -26,14 +26,14 @@ export default function CataloguePage() {
                 {/* Catalogue Cover Document */}
                 <div className="w-full flex justify-center mt-4">
                     <a
-                        href="https://altalayi-live.btire.com/media/wysiwyg/TBR-Range-Catalogue-2022-2023.pdf"
+                        href={`${process.env.NEXT_PUBLIC_MAGENTO_BASE_URL || ""}/media/wysiwyg/TBR-Range-Catalogue-2022-2023.pdf`}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="group flex flex-col items-center border-[2px] border-gray-200 bg-white hover:border-gray-300 transition-colors duration-300 w-full sm:max-w-[280px] md:max-w-[300px]"
                     >
                         <div className="w-full p-1 bg-white flex justify-center">
                             <img
-                                src="https://altalayi-live.btire.com/media/wysiwyg/tbr-catalogue.png"
+                                src={`${process.env.NEXT_PUBLIC_MAGENTO_BASE_URL || ""}/media/wysiwyg/tbr-catalogue.png`}
                                 alt={t("catalogue.tbrCatalog")}
                                 className="w-full h-auto object-contain"
                             />

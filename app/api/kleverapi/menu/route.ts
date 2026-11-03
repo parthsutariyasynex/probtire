@@ -3,7 +3,7 @@ import { getLocaleFromRequest } from "@/lib/api/magento-url";
 import { getRequestToken } from "@/lib/api/auth-helper";
 import { KLEVER_MENU_ITEMS_QUERY } from "@/src/graphql/queries";
 
-const MAGENTO_GRAPHQL = (process.env.NEXT_PUBLIC_MAGENTO_BASE_URL || "https://altalayi-live.btire.com") + "/graphql";
+const MAGENTO_GRAPHQL = (process.env.NEXT_PUBLIC_MAGENTO_BASE_URL || "") + "/graphql";
 
 // Returns the Magento URL's pathname + search as-is, preserving `.html` and the CMS slug,
 // so the navbar links to SEO URLs the middleware resolves without changing the browser URL.

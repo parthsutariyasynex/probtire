@@ -3,7 +3,7 @@
 // import { getRequestToken } from "@/lib/api/auth-helper";
 // import { KLEVER_QUICK_ORDER_UPDATE_ITEM_QTY_MUTATION } from "@/src/graphql/mutations";
 
-// const MAGENTO_GRAPHQL = (process.env.NEXT_PUBLIC_MAGENTO_BASE_URL || "https://altalayi-live.btire.com") + "/graphql";
+// const MAGENTO_GRAPHQL = (process.env.NEXT_PUBLIC_MAGENTO_BASE_URL || "") + "/graphql";
 
 // // PUT — update a quick-order item's quantity (GraphQL: kleverQuickOrderUpdateQty).
 // // SKU from path, { qty } from body. Returns the full quick-order cart shape.

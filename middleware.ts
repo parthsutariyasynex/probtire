@@ -58,7 +58,7 @@ async function getDefaultLandingPath(request: NextRequest, locale: string): Prom
     if (cached && cached.expires > Date.now()) return cached.path;
 
     try {
-        const domain = process.env.NEXT_PUBLIC_MAGENTO_BASE_URL || "https://altalayi-live.btire.com";
+        const domain = process.env.NEXT_PUBLIC_MAGENTO_BASE_URL;
         const res = await fetch(`${domain}/graphql`, {
             method: "POST",
             headers: { "Content-Type": "application/json", Store: locale },
@@ -163,7 +163,7 @@ async function resolveMagentoUrl(slugPath: string): Promise<ResolvedUrl> {
     }
 
     // 2. GraphQL urlResolver — handles category URLs dynamically (no hardcoding).
-    const domain = process.env.NEXT_PUBLIC_MAGENTO_BASE_URL || "https://altalayi-live.btire.com";
+    const domain = process.env.NEXT_PUBLIC_MAGENTO_BASE_URL;
     // urlResolver expects `.html` for category URLs; CMS pages may resolve without.
     const queryUrl = slugPath.endsWith(".html") ? slugPath : `${slugPath}.html`;
     try {

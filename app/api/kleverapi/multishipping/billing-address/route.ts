@@ -3,7 +3,7 @@ import { getLocaleFromRequest } from "@/lib/api/magento-url";
 import { getRequestToken } from "@/lib/api/auth-helper";
 import { KLEVER_MULTISHIPPING_SET_BILLING_ADDRESS_MUTATION } from "@/src/graphql/mutations";
 
-const MAGENTO_GRAPHQL = (process.env.NEXT_PUBLIC_MAGENTO_BASE_URL || "https://altalayi-live.btire.com") + "/graphql";
+const MAGENTO_GRAPHQL = (process.env.NEXT_PUBLIC_MAGENTO_BASE_URL || "") + "/graphql";
 
 // POST — set the multi-shipping billing address (GraphQL:
 // kleverMultishippingSetBillingAddress). Client sends { addressId, paymentMethod? };

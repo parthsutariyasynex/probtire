@@ -3,7 +3,7 @@ import { getLocaleFromRequest } from "@/lib/api/magento-url";
 import { getRequestToken } from "@/lib/api/auth-helper";
 import { CHANGE_CUSTOMER_PASSWORD_MUTATION } from "@/src/graphql/mutations";
 
-const MAGENTO_GRAPHQL = (process.env.NEXT_PUBLIC_MAGENTO_BASE_URL || "https://altalayi-live.btire.com") + "/graphql";
+const MAGENTO_GRAPHQL = (process.env.NEXT_PUBLIC_MAGENTO_BASE_URL || "") + "/graphql";
 
 // POST — change password for the logged-in customer (GraphQL: changeCustomerPassword
 // → Customer { id email }). Requires auth. Caller checks status 200 (success) and

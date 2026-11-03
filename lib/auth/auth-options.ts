@@ -8,9 +8,7 @@ import { CUSTOMER_QUERY } from "@/src/graphql/queries";
  * Resolve the Magento GraphQL endpoint (locale is selected via the `Store` header).
  */
 function getMagentoGraphqlUrl(): string {
-    const domain =
-        process.env.NEXT_PUBLIC_MAGENTO_BASE_URL ||
-        "https://altalayi-live.btire.com";
+    const domain = process.env.NEXT_PUBLIC_MAGENTO_BASE_URL || "";
     return `${domain}/graphql`;
 }
 

@@ -3,7 +3,7 @@ import { getRequestToken } from "@/lib/api/auth-helper";
 import { getLocaleFromRequest } from "@/lib/api/magento-url";
 import { KLEVER_MY_ORDERS_QUERY, KLEVER_ORDER_FILTER_OPTIONS_QUERY } from "@/src/graphql/queries";
 
-const MAGENTO_GRAPHQL = (process.env.NEXT_PUBLIC_MAGENTO_BASE_URL || "https://altalayi-live.btire.com") + "/graphql";
+const MAGENTO_GRAPHQL = (process.env.NEXT_PUBLIC_MAGENTO_BASE_URL || "") + "/graphql";
 
 // kleverMyOrders only accepts pageSize + currentPage — no status/companyCode/orderNumber args.
 // Filtering is done in-memory after fetching all pages.

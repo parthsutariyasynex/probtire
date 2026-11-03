@@ -1,7 +1,7 @@
 import { CUSTOMER_CART_ID_QUERY } from "@/src/graphql/queries";
 import { CREATE_EMPTY_CART_MUTATION } from "@/src/graphql/mutations";
 
-const MAGENTO_GRAPHQL = (process.env.NEXT_PUBLIC_MAGENTO_BASE_URL || "https://altalayi-live.btire.com") + "/graphql";
+const MAGENTO_GRAPHQL = (process.env.NEXT_PUBLIC_MAGENTO_BASE_URL || "") + "/graphql";
 
 async function gql(query: string, token: string, locale: string): Promise<any> {
     const res = await fetch(MAGENTO_GRAPHQL, {

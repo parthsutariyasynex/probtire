@@ -144,6 +144,37 @@ export const CUSTOMER_ADDRESSES_QUERY = /* GraphQL */ `
   }
 `;
 
+// Fallback for CUSTOMER_WISHLIST_QUERY: the deprecated `items` field is resolved separately from
+// items_v2 and can return items that items_v2 filters out (seen as items_count > 0 with 0 items).
+export const CUSTOMER_WISHLIST_LEGACY_ITEMS_QUERY = /* GraphQL */ `
+  query CustomerWishlistLegacyItems {
+    customer {
+      wishlists {
+        id
+        items_count
+        items {
+          id
+          qty
+          product {
+            id
+            sku
+            name
+            url_key
+            stock_status
+            image { url }
+            price_range {
+              minimum_price {
+                final_price { value currency }
+                regular_price { value }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+`;
+
 // Step 1 of favourite products fetch — native Magento wishlist gives us the wishlist item IDs
 // (needed for add/delete), SKUs, and fallback price/stock/image. pattern/origin come back as
 // option IDs on native ProductInterface so we don't request them here (enriched in step 2).

@@ -51,12 +51,20 @@ export default function OrderAttachmentsPage() {
     const [searchOrderId, setSearchOrderId] = useState("");
     const [documentType, setDocumentType] = useState("All");
     const [invoiceDue, setInvoiceDue] = useState("All");
+    const [company, setCompany] = useState("All");
+    const [companyCode, setCompanyCode] = useState("");
+    const [companyCodeApplied, setCompanyCodeApplied] = useState("");
     const [currentPage, setCurrentPage] = useState(1);
     const [pageSize, setPageSize] = useState(10);
+    const showCompanyFilters = true;
     const [openingFileId, setOpeningFileId] = useState<string | null>(null);
     const [localPaidIds, setLocalPaidIds] = useState<string[]>([]);
     const [markingPaidId, setMarkingPaidId] = useState<string | null>(null);
     const [isSubAccountSession, setIsSubAccountSession] = useState(false);
+    const [isSalesPerson, setIsSalesPerson] = useState(false);
+
+    // Construct API URL with query params
+    const token = (session as any)?.accessToken;
 
     useEffect(() => {
         if (typeof window !== "undefined") {
@@ -71,12 +79,32 @@ export default function OrderAttachmentsPage() {
         }
     }, [authStatus, router]);
 
-    // Construct API URL with query params
-    const token = (session as any)?.accessToken;
+    // Detect Sales Person role via sessionStorage cache (set by Navbar's account-sidebar fetch).
+    // Exact string "Sales Person" avoids the utypid===3 ambiguity with Master Company.
+    useEffect(() => {
+        if (!token) { setIsSalesPerson(false); return; }
+        if (typeof sessionStorage === "undefined") return;
+        const ROLE_CACHE = "altalayi_user_type_v1";
+        const TOKEN_CACHE = "altalayi_role_token_v1";
+        if (sessionStorage.getItem(TOKEN_CACHE) === token) {
+            setIsSalesPerson(sessionStorage.getItem(ROLE_CACHE) === "Sales Person");
+            return;
+        }
+        fetch("/api/kleverapi/account-sidebar", {
+            headers: { Authorization: `Bearer ${token}` },
+        }).then(r => r.json()).then(data => {
+            const type = data?.user_type || "Customer";
+            sessionStorage.setItem(ROLE_CACHE, type);
+            sessionStorage.setItem(TOKEN_CACHE, token);
+            setIsSalesPerson(type === "Sales Person");
+        }).catch(() => { });
+    }, [token]);
     const queryParams = new URLSearchParams();
     if (searchOrderId) queryParams.append("order_id", searchOrderId);
     if (documentType !== "All") queryParams.append("document_type", documentType);
     if (invoiceDue !== "All") queryParams.append("invoice_due", invoiceDue);
+    if (company !== "All") queryParams.append("company", company);
+    if (companyCodeApplied) queryParams.append("company_code", companyCodeApplied);
     queryParams.append("pageSize", pageSize.toString());
     queryParams.append("currentPage", currentPage.toString());
 
@@ -98,6 +126,7 @@ export default function OrderAttachmentsPage() {
 
     const docTypeOptions = filterOptionsData?.document_type_options || filterOptionsData?.document_types || [];
     const invoiceDueOptions = filterOptionsData?.invoice_due_options || filterOptionsData?.invoice_due || [];
+    const companyOptions = filterOptionsData?.company_options || [];
 
     // Helper to ensure "All" is present and at the start, translate labels
     const getOptionsWithAll = (options: any[]) => {
@@ -117,10 +146,12 @@ export default function OrderAttachmentsPage() {
 
     const finalDocTypes = getOptionsWithAll(docTypeOptions);
     const finalInvoiceDues = getOptionsWithAll(invoiceDueOptions);
+    const finalCompanies = getOptionsWithAll(companyOptions);
 
     const handleSearch = (e?: React.FormEvent) => {
         if (e) e.preventDefault();
         setSearchOrderId(searchText);
+        setCompanyCodeApplied(companyCode);
         setCurrentPage(1);
     };
 
@@ -129,6 +160,9 @@ export default function OrderAttachmentsPage() {
         setSearchOrderId("");
         setDocumentType("All");
         setInvoiceDue("All");
+        setCompany("All");
+        setCompanyCode("");
+        setCompanyCodeApplied("");
         setCurrentPage(1);
     };
 
@@ -142,7 +176,7 @@ export default function OrderAttachmentsPage() {
             toast.error("Order ID not found for this attachment.");
             return;
         }
-        
+
         setMarkingPaidId(attachmentId);
         const loadingToast = toast.loading(t("login.pleaseWait") || "Please wait...");
 
@@ -192,7 +226,7 @@ export default function OrderAttachmentsPage() {
         let href = raw;
         if (!/^https?:\/\//i.test(raw)) {
             // Relative path (e.g. "/i/m/file.png", "/api/file.pdf") → public order-upload media URL.
-            const origin = (process.env.NEXT_PUBLIC_MAGENTO_BASE_URL || "https://altalayi-live.btire.com").replace(/\/$/, "");
+            const origin = (process.env.NEXT_PUBLIC_MAGENTO_BASE_URL || "").replace(/\/$/, "");
             const path = raw.startsWith("/") ? raw : `/${raw}`;
             href = `${origin}/media/orderupload${path}`;
         }
@@ -243,7 +277,7 @@ export default function OrderAttachmentsPage() {
             <div className="flex flex-col lg:flex-row flex-1 w-full">
                 <Sidebar />
 
-                <main className="flex-1 w-full px-4 md:px-6 lg:px-8 py-4 md:py-6 lg:py-5 bg-surface min-w-0" dir={isRtl ? "rtl" : "ltr"}>
+                <main className="flex-1 w-full px-4 md:px-6 lg:px-8 py-4 md:py-6 lg:py-5 bg-white min-w-0" dir={isRtl ? "rtl" : "ltr"}>
                     <h1 className="text-h3 md:text-[26px] font-bold text-black mb-5 uppercase tracking-wide">
                         {t("orderAttachments.title")}
                     </h1>
@@ -258,6 +292,15 @@ export default function OrderAttachmentsPage() {
                                 placeholder={t("orderAttachments.searchPlaceholder") || "Search Order..."}
                                 className="h-9 flex-1 border border-gray-200 bg-white px-3 text-body text-black placeholder-gray-400 focus:outline-none focus:border-brand-yellow font-medium"
                             />
+                            {showCompanyFilters && (
+                                <input
+                                    type="text"
+                                    value={companyCode}
+                                    onChange={(e) => setCompanyCode(e.target.value)}
+                                    placeholder={t("orders.companyCode") || "Company Code"}
+                                    className="h-9 w-full sm:w-48 border border-gray-200 bg-white px-3 text-body text-black placeholder-gray-400 focus:outline-none focus:border-brand-yellow font-medium"
+                                />
+                            )}
                             <button
                                 type="submit"
                                 className="h-9 px-6 bg-brand-yellow hover:bg-brand-yellow-dark text-black text-body-sm font-bold uppercase tracking-widest transition-colors whitespace-nowrap"
@@ -267,8 +310,25 @@ export default function OrderAttachmentsPage() {
                         </div>
 
                         {/* Filters Row */}
-                        <div className="flex flex-col sm:flex-row gap-2 items-center">
+                        <div className="flex flex-col sm:flex-row gap-2 items-end">
+                            {showCompanyFilters && (
+                                <div className="w-full sm:w-48">
+                                    <label className="block text-xs font-bold text-black mb-1.5 uppercase tracking-wide">
+                                        {t("orders.company") || "Company"}
+                                    </label>
+                                    <PortalDropdown
+                                        value={company}
+                                        onChange={(val) => { setCompany(val); setCurrentPage(1); }}
+                                        options={finalCompanies}
+                                        buttonClassName="flex items-center justify-between gap-2 cursor-pointer transition-all w-full h-9 bg-white text-black border border-gray-200 px-3 text-body ltr:text-left rtl:text-right focus:outline-none focus:border-brand-yellow"
+                                    />
+                                </div>
+                            )}
+
                             <div className="w-full sm:w-48">
+                                <label className="block text-xs font-bold text-black mb-1.5 uppercase tracking-wide">
+                                    {t("m.document-type")}
+                                </label>
                                 <PortalDropdown
                                     value={documentType}
                                     onChange={(val) => { setDocumentType(val); setCurrentPage(1); }}
@@ -278,6 +338,9 @@ export default function OrderAttachmentsPage() {
                             </div>
 
                             <div className="w-full sm:w-48">
+                                <label className="block text-xs font-bold text-black mb-1.5 uppercase tracking-wide">
+                                    {t("m.invoice-due")}
+                                </label>
                                 <PortalDropdown
                                     value={invoiceDue}
                                     onChange={(val) => { setInvoiceDue(val); setCurrentPage(1); }}
@@ -358,11 +421,11 @@ export default function OrderAttachmentsPage() {
                                                             const isLocallyPaid = localPaidIds.includes(String(attId));
                                                             const displayStatus = isLocallyPaid ? "Paid" : paymentStatus;
                                                             if (!displayStatus || displayStatus === "-") return "-";
-                                                            
-                                                            
+
+
                                                             const statusLower = displayStatus.toLowerCase();
-                                                            const isPaid = statusLower === "paid" || (statusLower === "unpaid" && !isSubAccountSession);
-                                                            const isMarkAsPaid = (statusLower === "unpaid" || statusLower.includes("mark")) && isSubAccountSession;
+                                                            const isPaid = statusLower === "paid" || (statusLower === "unpaid" && !isSubAccountSession && !isSalesPerson);
+                                                            const isMarkAsPaid = (statusLower === "unpaid" || statusLower.includes("mark")) && (isSubAccountSession || isSalesPerson);
 
                                                             if (isPaid) {
                                                                 return (
@@ -428,7 +491,7 @@ export default function OrderAttachmentsPage() {
                                                     if (!displayStatus || displayStatus === "-") {
                                                         return <span className="text-caption font-medium text-gray-500">-</span>;
                                                     }
-                                                    
+
                                                     const statusLower = displayStatus.toLowerCase();
                                                     const isPaid = statusLower === "paid" || (statusLower === "unpaid" && !isSubAccountSession);
                                                     const isMarkAsPaid = (statusLower === "unpaid" || statusLower.includes("mark")) && isSubAccountSession;

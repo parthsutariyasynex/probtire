@@ -4,7 +4,7 @@ import { authOptions } from "@/lib/auth/auth-options";
 import { getLocaleFromRequest } from "@/lib/api/magento-url";
 import { KLEVER_CATEGORY_PRODUCTS_QUERY } from "@/src/graphql/queries";
 
-const MAGENTO_GRAPHQL = (process.env.NEXT_PUBLIC_MAGENTO_BASE_URL || "https://altalayi-live.btire.com") + "/graphql";
+const MAGENTO_GRAPHQL = (process.env.NEXT_PUBLIC_MAGENTO_BASE_URL || "") + "/graphql";
 
 // Optional string filters forwarded verbatim to kleverCategoryProducts.
 const STRING_PARAMS = [

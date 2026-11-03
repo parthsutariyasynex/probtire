@@ -4,7 +4,7 @@ import { getRequestToken } from "@/lib/api/auth-helper";
 import { KLEVER_BUSINESS_OVERVIEW_QUERY } from "@/src/graphql/queries";
 import { KLEVER_UPDATE_BUSINESS_OVERVIEW_MUTATION } from "@/src/graphql/mutations";
 
-const MAGENTO_GRAPHQL = (process.env.NEXT_PUBLIC_MAGENTO_BASE_URL || "https://altalayi-live.btire.com") + "/graphql";
+const MAGENTO_GRAPHQL = (process.env.NEXT_PUBLIC_MAGENTO_BASE_URL || "") + "/graphql";
 
 // GET — Fetch business overview (GraphQL: kleverBusinessOverview)
 export async function GET(request: NextRequest) {

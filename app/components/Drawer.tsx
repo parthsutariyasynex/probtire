@@ -29,15 +29,15 @@ export default function Drawer({ isOpen, onClose, children, title, scrollable = 
             {/* Close Button Overlay */}
             <button
                 onClick={onClose}
-                className="absolute ltr:right-4 rtl:left-4 top-4 z-[110] p-2 bg-white/80 backdrop-blur-sm rounded-full shadow-sm hover:bg-gray-100 transition-colors text-gray-500 hover:text-black"
+                className="absolute ltr:right-3.5 rtl:left-3.5 top-[10px] z-[110] w-9 h-9 bg-white text-black rounded-full shadow-md hover:bg-black hover:text-white transition-all flex items-center justify-center cursor-pointer active:scale-90"
                 aria-label="Close drawer"
             >
-                <X size={22} strokeWidth={2.5} />
+                <X size={18} strokeWidth={2.5} />
             </button>
 
             {/* Header if title exists */}
             {title && (
-                <div className="bg-brand-yellow px-4 py-4 flex items-center justify-between flex-shrink-0">
+                <div className="bg-brand-yellow h-[56px] px-4 flex items-center justify-between flex-shrink-0">
                     <h2 className="text-xl font-bold text-black">{title}</h2>
                 </div>
             )}

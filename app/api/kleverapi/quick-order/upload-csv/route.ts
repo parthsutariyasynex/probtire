@@ -3,7 +3,7 @@
 // import { getRequestToken } from "@/lib/api/auth-helper";
 // import { KLEVER_QUICK_ORDER_UPLOAD_CSV_MUTATION } from "@/src/graphql/mutations";
 
-// const MAGENTO_GRAPHQL = (process.env.NEXT_PUBLIC_MAGENTO_BASE_URL || "https://altalayi-live.btire.com") + "/graphql";
+// const MAGENTO_GRAPHQL = (process.env.NEXT_PUBLIC_MAGENTO_BASE_URL || "") + "/graphql";
 
 // // POST — upload a quick-order CSV (GraphQL: kleverQuickOrderUploadCsv). The client
 // // already base64-encodes the file and sends { fileContent, fileName }. Returns

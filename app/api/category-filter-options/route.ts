@@ -49,7 +49,7 @@ export async function GET(request: NextRequest) {
             });
         }
 
-        const domain = process.env.NEXT_PUBLIC_MAGENTO_BASE_URL || "https://altalayi-live.btire.com";
+        const domain = process.env.NEXT_PUBLIC_MAGENTO_BASE_URL;
         console.log("[category-filter-options] GraphQL categoryId:", categoryId, "locale:", locale);
 
         const res = await fetch(`${domain}/graphql`, {

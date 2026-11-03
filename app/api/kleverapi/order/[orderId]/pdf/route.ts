@@ -3,7 +3,7 @@ import { getLocaleFromRequest } from "@/lib/api/magento-url";
 import { getRequestToken } from "@/lib/api/auth-helper";
 import { KLEVER_ORDER_PDF_QUERY } from "@/src/graphql/queries";
 
-const MAGENTO_GRAPHQL = (process.env.NEXT_PUBLIC_MAGENTO_BASE_URL || "https://altalayi-live.btire.com") + "/graphql";
+const MAGENTO_GRAPHQL = (process.env.NEXT_PUBLIC_MAGENTO_BASE_URL || "") + "/graphql";
 
 // GET — order PDF (GraphQL: kleverOrderPdf(orderId: Int!)). Replaces REST /order/{orderId}/pdf.
 // Returns { success, filename, base64, mime_type } as JSON — the page reads data.base64 +

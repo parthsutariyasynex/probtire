@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { CUSTOMER_WISHLIST_QUERY } from '@/src/graphql/queries';
 import { REMOVE_PRODUCTS_FROM_WISHLIST_MUTATION } from '@/src/graphql/mutations';
 
-const MAGENTO_GRAPHQL = (process.env.NEXT_PUBLIC_MAGENTO_BASE_URL || "https://altalayi-live.btire.com") + "/graphql";
+const MAGENTO_GRAPHQL = (process.env.NEXT_PUBLIC_MAGENTO_BASE_URL || "") + "/graphql";
 
 // DELETE — remove a favourite via native removeProductsFromWishlist. The path `id` is the
 // wishlist ITEM id (the list route surfaces it as `favorite_id`). Needs the wishlist id, so we

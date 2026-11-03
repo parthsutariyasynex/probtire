@@ -55,6 +55,11 @@ export default function DashboardPage() {
     const [selectedTyreSize, setSelectedTyreSize] = useState("");
     const [availableYears, setAvailableYears] = useState<number[]>([2026, 2025, 2024]);
     const [activeTab, setActiveTab] = useState<'quarterly' | 'monthly'>('quarterly');
+    // Quarter / month selected in the Total Order Qty & Value card dropdowns ("" = none)
+    const [qtyQuarter, setQtyQuarter] = useState("");
+    const [qtyMonth, setQtyMonth] = useState("");
+    const [valueQuarter, setValueQuarter] = useState("");
+    const [valueMonth, setValueMonth] = useState("");
 
     const monthNames = isRtl ? MONTH_KEYS_AR : MONTH_KEYS_EN;
     const quarterNames = isRtl ? QUARTER_KEYS_AR : QUARTER_KEYS_EN;
@@ -87,7 +92,7 @@ export default function DashboardPage() {
                 sessionStorage.setItem(TOKEN_CACHE, accessToken);
             }
             setIsMultiCompany(type === "Multiple Company User");
-        }).catch(() => {});
+        }).catch(() => { });
     }, [(session as any)?.accessToken]);
 
     useEffect(() => {
@@ -177,6 +182,19 @@ export default function DashboardPage() {
 
     const qty = dashboardData?.total_order_qty || { year: '0', quarter: '0', months: '0' };
     const value = dashboardData?.total_order_value || { year: '0.00', quarter: '0.00', months: '0.00' };
+
+    // Pick the summary row for the selected year / quarter / month (falls back to the first row when nothing is selected)
+    const findSummary = (list: any[] | undefined, period?: string | number) => {
+        if (!list?.length) return undefined;
+        if (period === undefined || period === "") return list[0];
+        return list.find((r: any) => Number(r.period) === Number(period) && (r.year == null || Number(r.year) === searchYear))
+            ?? list.find((r: any) => Number(r.period) === Number(period));
+    };
+    const yearRow = dashboardData?.yearly_summary?.find((r: any) => Number(r.year) === searchYear) ?? dashboardData?.yearly_summary?.[0];
+
+    const yearDropdownOptions = availableYears.map(y => ({ label: `${t("dashboard.year")} - ${y}`, value: String(y) }));
+    const quarterDropdownOptions = quarterNames.map((name, i) => ({ label: name, value: String(i + 1) }));
+    const monthDropdownOptions = monthNames.map((name, i) => ({ label: name, value: String(i + 1) }));
 
     // Translate API data values using data.* keys
     const translateData = (val: string) => {
@@ -282,20 +300,26 @@ export default function DashboardPage() {
                                 <h2 className="text-body-lg md:text-h3-sm font-bold text-black uppercase mb-1.5 md:mb-3">{t("m.total-order-qty")}</h2>
                                 <hr className="border-[#ddd] mb-3 md:mb-6" />
                                 <div className="w-full xl:w-3/4 grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-6">
-                                    <QtyCard
-                                        label={`${t("dashboard.year")} - ${searchYear}`}
-                                        value={dashboardData?.yearly_summary?.[0]?.qty || "0"}
-                                        isRtl={isRtl}
+                                    <SummaryDropdownCard
+                                        value={String(searchYear)}
+                                        onChange={(val) => setSearchYear(Number(val))}
+                                        options={yearDropdownOptions}
+                                        placeholder={`${t("dashboard.year")} - ${searchYear}`}
+                                        amount={yearRow?.qty || "0"}
                                     />
-                                    <QtyCard
-                                        label={t("m.quarter")}
-                                        value={dashboardData?.quarterly_summary?.[0]?.qty || "0"}
-                                        isRtl={isRtl}
+                                    <SummaryDropdownCard
+                                        value={qtyQuarter}
+                                        onChange={setQtyQuarter}
+                                        options={quarterDropdownOptions}
+                                        placeholder={t("m.quarter")}
+                                        amount={findSummary(dashboardData?.quarterly_summary, qtyQuarter)?.qty || "0"}
                                     />
-                                    <QtyCard
-                                        label={t("m.months")}
-                                        value={dashboardData?.monthly_summary?.[0]?.qty || "0"}
-                                        isRtl={isRtl}
+                                    <SummaryDropdownCard
+                                        value={qtyMonth}
+                                        onChange={setQtyMonth}
+                                        options={monthDropdownOptions}
+                                        placeholder={t("m.months")}
+                                        amount={findSummary(dashboardData?.monthly_summary, qtyMonth)?.qty || "0"}
                                     />
                                 </div>
                             </section>
@@ -305,20 +329,26 @@ export default function DashboardPage() {
                                 <h2 className="text-body-lg md:text-h3-sm font-bold text-black uppercase mb-1.5 md:mb-3">{t("m.total-order-value")}</h2>
                                 <hr className="border-[#ddd] mb-3 md:mb-6" />
                                 <div className="w-full xl:w-3/4 grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-6">
-                                    <ValueCard
-                                        label={`${t("dashboard.year")} - ${searchYear}`}
-                                        value={formatValue(dashboardData?.yearly_summary?.[0]?.amount)}
-                                        isRtl={isRtl}
+                                    <SummaryDropdownCard
+                                        value={String(searchYear)}
+                                        onChange={(val) => setSearchYear(Number(val))}
+                                        options={yearDropdownOptions}
+                                        placeholder={`${t("dashboard.year")} - ${searchYear}`}
+                                        amount={formatValue(yearRow?.amount)}
                                     />
-                                    <ValueCard
-                                        label={t("m.quarter")}
-                                        value={formatValue(dashboardData?.quarterly_summary?.[0]?.amount)}
-                                        isRtl={isRtl}
+                                    <SummaryDropdownCard
+                                        value={valueQuarter}
+                                        onChange={setValueQuarter}
+                                        options={quarterDropdownOptions}
+                                        placeholder={t("m.quarter")}
+                                        amount={formatValue(findSummary(dashboardData?.quarterly_summary, valueQuarter)?.amount)}
                                     />
-                                    <ValueCard
-                                        label={t("m.months")}
-                                        value={formatValue(dashboardData?.monthly_summary?.[0]?.amount)}
-                                        isRtl={isRtl}
+                                    <SummaryDropdownCard
+                                        value={valueMonth}
+                                        onChange={setValueMonth}
+                                        options={monthDropdownOptions}
+                                        placeholder={t("m.months")}
+                                        amount={formatValue(findSummary(dashboardData?.monthly_summary, valueMonth)?.amount)}
                                     />
                                 </div>
                             </section>
@@ -383,7 +413,7 @@ export default function DashboardPage() {
                     )}
 
                     {/* COMPARISON DETAILS SECTION (Chart & Table) */}
-                    {isCompare && (
+                    {!isMultiCompany && isCompare && (
                         <section className="bg-white overflow-hidden animate-in fade-in slide-in-from-bottom duration-500 mb-0">
                             <div className="py-3 border-b border-[#ddd] bg-gray-50/50">
                                 <h2 className="text-lg md:text-xl font-bold text-black uppercase tracking-tight ltr:text-left rtl:text-right">
@@ -513,29 +543,25 @@ export default function DashboardPage() {
 /**
  * Reusable Card Components
  */
-function QtyCard({ label, value, isRtl }: { label: string; value: string; isRtl: boolean }) {
+function SummaryDropdownCard({ value, onChange, options, placeholder, amount }: {
+    value: string;
+    onChange: (value: string) => void;
+    options: { label: string; value: string }[];
+    placeholder: string;
+    amount: string;
+}) {
     return (
-        <div className="bg-white border border-[#ddd] rounded-sm overflow-hidden group">
-            <div className="bg-brand-yellow h-10 px-4 flex justify-between items-center text-black border-b border-brand-yellow group-hover:bg-brand-yellow transition-colors">
-                <span className="text-xs font-bold uppercase tracking-widest text-black">{label}</span>
-                <div className="w-1.5 h-1.5 rounded-full bg-black"></div>
-            </div>
-            <div className="py-5 px-4 text-center">
-                <p className="text-4xl font-bold text-black tracking-tighter">{value}</p>
-            </div>
-        </div>
-    );
-}
-
-function ValueCard({ label, value, isRtl }: { label: string; value: string; isRtl: boolean }) {
-    return (
-        <div className="bg-white border border-[#ddd] rounded-sm overflow-hidden group">
-            <div className="bg-brand-yellow h-10 px-4 flex justify-between items-center text-black border-b border-brand-yellow group-hover:bg-brand-yellow transition-colors">
-                <span className="text-xs font-bold uppercase tracking-widest text-black">{label}</span>
-                <div className="w-1.5 h-1.5 rounded-full bg-black"></div>
-            </div>
-            <div className="py-5 px-4 text-center">
-                <p className="text-2xl font-bold text-black tracking-tight">{value}</p>
+        <div className="bg-white border border-brand-yellow rounded-sm">
+            <PortalDropdown
+                value={value}
+                onChange={onChange}
+                options={options}
+                placeholder={placeholder}
+                className="w-full"
+                buttonClassName="w-full h-10 px-4 justify-between bg-brand-yellow text-black text-body font-medium outline-none [&>span]:flex-1 [&>span]:text-center [&>svg]:!text-black"
+            />
+            <div className="py-3 px-4 text-center">
+                <p className="text-body-lg text-black">{amount}</p>
             </div>
         </div>
     );

@@ -3,7 +3,7 @@ import { getLocaleFromRequest } from "@/lib/api/magento-url";
 import { getRequestToken } from "@/lib/api/auth-helper";
 import { KLEVER_PLACE_ORDER_MUTATION, SET_PAYMENT_METHOD_ON_CART_MUTATION } from "@/src/graphql/mutations";
 
-const MAGENTO_GRAPHQL = (process.env.NEXT_PUBLIC_MAGENTO_BASE_URL || "https://altalayi-live.btire.com") + "/graphql";
+const MAGENTO_GRAPHQL = (process.env.NEXT_PUBLIC_MAGENTO_BASE_URL || "") + "/graphql";
 
 async function gql(query: string, variables: Record<string, unknown>, token: string, store: string) {
     const res = await fetch(MAGENTO_GRAPHQL, {

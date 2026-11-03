@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
     }
 
     try {
-        const domain = process.env.NEXT_PUBLIC_MAGENTO_BASE_URL || "https://altalayi-live.btire.com";
+        const domain = process.env.NEXT_PUBLIC_MAGENTO_BASE_URL;
 
         const res = await fetch(`${domain}/graphql`, {
             method: "POST",

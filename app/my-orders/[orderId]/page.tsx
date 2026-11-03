@@ -300,7 +300,7 @@ export default function OrderDetailsPage() {
             const file = e.target.files[0];
             const ext = file.name.split('.').pop()?.toLowerCase();
             const allowedExts = ["jpg", "jpeg", "png", "zip", "rar", "docx", "doc", "pdf", "xls", "xlsx", "csv", "msg", "eml"];
-            
+
             if (ext && !allowedExts.includes(ext)) {
                 toast.error(t("orderDetails.invalidFileType") || "Invalid file type");
                 return;
@@ -365,7 +365,7 @@ export default function OrderDetailsPage() {
             setIsConfirmed(true);
             setSelectedFile(null);
             setConfirmComment("");
-            
+
             // Refresh order info and attachments list
             fetchOrderDetails();
             fetchAttachments();
@@ -483,7 +483,7 @@ export default function OrderDetailsPage() {
             <div className="min-h-screen flex flex-col w-full bg-surface font-rubik">
                 <div className="flex flex-col lg:flex-row flex-1 w-full">
                     <Sidebar />
-                    <main className="flex-1 w-full px-4 md:px-6 lg:px-8 py-4 md:py-6 lg:py-5 bg-surface">
+                    <main className="flex-1 w-full px-4 md:px-6 lg:px-8 py-4 md:py-6 lg:py-5 bg-white">
                         <div className="bg-red-50 border border-red-100 text-red-600 p-4 md:p-8 rounded-lg text-center shadow-sm">
                             <p className="font-bold text-body-lg uppercase tracking-widest mb-2">{t("orderDetails.errorLoading")}</p>
 
@@ -518,7 +518,7 @@ export default function OrderDetailsPage() {
                 <Sidebar />
 
                 {/* Right Content */}
-                <main className="flex-1 w-full px-4 md:px-6 lg:px-8 py-4 md:py-6 lg:py-5 bg-surface min-w-0 text-xs">
+                <main className="flex-1 w-full px-4 md:px-6 lg:px-8 py-4 md:py-6 lg:py-5 bg-white min-w-0 text-xs">
                     {/* Header Section */}
                     <div className="flex flex-col mb-10">
                         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 md:mb-10 border-b-2 border-brand-yellow pb-2 gap-2 sm:gap-0">
@@ -598,9 +598,9 @@ export default function OrderDetailsPage() {
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
                                             </svg>
                                             <span>{t("orderDetails.selectFiles")}</span>
-                                            <input 
-                                                type="file" 
-                                                className="hidden" 
+                                            <input
+                                                type="file"
+                                                className="hidden"
                                                 onChange={handleFileChange}
                                                 accept=".jpg,.jpeg,.png,.zip,.rar,.docx,.doc,.pdf,.xls,.xlsx,.csv,.msg,.eml"
                                             />
@@ -613,9 +613,9 @@ export default function OrderDetailsPage() {
                                                     </svg>
                                                     <span className="truncate font-medium text-black">{selectedFile.name}</span>
                                                     <span className="text-gray-500 font-normal">({(selectedFile.size / 1024 / 1024).toFixed(2)} MB)</span>
-                                                    <button 
-                                                        type="button" 
-                                                        onClick={() => setSelectedFile(null)} 
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setSelectedFile(null)}
                                                         className="ml-auto text-gray-400 hover:text-red-500 p-1"
                                                     >
                                                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1012,7 +1012,7 @@ export default function OrderDetailsPage() {
                         <p>{t("data.Saudi Arabia")}</p>
                         <p>{t("orderDetails.trn")}: </p>
                         <p>{t("orderDetails.phone")}: {shippingAddress?.telephone || "-"}</p>
-                        <p>{t("orderDetails.website")}: https://altalayi-live.btire.com/</p>
+                        <p>{t("orderDetails.website")}: {process.env.NEXT_PUBLIC_MAGENTO_BASE_URL || ""}/</p>
 
                     </div>
                     <div className="order-title-box">

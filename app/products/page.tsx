@@ -314,27 +314,35 @@ export default function ProductsPage() {
     if (loadingRef.current.has(productSku)) return;
     const stored = localStorage.getItem("favourites");
     const currentFavIds: number[] = stored ? JSON.parse(stored) : [];
-    if (!currentFavIds.includes(productId)) {
-      currentFavIds.push(productId);
-      localStorage.setItem("favourites", JSON.stringify(currentFavIds));
-      setFavIds(currentFavIds);
-      const token = authToken;
-      if (token) {
-        loadingRef.current.add(productSku);
-        setLoadingSkus(new Set(loadingRef.current));
-        showLoading(t("favorites.addingToFavorites") || "ADDING TO FAVORITES...");
-        try {
-          await api.post("/kleverapi/favorite-products", { product_id: productId, sku: productSku });
-          toast.success(t("favorites.cartAdded"));
-        } catch (err) {
-          console.error("API favorite add error:", err);
-          toast.error(t("favorites.syncFailed"));
-        } finally {
-          loadingRef.current.delete(productSku);
-          setLoadingSkus(new Set(loadingRef.current));
-          hideLoading();
-        }
+    const markLocal = () => {
+      if (!currentFavIds.includes(productId)) {
+        currentFavIds.push(productId);
+        localStorage.setItem("favourites", JSON.stringify(currentFavIds));
       }
+      setFavIds([...currentFavIds]);
+    };
+    const token = authToken;
+    if (token) {
+      // Always sync with the server: the localStorage list can be stale (failed add, other
+      // account on this browser), and skipping the API left the favourites page empty.
+      loadingRef.current.add(productSku);
+      setLoadingSkus(new Set(loadingRef.current));
+      showLoading(t("favorites.addingToFavorites") || "ADDING TO FAVORITES...");
+      try {
+        await api.post("/kleverapi/favorite-products", { product_id: productId, sku: productSku });
+        markLocal();
+        toast.success(t("favorites.cartAdded"));
+      } catch (err) {
+        console.error("API favorite add error:", err);
+        toast.error(t("favorites.syncFailed"));
+        return;
+      } finally {
+        loadingRef.current.delete(productSku);
+        setLoadingSkus(new Set(loadingRef.current));
+        hideLoading();
+      }
+    } else {
+      markLocal();
     }
     router.push(lp("/wishlist"));
   };
@@ -591,6 +599,8 @@ export default function ProductsPage() {
   const handleHorizontalSearch = useCallback((width: string, height: string, rim: string) => {
     setSelectedFilters(prev => {
       const nf = { ...prev };
+      delete nf["color"];
+      delete nf["tyre_size"];
       if (width) nf["width"] = [width]; else delete nf["width"];
       if (height) nf["height"] = [height]; else delete nf["height"];
       if (rim) nf["rim"] = [rim]; else delete nf["rim"];
@@ -598,6 +608,8 @@ export default function ProductsPage() {
     });
     setSelectedFilterLabels(prev => {
       const nl = { ...prev };
+      delete nl["color"];
+      delete nl["tyre_size"];
       if (width) nl["width"] = [{ value: width, label: width }]; else delete nl["width"];
       if (height) nl["height"] = [{ value: height, label: height }]; else delete nl["height"];
       if (rim) nl["rim"] = [{ value: rim, label: rim }]; else delete nl["rim"];
@@ -760,10 +772,10 @@ export default function ProductsPage() {
         {/* Mobile Filter Drawer */}
         <Drawer isOpen={isMobileFilterOpen} onClose={() => setIsMobileFilterOpen(false)}>
           <div className="flex flex-col h-full" dir={isRtl ? "rtl" : "ltr"}>
-            <div className="bg-brand-yellow px-5 py-4 flex items-center justify-between flex-shrink-0">
+            <div className="bg-brand-yellow h-[56px] px-5 flex items-center justify-between flex-shrink-0">
               <h2 className="text-body-lg font-black text-black uppercase tracking-tight">{t("m.filter-options")}</h2>
               {Object.keys(selectedFilters).length > 0 && (
-                <button onClick={() => { clearAllFilters(); setIsMobileFilterOpen(false); }} className="text-label font-bold text-black/70 uppercase underline">{t("m.clear-all")}</button>
+                <button onClick={() => { clearAllFilters(); setIsMobileFilterOpen(false); }} className="text-label font-bold text-black/70 uppercase underline mr-10 rtl:mr-0 rtl:ml-10">{t("m.clear-all")}</button>
               )}
             </div>
             <div className="flex-1 overflow-y-auto">
@@ -783,7 +795,7 @@ export default function ProductsPage() {
         {/* Mobile Search Drawer */}
         <Drawer isOpen={isMobileSearchOpen} onClose={() => setIsMobileSearchOpen(false)}>
           <div className="flex flex-col h-full" dir={isRtl ? "rtl" : "ltr"}>
-            <div className="bg-brand-yellow px-5 py-4 flex-shrink-0">
+            <div className="bg-brand-yellow h-[56px] px-5 flex items-center flex-shrink-0">
               <h2 className="text-body-lg font-black text-black uppercase tracking-tight">{t("m.search-by-size")}</h2>
             </div>
             <div className="flex-1 overflow-y-auto p-5">
@@ -792,290 +804,290 @@ export default function ProductsPage() {
           </div>
         </Drawer>
 
-        <div className="flex-1 flex flex-col w-full relative xl:pb-[90px]">
+          <div className="flex-1 flex flex-col w-full relative xl:pb-[90px] px-3 sm:px-4 lg:px-6 xl:px-0 pt-3 sm:pt-4 lg:pt-5 xl:pt-0">
 
-          {/* ── MOBILE CONTROLS ── */}
-          <div className="xl:hidden flex flex-col gap-2 mb-3">
-            {/* Controls: 2 cols on mobile, 4 cols on tablet */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-              {(!shouldHideCartActions || isSalesPerson) && (
-                <button onClick={() => router.push(lp("/wishlist"))} className="h-[44px] bg-white border border-gray-200 rounded-sm flex items-center justify-center gap-2 text-label font-bold uppercase tracking-wider shadow-sm active:scale-95 cursor-pointer">
-                  <Star className="w-4 h-4 fill-black text-black" /> {t("m.favourite-products")}
-                </button>
-              )}
-              <button onClick={() => setIsMobileSearchOpen(true)} className="h-[44px] bg-brand-yellow rounded-sm flex items-center justify-center gap-2 text-label font-bold uppercase tracking-wider shadow-sm active:scale-95 cursor-pointer">
-                <Search className="w-4 h-4" /> {t("m.search")}
-              </button>
-              <div className="relative">
-                <button onClick={() => setIsMobileSortOpen((prev) => !prev)} className="w-full h-[44px] bg-white border border-gray-200 rounded-sm flex items-center justify-center gap-2 text-label font-bold uppercase tracking-wider shadow-sm active:scale-95 cursor-pointer">
-                  <ChevronDown className="w-4 h-4" />
-                  <span className="truncate">{sortBy === "none" ? t("products.sortByDefault") : sortBy === "price-asc" ? t("products.sortByLowToHigh") : t("products.sortByHighToLow")}</span>
-                </button>
-                {isMobileSortOpen && (
-                  <>
-                    <div className="fixed inset-0 z-[190]" onClick={() => setIsMobileSortOpen(false)} />
-                    <div className="absolute top-full left-0 mt-1 w-full min-w-max bg-white rounded-xl shadow-xl border border-gray-100 z-[200] py-1 overflow-hidden" dir={isRtl ? "rtl" : "ltr"}>
-                      <div className="flex flex-col py-1">
-                        {[
-                          { value: "none", label: t("products.sortByDefault") },
-                          { value: "price-asc", label: t("products.sortByLowToHigh") },
-                          { value: "price-desc", label: t("products.sortByHighToLow") },
-                        ].map((opt) => (
-                          <button
-                            key={opt.value}
-                            onClick={() => { setSortBy(opt.value); setIsMobileSortOpen(false); }}
-                            className={`px-4 py-2.5 text-xs font-semibold ltr:text-left rtl:text-right flex items-center justify-between gap-4 transition-colors ${sortBy === opt.value ? "bg-brand-yellow/10 text-black" : "text-gray-700 hover:bg-gray-50"}`}
-                          >
-                            <span>{opt.label}</span>
-                            {sortBy === opt.value && <Check size={14} className="text-brand-yellow" strokeWidth={3} />}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  </>
-                )}
-              </div>
-              <button onClick={() => setIsMobileFilterOpen(true)} className="h-[44px] bg-white border border-gray-200 rounded-sm flex items-center justify-center gap-2 text-label font-bold uppercase tracking-wider shadow-sm active:scale-95 cursor-pointer">
-                <Filter className="w-4 h-4" /> {t("m.filter-options")}
-                {Object.keys(selectedFilters).length > 0 && <span className="w-5 h-5 bg-brand-yellow rounded-full text-caption font-black flex items-center justify-center">{Object.keys(selectedFilters).length}</span>}
-              </button>
-            </div>
-            {/* Active filter chips */}
-            {Object.keys(selectedFilterLabels).length > 0 && (
-              <div className="flex items-center gap-1.5 overflow-x-auto custom-scrollbar-hide py-1">
-                {Object.entries(selectedFilterLabels).flatMap(([code, items]) => items.map((item) => (
-                  <div key={`${code}-${item.value}`} className="flex items-center gap-1 bg-gray-100 px-2.5 py-1 rounded-full text-caption font-bold text-gray-700 whitespace-nowrap flex-shrink-0">
-                    {item.label} <button onClick={() => removeSpecificFilter(code, item.value)} className="text-gray-400"><X size={12} /></button>
-                  </div>
-                )))}
-                <button onClick={clearAllFilters} className="text-caption font-black text-red-500 uppercase whitespace-nowrap flex-shrink-0 px-2">{t("m.clear-all")}</button>
-              </div>
-            )}
-          </div>
-
-          {/* ── MOBILE/TABLET CARD LIST ── */}
-          <div className="xl:hidden grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-            {loading ? <MobileCardShimmer /> : sortedProducts.length === 0 ? (
-              <div className="flex-1 flex items-center justify-center py-20 col-span-full"><p className="text-xs font-black text-gray-400 uppercase tracking-widest">{t("products.noProducts")}</p></div>
-            ) : sortedProducts.map((p, i) => renderProductCard(p, i))}
-          </div>
-          <div className="xl:hidden">{renderPagination(true)}</div>
-
-          {/* ── DESKTOP CONTROLS + TABLE ── */}
-          <div className="hidden xl:flex flex-col bg-white rounded-none md:rounded-r-lg shadow-sm border border-gray-200 border-l-0 overflow-hidden">
-            {/* Desktop header */}
-            <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center gap-4 min-h-[60px]">
-              <div className="flex items-center gap-4">
+            {/* ── MOBILE CONTROLS ── */}
+            <div className="xl:hidden flex flex-col gap-2 mb-3">
+              {/* Controls: 2 cols on mobile, 4 cols on tablet */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                 {(!shouldHideCartActions || isSalesPerson) && (
-                  <button
-                    onClick={() => router.push(lp("/wishlist"))}
-                    className="h-10 px-4 bg-white border border-gray-200 text-black flex items-center justify-center gap-2 text-xs font-bold uppercase tracking-wider hover:bg-gray-50 hover:border-gray-300 transition-all active:scale-95 cursor-pointer rounded-md shadow-sm"
-                  >
-                    <Star className="w-4 h-4 fill-black text-black" /> {t("sidebar.favoriteProducts")}
+                  <button onClick={() => router.push(lp("/wishlist"))} className="h-[44px] bg-white border border-gray-200 rounded-sm flex items-center justify-center gap-2 text-label font-bold uppercase tracking-wider shadow-sm active:scale-95 cursor-pointer">
+                    <Star className="w-4 h-4 fill-black text-black" /> {t("m.favourite-products")}
                   </button>
                 )}
-                <div className="flex flex-1 items-center gap-2 overflow-x-auto custom-scrollbar-hide max-w-[800px]">
-                  {isFavorite && (
-                    <div className="flex items-center gap-1.5 bg-brand-yellow border border-brand-yellow-dark px-3 py-1.5 rounded-full text-body-sm font-bold text-black shadow-sm flex-shrink-0">
-                      {t("sidebar.favoriteProducts")} <button onClick={() => setIsFavorite(false)} className="hover:text-red-700"><X size={14} /></button>
-                    </div>
+                <button onClick={() => setIsMobileSearchOpen(true)} className="h-[44px] bg-brand-yellow rounded-sm flex items-center justify-center gap-2 text-label font-bold uppercase tracking-wider shadow-sm active:scale-95 cursor-pointer">
+                  <Search className="w-4 h-4" /> {t("m.search")}
+                </button>
+                <div className="relative">
+                  <button onClick={() => setIsMobileSortOpen((prev) => !prev)} className="w-full h-[44px] bg-white border border-gray-200 rounded-sm flex items-center justify-center gap-2 text-label font-bold uppercase tracking-wider shadow-sm active:scale-95 cursor-pointer">
+                    <ChevronDown className="w-4 h-4" />
+                    <span className="truncate">{sortBy === "none" ? t("products.sortByDefault") : sortBy === "price-asc" ? t("products.sortByLowToHigh") : t("products.sortByHighToLow")}</span>
+                  </button>
+                  {isMobileSortOpen && (
+                    <>
+                      <div className="fixed inset-0 z-[190]" onClick={() => setIsMobileSortOpen(false)} />
+                      <div className="absolute top-full left-0 mt-1 w-full min-w-max bg-white rounded-xl shadow-xl border border-gray-100 z-[200] py-1 overflow-hidden" dir={isRtl ? "rtl" : "ltr"}>
+                        <div className="flex flex-col py-1">
+                          {[
+                            { value: "none", label: t("products.sortByDefault") },
+                            { value: "price-asc", label: t("products.sortByLowToHigh") },
+                            { value: "price-desc", label: t("products.sortByHighToLow") },
+                          ].map((opt) => (
+                            <button
+                              key={opt.value}
+                              onClick={() => { setSortBy(opt.value); setIsMobileSortOpen(false); }}
+                              className={`px-4 py-2.5 text-xs font-semibold ltr:text-left rtl:text-right flex items-center justify-between gap-4 transition-colors ${sortBy === opt.value ? "bg-brand-yellow/10 text-black" : "text-gray-700 hover:bg-gray-50"}`}
+                            >
+                              <span>{opt.label}</span>
+                              {sortBy === opt.value && <Check size={14} className="text-brand-yellow" strokeWidth={3} />}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </>
                   )}
+                </div>
+                <button onClick={() => setIsMobileFilterOpen(true)} className="h-[44px] bg-white border border-gray-200 rounded-sm flex items-center justify-center gap-2 text-label font-bold uppercase tracking-wider shadow-sm active:scale-95 cursor-pointer">
+                  <Filter className="w-4 h-4" /> {t("m.filter-options")}
+                  {Object.keys(selectedFilters).length > 0 && <span className="w-5 h-5 bg-brand-yellow rounded-full text-caption font-black flex items-center justify-center">{Object.keys(selectedFilters).length}</span>}
+                </button>
+              </div>
+              {/* Active filter chips */}
+              {Object.keys(selectedFilterLabels).length > 0 && (
+                <div className="flex items-center gap-1.5 overflow-x-auto custom-scrollbar-hide py-1">
                   {Object.entries(selectedFilterLabels).flatMap(([code, items]) => items.map((item) => (
-                    <div key={`${code}-${item.value}`} className="flex items-center gap-1 bg-white border border-gray-200 px-4 py-2 rounded-full text-body-sm font-bold text-gray-700 shadow-sm whitespace-nowrap flex-shrink-0">
-                      {item.label} <button onClick={() => removeSpecificFilter(code, item.value)} className="hover:text-red-500 text-gray-400"><X size={14} strokeWidth={2.5} /></button>
+                    <div key={`${code}-${item.value}`} className="flex items-center gap-1 bg-gray-100 px-2.5 py-1 rounded-full text-caption font-bold text-gray-700 whitespace-nowrap flex-shrink-0">
+                      {item.label} <button onClick={() => removeSpecificFilter(code, item.value)} className="text-gray-400"><X size={12} /></button>
                     </div>
                   )))}
+                  <button onClick={clearAllFilters} className="text-caption font-black text-red-500 uppercase whitespace-nowrap flex-shrink-0 px-2">{t("m.clear-all")}</button>
                 </div>
-                {Object.keys(selectedFilters).length > 0 && (
-                  <button onClick={clearAllFilters} className="text-caption font-black text-red-500 uppercase flex items-center gap-1.5 bg-red-50 px-2.5 py-1 rounded-full flex-shrink-0"><X size={12} strokeWidth={3} /> {t("m.clear")}</button>
-                )}
-              </div>
-              <PortalDropdown
-                value={sortBy}
-                onChange={setSortBy}
-                options={[{ label: t("products.sortByDefault"), value: "none" }, { label: t("products.sortByLowToHigh"), value: "price-asc" }, { label: t("products.sortByHighToLow"), value: "price-desc" }]}
-                buttonClassName="h-10 px-4 bg-white border border-gray-200 text-black flex items-center justify-between gap-6 text-xs font-bold hover:bg-gray-50 hover:border-gray-300 transition-all cursor-pointer rounded-sm shadow-sm whitespace-nowrap"
-                minWidth={180}
-              />
+              )}
             </div>
 
-            {/* Desktop table area */}
-            <div className="flex-1 overflow-x-auto">
-              <table className="w-full border-collapse table-fixed min-w-[900px]">
-                <TableColGroup widths={colWidths} />
-                <thead className="sticky top-0 z-20">
-                  <tr className="bg-gray-50 border-b-2 border-gray-200">
-                    {headerKeys.map(key => {
-                      const field = SORTABLE_HEADERS[key];
-                      if (!field) {
+            {/* ── MOBILE/TABLET CARD LIST ── */}
+            <div className="xl:hidden grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              {loading ? <MobileCardShimmer /> : sortedProducts.length === 0 ? (
+                <div className="flex-1 flex items-center justify-center py-20 col-span-full"><p className="text-xs font-black text-gray-400 uppercase tracking-widest">{t("products.noProducts")}</p></div>
+              ) : sortedProducts.map((p, i) => renderProductCard(p, i))}
+            </div>
+            <div className="xl:hidden">{renderPagination(true)}</div>
+
+            {/* ── DESKTOP CONTROLS + TABLE ── */}
+            <div className="hidden xl:flex flex-col bg-white rounded-none md:rounded-r-lg shadow-sm border border-gray-200 border-l-0 overflow-hidden">
+              {/* Desktop header */}
+              <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center gap-4 min-h-[60px]">
+                <div className="flex items-center gap-4">
+                  {(!shouldHideCartActions || isSalesPerson) && (
+                    <button
+                      onClick={() => router.push(lp("/wishlist"))}
+                      className="h-10 px-4 bg-white border border-gray-200 text-black flex items-center justify-center gap-2 text-xs font-bold uppercase tracking-wider hover:bg-gray-50 hover:border-gray-300 transition-all active:scale-95 cursor-pointer rounded-md shadow-sm"
+                    >
+                      <Star className="w-4 h-4 fill-black text-black" /> {t("sidebar.favoriteProducts")}
+                    </button>
+                  )}
+                  <div className="flex flex-1 items-center gap-2 overflow-x-auto custom-scrollbar-hide max-w-[800px]">
+                    {isFavorite && (
+                      <div className="flex items-center gap-1.5 bg-brand-yellow border border-brand-yellow-dark px-3 py-1.5 rounded-full text-body-sm font-bold text-black shadow-sm flex-shrink-0">
+                        {t("sidebar.favoriteProducts")} <button onClick={() => setIsFavorite(false)} className="hover:text-red-700"><X size={14} /></button>
+                      </div>
+                    )}
+                    {Object.entries(selectedFilterLabels).flatMap(([code, items]) => items.map((item) => (
+                      <div key={`${code}-${item.value}`} className="flex items-center gap-1 bg-white border border-gray-200 px-4 py-2 rounded-full text-body-sm font-bold text-gray-700 shadow-sm whitespace-nowrap flex-shrink-0">
+                        {item.label} <button onClick={() => removeSpecificFilter(code, item.value)} className="hover:text-red-500 text-gray-400"><X size={14} strokeWidth={2.5} /></button>
+                      </div>
+                    )))}
+                  </div>
+                  {Object.keys(selectedFilters).length > 0 && (
+                    <button onClick={clearAllFilters} className="text-caption font-black text-red-500 uppercase flex items-center gap-1.5 bg-red-50 px-2.5 py-1 rounded-full flex-shrink-0"><X size={12} strokeWidth={3} /> {t("m.clear")}</button>
+                  )}
+                </div>
+                <PortalDropdown
+                  value={sortBy}
+                  onChange={setSortBy}
+                  options={[{ label: t("products.sortByDefault"), value: "none" }, { label: t("products.sortByLowToHigh"), value: "price-asc" }, { label: t("products.sortByHighToLow"), value: "price-desc" }]}
+                  buttonClassName="h-10 px-4 bg-white border border-gray-200 text-black flex items-center justify-between gap-6 text-xs font-bold hover:bg-gray-50 hover:border-gray-300 transition-all cursor-pointer rounded-sm shadow-sm whitespace-nowrap"
+                  minWidth={180}
+                />
+              </div>
+
+              {/* Desktop table area */}
+              <div className="flex-1 overflow-x-auto">
+                <table className="w-full border-collapse table-fixed min-w-[900px]">
+                  <TableColGroup widths={colWidths} />
+                  <thead className="sticky top-0 z-20">
+                    <tr className="bg-gray-50 border-b-2 border-gray-200">
+                      {headerKeys.map(key => {
+                        const field = SORTABLE_HEADERS[key];
+                        if (!field) {
+                          return (
+                            <th key={key} className="px-2 md:px-4 py-2 md:py-3 text-label font-semibold text-black uppercase tracking-widest text-center">{t(key)}</th>
+                          );
+                        }
                         return (
-                          <th key={key} className="px-2 md:px-4 py-2 md:py-3 text-label font-semibold text-black uppercase tracking-widest text-center">{t(key)}</th>
+                          <th key={key} className="px-2 md:px-4 py-2 md:py-3 text-label font-semibold text-black tracking-widest text-center">
+                            <button
+                              type="button"
+                              onClick={() => cycleSort(field)}
+                              className="inline-flex items-center gap-1 select-none hover:text-brand-yellow transition-colors cursor-pointer uppercase tracking-widest"
+                              aria-label={`Sort by ${t(key)}`}
+                            >
+                              <span>{t(key)}</span>
+                              <SortIcon field={field} />
+                            </button>
+                          </th>
                         );
-                      }
-                      return (
-                        <th key={key} className="px-2 md:px-4 py-2 md:py-3 text-label font-semibold text-black tracking-widest text-center">
-                          <button
-                            type="button"
-                            onClick={() => cycleSort(field)}
-                            className="inline-flex items-center gap-1 select-none hover:text-brand-yellow transition-colors cursor-pointer uppercase tracking-widest"
-                            aria-label={`Sort by ${t(key)}`}
-                          >
-                            <span>{t(key)}</span>
-                            <SortIcon field={field} />
-                          </button>
-                        </th>
-                      );
-                    })}
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-50">
-                  {loading ? (
-                    <ShimmerRows columnCount={totalColumns} />
-                  ) : products.length === 0 ? (
-                    <tr>
-                      <td colSpan={totalColumns} className="py-24 text-center">
-                        <p className="text-xs font-black text-gray-400 uppercase tracking-[0.2em]">
-                          {t("products.noProducts")}
-                        </p>
-                      </td>
+                      })}
                     </tr>
-                  ) : (
-                    sortedProducts.map((product, index) => {
-                      const brandName = product?.brand || (product?.name ? product.name.split(' ')[0] : "N/A");
-                      const isOutOfStock = product.stock_status === "Not Available" || Number(product?.stock_qty ?? 0) <= 0;
-                      return (
-                        <tr key={index} className={`h-auto md:h-[52px] border-b border-gray-200 hover:bg-brand-yellow/5 transition-all group ${loadingSkus.has(product.sku) ? "opacity-50 pointer-events-none" : ""}`}>
-                          <td className="px-2 md:px-4 text-body-sm font-medium text-black/80 text-center">{t(`data.${brandName}`) !== `data.${brandName}` ? t(`data.${brandName}`) : brandName}</td>
-                          <td className="px-2 md:px-4 text-center whitespace-nowrap">
-                            <div className="flex items-center justify-center gap-1.5">
-                              <span dir="ltr" className="text-body-sm font-normal text-black">{product?.tyre_size}</span>
-                              <div onClick={() => setSelectedProduct(product)} className="w-4 h-4 bg-gray-900 rounded-full flex items-center justify-center text-micro font-bold text-white cursor-pointer hover:bg-brand-yellow hover:text-black transition-all shadow-sm flex-shrink-0">i</div>
-                            </div>
-                          </td>
-                          <td className="px-2 md:px-4 text-body-sm font-medium text-black/80 text-center">{product?.pattern || "—"}</td>
-                          <td className="px-2 md:px-4 text-body-sm font-normal text-black/60 text-center font-mono">{product?.year || "—"}</td>
-                          <td className="px-2 md:px-4 text-body-sm font-medium text-black/80 text-center">{product?.origin ? (t(`data.${product.origin}`) !== `data.${product.origin}` ? t(`data.${product.origin}`) : product.origin) : "—"}</td>
-                          <td className="px-2 md:px-4 text-center">
-                            <div className="w-10 h-10 mx-auto">
-                              {isValidImageUrl(product?.image_url) ? (
-                                <div className="relative w-10 h-10 group/img cursor-pointer" onClick={() => { setSelectedImage(product.image_url); setPreviewProduct(product); setIsImageModalOpen(true); }}>
-                                  <img src={product.image_url} alt={product.name} width={40} height={40} className="w-10 h-10 object-contain rounded border border-gray-100 shadow-sm" />
-                                  <div className="absolute inset-0 bg-black/50 opacity-0 group-hover/img:opacity-100 transition-all duration-300 flex items-center justify-center rounded">
-                                    <div className="w-5 h-5 bg-brand-yellow rounded-full flex items-center justify-center text-black font-semibold text-caption shadow-lg transform scale-50 group-hover/img:scale-100 transition-transform duration-300">+</div>
-                                  </div>
-                                </div>
-                              ) : (
-                                <div className="w-10 h-10 mx-auto flex items-center justify-center bg-gray-50 rounded border border-gray-100 shadow-sm">
-                                  <ImageIcon size={18} className="text-gray-300" />
-                                </div>
-                              )}
-                            </div>
-                          </td>
-                          <td className="px-2 md:px-4 text-center">{product.offer ? <span className="text-red-600 font-semibold text-caption uppercase tracking-tight block max-w-[150px] mx-auto">{product.offer}</span> : <span className="text-black/20">—</span>}</td>
-                          <td className="px-2 md:px-4 text-center">{getStockBadge(product)}</td>
-                          <td className="px-2 md:px-4 text-center whitespace-nowrap">
-                            <div className="flex flex-col items-center justify-center">
-                              {product.original_price && product.original_price > product.final_price ? (
-                                <>
-                                  <span className="text-caption font-semibold text-black/50 mb-0.5">
-                                    <Price amount={product.original_price} className="font-semibold line-through" />
-                                  </span>
-                                  <span className="text-body-sm font-semibold text-black tracking-tight rubik-sans">
-                                    <Price amount={product.final_price} />
-                                  </span>
-                                </>
-                              ) : (
-                                <span className="text-body-sm font-semibold text-black tracking-tight rubik-sans">
-                                  <Price amount={product?.final_price || 0} />
-                                </span>
-                              )}
-                            </div>
-                          </td>
-                          {showActionColumn && (
-                            <td className="px-2 text-center align-middle min-w-[150px] whitespace-nowrap">
-                              {String(product?.is_action).toLowerCase() === "yes" && (
-                                loadingSkus.has(product.sku) ? (
-                                  <div className="flex items-center justify-center h-8">
-                                    <CardSpinner />
+                  </thead>
+                  <tbody className="divide-y divide-gray-50">
+                    {loading ? (
+                      <ShimmerRows columnCount={totalColumns} />
+                    ) : products.length === 0 ? (
+                      <tr>
+                        <td colSpan={totalColumns} className="py-24 text-center">
+                          <p className="text-xs font-black text-gray-400 uppercase tracking-[0.2em]">
+                            {t("products.noProducts")}
+                          </p>
+                        </td>
+                      </tr>
+                    ) : (
+                      sortedProducts.map((product, index) => {
+                        const brandName = product?.brand || (product?.name ? product.name.split(' ')[0] : "N/A");
+                        const isOutOfStock = product.stock_status === "Not Available" || Number(product?.stock_qty ?? 0) <= 0;
+                        return (
+                          <tr key={index} className={`h-auto md:h-[52px] border-b border-gray-200 hover:bg-brand-yellow/5 transition-all group ${loadingSkus.has(product.sku) ? "opacity-50 pointer-events-none" : ""}`}>
+                            <td className="px-2 md:px-4 text-body-sm font-medium text-black/80 text-center">{t(`data.${brandName}`) !== `data.${brandName}` ? t(`data.${brandName}`) : brandName}</td>
+                            <td className="px-2 md:px-4 text-center whitespace-nowrap">
+                              <div className="flex items-center justify-center gap-1.5">
+                                <span dir="ltr" className="text-body-sm font-normal text-black">{product?.tyre_size}</span>
+                                <div onClick={() => setSelectedProduct(product)} className="w-4 h-4 bg-gray-900 rounded-full flex items-center justify-center text-micro font-bold text-white cursor-pointer hover:bg-brand-yellow hover:text-black transition-all shadow-sm flex-shrink-0">i</div>
+                              </div>
+                            </td>
+                            <td className="px-2 md:px-4 text-body-sm font-medium text-black/80 text-center">{product?.pattern || "—"}</td>
+                            <td className="px-2 md:px-4 text-body-sm font-normal text-black/60 text-center font-mono">{product?.year || "—"}</td>
+                            <td className="px-2 md:px-4 text-body-sm font-medium text-black/80 text-center">{product?.origin ? (t(`data.${product.origin}`) !== `data.${product.origin}` ? t(`data.${product.origin}`) : product.origin) : "—"}</td>
+                            <td className="px-2 md:px-4 text-center">
+                              <div className="w-10 h-10 mx-auto">
+                                {isValidImageUrl(product?.image_url) ? (
+                                  <div className="relative w-10 h-10 group/img cursor-pointer" onClick={() => { setSelectedImage(product.image_url); setPreviewProduct(product); setIsImageModalOpen(true); }}>
+                                    <img src={product.image_url} alt={product.name} width={40} height={40} className="w-10 h-10 object-contain rounded border border-gray-100 shadow-sm" />
+                                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover/img:opacity-100 transition-all duration-300 flex items-center justify-center rounded">
+                                      <div className="w-5 h-5 bg-brand-yellow rounded-full flex items-center justify-center text-black font-semibold text-caption shadow-lg transform scale-50 group-hover/img:scale-100 transition-transform duration-300">+</div>
+                                    </div>
                                   </div>
                                 ) : (
-                                  <div className="flex flex-row items-center justify-center gap-1.5">
-                                    {/* Col 1: Qty */}
-                                    {!shouldHideCartActions && (
-                                      !isOutOfStock ? (
-                                        <input
-                                          type="text"
-                                          value={productQtys[product.sku] || 1}
-                                          onChange={(e) => {
-                                            const val = e.target.value.replace(/\D/g, "");
-                                            handleQtyChange(product.sku, parseInt(val) || 0);
-                                          }}
-                                          className="w-10 h-8 flex-shrink-0 border border-gray-300 rounded-sm text-label font-semibold text-black bg-white shadow-sm text-center outline-none focus:border-brand-yellow transition-colors"
-                                          onFocus={(e) => { const t = e.target; setTimeout(() => t.select(), 0); }}
-                                          onClick={(e) => (e.target as HTMLInputElement).select()}
-                                          onKeyDown={(e) => { if (e.key === "Enter") handleAddToCart(product); }}
-                                        />
-                                      ) : (
-                                        <div className="w-10 h-8 flex-shrink-0" />
-                                      )
-                                    )}
-                                    {/* Col 2: Cart or Enquiry */}
-                                    {!shouldHideCartActions && (
-                                      !isOutOfStock ? (
-                                        <button onClick={() => handleAddToCart(product)} disabled={loadingSkus.has(product.sku)} className={`w-9 h-8 flex-shrink-0 rounded-sm flex items-center justify-center shadow-md transition-all cursor-pointer ${justAdded === product.sku ? "bg-green-500 text-white" : "bg-brand-yellow hover:bg-brand-yellow-dark text-black"}`}>
-                                          {justAdded === product.sku ? <Check size={15} strokeWidth={3} /> : <ShoppingCart size={15} strokeWidth={2.5} />}
-                                        </button>
-                                      ) : (
-                                        <button onClick={() => { setInquiryProduct(product); setIsInquiryModalOpen(true); }} className="w-9 h-8 flex-shrink-0 bg-brand-yellow hover:bg-brand-yellow-dark text-black rounded-sm flex items-center justify-center shadow-md active:scale-95 cursor-pointer"><Info size={15} strokeWidth={2.5} /></button>
-                                      )
-                                    )}
-                                    {/* Col 3: Wishlist */}
-                                    <button onClick={() => toggleFavorite(product)} disabled={loadingSkus.has(product.sku)} className={`w-9 h-8 flex-shrink-0 rounded-sm flex items-center justify-center shadow-md cursor-pointer ${favIds.includes(product.product_id) ? "bg-brand-yellow text-black" : "bg-white text-black/50 border border-[#ddd]"}`}>
-                                      <Star size={15} fill={favIds.includes(product.product_id) ? "currentColor" : "none"} strokeWidth={2.5} />
-                                    </button>
+                                  <div className="w-10 h-10 mx-auto flex items-center justify-center bg-gray-50 rounded border border-gray-100 shadow-sm">
+                                    <ImageIcon size={18} className="text-gray-300" />
                                   </div>
-                                )
-                              )}
+                                )}
+                              </div>
                             </td>
-                          )}
-                        </tr>
-                      );
-                    })
-                  )}
-                </tbody>
-              </table>
+                            <td className="px-2 md:px-4 text-center">{product.offer ? <span className="text-red-600 font-semibold text-caption uppercase tracking-tight block max-w-[150px] mx-auto">{product.offer}</span> : <span className="text-black/20">—</span>}</td>
+                            <td className="px-2 md:px-4 text-center">{getStockBadge(product)}</td>
+                            <td className="px-2 md:px-4 text-center whitespace-nowrap">
+                              <div className="flex flex-col items-center justify-center">
+                                {product.original_price && product.original_price > product.final_price ? (
+                                  <>
+                                    <span className="text-caption font-semibold text-black/50 mb-0.5">
+                                      <Price amount={product.original_price} className="font-semibold line-through" />
+                                    </span>
+                                    <span className="text-body-sm font-semibold text-black tracking-tight rubik-sans">
+                                      <Price amount={product.final_price} />
+                                    </span>
+                                  </>
+                                ) : (
+                                  <span className="text-body-sm font-semibold text-black tracking-tight rubik-sans">
+                                    <Price amount={product?.final_price || 0} />
+                                  </span>
+                                )}
+                              </div>
+                            </td>
+                            {showActionColumn && (
+                              <td className="px-2 text-center align-middle min-w-[150px] whitespace-nowrap">
+                                {String(product?.is_action).toLowerCase() === "yes" && (
+                                  loadingSkus.has(product.sku) ? (
+                                    <div className="flex items-center justify-center h-8">
+                                      <CardSpinner />
+                                    </div>
+                                  ) : (
+                                    <div className="flex flex-row items-center justify-center gap-1.5">
+                                      {/* Col 1: Qty */}
+                                      {!shouldHideCartActions && (
+                                        !isOutOfStock ? (
+                                          <input
+                                            type="text"
+                                            value={productQtys[product.sku] || 1}
+                                            onChange={(e) => {
+                                              const val = e.target.value.replace(/\D/g, "");
+                                              handleQtyChange(product.sku, parseInt(val) || 0);
+                                            }}
+                                            className="w-10 h-8 flex-shrink-0 border border-gray-300 rounded-sm text-label font-semibold text-black bg-white shadow-sm text-center outline-none focus:border-brand-yellow transition-colors"
+                                            onFocus={(e) => { const t = e.target; setTimeout(() => t.select(), 0); }}
+                                            onClick={(e) => (e.target as HTMLInputElement).select()}
+                                            onKeyDown={(e) => { if (e.key === "Enter") handleAddToCart(product); }}
+                                          />
+                                        ) : (
+                                          <div className="w-10 h-8 flex-shrink-0" />
+                                        )
+                                      )}
+                                      {/* Col 2: Cart or Enquiry */}
+                                      {!shouldHideCartActions && (
+                                        !isOutOfStock ? (
+                                          <button onClick={() => handleAddToCart(product)} disabled={loadingSkus.has(product.sku)} className={`w-9 h-8 flex-shrink-0 rounded-sm flex items-center justify-center shadow-md transition-all cursor-pointer ${justAdded === product.sku ? "bg-green-500 text-white" : "bg-brand-yellow hover:bg-brand-yellow-dark text-black"}`}>
+                                            {justAdded === product.sku ? <Check size={15} strokeWidth={3} /> : <ShoppingCart size={15} strokeWidth={2.5} />}
+                                          </button>
+                                        ) : (
+                                          <button onClick={() => { setInquiryProduct(product); setIsInquiryModalOpen(true); }} className="w-9 h-8 flex-shrink-0 bg-brand-yellow hover:bg-brand-yellow-dark text-black rounded-sm flex items-center justify-center shadow-md active:scale-95 cursor-pointer"><Info size={15} strokeWidth={2.5} /></button>
+                                        )
+                                      )}
+                                      {/* Col 3: Wishlist */}
+                                      <button onClick={() => toggleFavorite(product)} disabled={loadingSkus.has(product.sku)} className={`w-9 h-8 flex-shrink-0 rounded-sm flex items-center justify-center shadow-md cursor-pointer ${favIds.includes(product.product_id) ? "bg-brand-yellow text-black" : "bg-white text-black/50 border border-[#ddd]"}`}>
+                                        <Star size={15} fill={favIds.includes(product.product_id) ? "currentColor" : "none"} strokeWidth={2.5} />
+                                      </button>
+                                    </div>
+                                  )
+                                )}
+                              </td>
+                            )}
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+              {renderPagination()}
             </div>
-            {renderPagination()}
           </div>
-        </div>
 
-        {/* Desktop bottom search bar */}
-        <div className="hidden xl:flex fixed bottom-0 left-0 right-0 z-[40] bg-white border-t-[4px] border-brand-yellow shadow-[0_-10px_30px_rgba(0,0,0,0.12)] h-[90px] items-center transition-all duration-300 translate-y-0">
-          <div className={`w-full transition-all duration-300 ${isRtl ? (isSidebarCollapsed ? "pr-[50px] pl-0" : "pr-[300px] pl-0") : (isSidebarCollapsed ? "pl-[50px] pr-0" : "pl-[300px] pr-0")}`}>
-            <div className="w-full max-w-[1400px] mx-auto px-4">
-              <HorizontalFilter onSearch={handleHorizontalSearch} initialValues={{ width: debouncedFilters["width"]?.[0] || "", height: debouncedFilters["height"]?.[0] || "", rim: debouncedFilters["rim"]?.[0] || "" }} />
+          {/* Desktop bottom search bar */}
+          <div className="hidden xl:flex fixed bottom-0 left-0 right-0 z-[40] bg-white border-t-[4px] border-brand-yellow shadow-[0_-10px_30px_rgba(0,0,0,0.12)] h-[90px] items-center transition-all duration-300 translate-y-0">
+            <div className={`w-full transition-all duration-300 ${isRtl ? (isSidebarCollapsed ? "pr-[50px] pl-0" : "pr-[300px] pl-0") : (isSidebarCollapsed ? "pl-[50px] pr-0" : "pl-[300px] pr-0")}`}>
+              <div className="w-full max-w-[1400px] mx-auto px-4">
+                <HorizontalFilter onSearch={handleHorizontalSearch} initialValues={{ width: debouncedFilters["width"]?.[0] || "", height: debouncedFilters["height"]?.[0] || "", rim: debouncedFilters["rim"]?.[0] || "" }} />
+              </div>
             </div>
           </div>
         </div>
-      </div>
-      <ProductDialog product={selectedProduct} isOpen={!!selectedProduct} onClose={() => setSelectedProduct(null)} />
-      <ProductEnquiryModal isOpen={isInquiryModalOpen} productSku={inquiryProduct?.sku || ""} productName={inquiryProduct?.name || ""} productPrice={inquiryProduct?.final_price || 0} onClose={() => { setIsInquiryModalOpen(false); setInquiryProduct(null); }} />
-      <AddToCartPopup isOpen={isAddedPopupOpen} product={addedProduct} onClose={() => { setIsAddedPopupOpen(false); setAddedProduct(null); }} />
-      <Drawer isOpen={isImageModalOpen && !!selectedImage} onClose={() => setIsImageModalOpen(false)}>
-        <div className="flex flex-col h-full bg-white">
-          <div className="bg-brand-yellow px-4 md:px-8 py-4 md:py-6 flex items-center justify-center flex-shrink-0">
-            <h2 className="text-body-lg md:text-h4 font-semibold text-black text-center uppercase tracking-tight">
-              {previewProduct ? <span dir="ltr">{previewProduct?.pattern || '-'} - {previewProduct?.tyre_size || '-'}</span> : t("m.preview")}
-            </h2>
-          </div>
-          <div className="flex-1 overflow-y-auto p-4 md:p-8 flex flex-col items-center justify-center">
-            <div className="bg-white flex items-center justify-center min-h-[200px] md:min-h-[400px] w-full">
-              <img src={selectedImage} alt={previewProduct ? `${previewProduct?.pattern} - ${previewProduct?.tyre_size}` : t("m.preview")} className="max-w-full max-h-[60vh] md:max-h-[75vh] object-contain rounded-lg" />
+        <ProductDialog product={selectedProduct} isOpen={!!selectedProduct} onClose={() => setSelectedProduct(null)} />
+        <ProductEnquiryModal isOpen={isInquiryModalOpen} productSku={inquiryProduct?.sku || ""} productName={inquiryProduct?.name || ""} productPrice={inquiryProduct?.final_price || 0} onClose={() => { setIsInquiryModalOpen(false); setInquiryProduct(null); }} />
+        <AddToCartPopup isOpen={isAddedPopupOpen} product={addedProduct} onClose={() => { setIsAddedPopupOpen(false); setAddedProduct(null); }} />
+        <Drawer isOpen={isImageModalOpen && !!selectedImage} onClose={() => setIsImageModalOpen(false)}>
+          <div className="flex flex-col h-full bg-white">
+            <div className="bg-brand-yellow px-4 md:px-8 py-4 md:py-6 flex items-center justify-center flex-shrink-0">
+              <h2 className="text-body-lg md:text-h4 font-semibold text-black text-center uppercase tracking-tight">
+                {previewProduct ? <span dir="ltr">{previewProduct?.pattern || '-'} - {previewProduct?.tyre_size || '-'}</span> : t("m.preview")}
+              </h2>
             </div>
-            <button onClick={() => setIsImageModalOpen(false)} className="mt-6 w-full py-3 md:py-4 bg-black text-white font-black uppercase tracking-widest rounded shadow-xl hover:bg-gray-800 text-sm cursor-pointer active:scale-95">{t("m.close")}</button>
+            <div className="flex-1 overflow-y-auto p-4 md:p-8 flex flex-col items-center justify-center">
+              <div className="bg-white flex items-center justify-center min-h-[200px] md:min-h-[400px] w-full">
+                <img src={selectedImage} alt={previewProduct ? `${previewProduct?.pattern} - ${previewProduct?.tyre_size}` : t("m.preview")} className="max-w-full max-h-[60vh] md:max-h-[75vh] object-contain rounded-lg" />
+              </div>
+              <button onClick={() => setIsImageModalOpen(false)} className="mt-6 w-full py-3 md:py-4 bg-black text-white font-black uppercase tracking-widest rounded shadow-xl hover:bg-gray-800 text-sm cursor-pointer active:scale-95">{t("m.close")}</button>
+            </div>
           </div>
-        </div>
-      </Drawer>
-    </>
-  );
+        </Drawer>
+      </>
+      );
 }

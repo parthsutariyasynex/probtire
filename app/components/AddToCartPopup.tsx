@@ -49,6 +49,7 @@ const AddToCartPopup: React.FC<AddToCartPopupProps> = ({ isOpen, onClose, produc
                         className="absolute right-3 top-1/2 -translate-y-1/2 w-7 h-7 bg-black rounded-full flex items-center justify-center text-white hover:opacity-80 transition-opacity shadow-md"
                     >
                         <X size={18} strokeWidth={3} />
+
                     </button>
                 </div>
 
@@ -60,7 +61,7 @@ const AddToCartPopup: React.FC<AddToCartPopupProps> = ({ isOpen, onClose, produc
                     <h3 className="text-normal font-semibold text-black uppercase tracking-wider mb-5">
                         {product.name}
                     </h3>
-    
+
                     {/* Buttons Row */}
                     <div className="flex w-full gap-2 md:gap-5">
                         <button

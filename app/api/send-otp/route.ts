@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getLocaleFromRequest } from "@/lib/api/magento-url";
 import { KLEVER_SEND_OTP_MUTATION } from "@/src/graphql/mutations";
 
-const MAGENTO_GRAPHQL = (process.env.NEXT_PUBLIC_MAGENTO_BASE_URL || "https://altalayi-live.btire.com") + "/graphql";
+const MAGENTO_GRAPHQL = (process.env.NEXT_PUBLIC_MAGENTO_BASE_URL || "") + "/graphql";
 
 // POST — send login/reset OTP to a mobile (GraphQL: kleverSendOtp).
 // Public (pre-login) — no auth token. Response shape preserved:

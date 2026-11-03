@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { KLEVER_CREDIT_ACCOUNT_QUERY } from "@/src/graphql/queries";
 
-const MAGENTO_GRAPHQL = (process.env.NEXT_PUBLIC_MAGENTO_BASE_URL || "https://altalayi-live.btire.com") + "/graphql";
+const MAGENTO_GRAPHQL = (process.env.NEXT_PUBLIC_MAGENTO_BASE_URL || "") + "/graphql";
 
 // GET — credit account info (GraphQL: kleverCreditAccount). Pure GraphQL, no REST.
 // Returns the credit shape at the top level (total/used/available_credit_limit, currency,

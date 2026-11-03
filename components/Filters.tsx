@@ -219,6 +219,11 @@ interface FiltersProps {
     onReset: () => void;
     isFiltered?: boolean;
     statusCounts?: Record<string, number>;
+    company?: string;
+    onCompanyChange?: (company: string) => void;
+    companyCode?: string;
+    onCompanyCodeChange?: (code: string) => void;
+    showCompanyFilters?: boolean;
 }
 
 const Filters: React.FC<FiltersProps> = ({
@@ -230,16 +235,24 @@ const Filters: React.FC<FiltersProps> = ({
     onReset,
     isFiltered = false,
     statusCounts = {},
+    company = "All",
+    onCompanyChange,
+    companyCode = "",
+    onCompanyCodeChange,
+    showCompanyFilters = false,
 }) => {
     const { t } = useTranslation();
     const [isStatusOpen, setIsStatusOpen] = useState(false);
     const [isOrderOpen, setIsOrderOpen] = useState(false);
+    const [isCompanyOpen, setIsCompanyOpen] = useState(false);
 
     const [statusOptions, setStatusOptions] = useState<any[]>(["All"]);
     const [orderOptions, setOrderOptions] = useState<any[]>(["All"]);
+    const [companyOptions, setCompanyOptions] = useState<any[]>([{ label: "All", value: "All" }]);
 
     const statusRef = useRef<HTMLDivElement>(null);
     const orderRef = useRef<HTMLDivElement>(null);
+    const companyRef = useRef<HTMLDivElement>(null);
 
     // Fetch dynamic filter options
     useEffect(() => {
@@ -289,6 +302,16 @@ const Filters: React.FC<FiltersProps> = ({
                     const finalOrderOptions = hasAll ? fetchedOrderOptions : ["All", ...fetchedOrderOptions];
                     setOrderOptions(finalOrderOptions);
                 }
+
+                // Handle company_options
+                const companyData = data.company_options || [];
+                if (Array.isArray(companyData) && companyData.length > 0) {
+                    const hasAll = companyData.some((opt: any) => {
+                        const label = typeof opt === 'string' ? opt : (opt.label || "");
+                        return label.toLowerCase() === "all";
+                    });
+                    setCompanyOptions(hasAll ? companyData : [{ label: "All", value: "All" }, ...companyData]);
+                }
             } catch (error) {
                 console.error("Failed to fetch order filter options:", error);
                 setStatusOptions(["All", "Check Pending"]);
@@ -306,6 +329,9 @@ const Filters: React.FC<FiltersProps> = ({
             if (orderRef.current && !orderRef.current.contains(e.target as Node)) {
                 setIsOrderOpen(false);
             }
+            if (companyRef.current && !companyRef.current.contains(e.target as Node)) {
+                setIsCompanyOpen(false);
+            }
         }
         document.addEventListener("mousedown", handleClickOutside);
         return () => document.removeEventListener("mousedown", handleClickOutside);
@@ -320,9 +346,70 @@ const Filters: React.FC<FiltersProps> = ({
         return typeof found === 'string' ? found : (found.label || found.name || status || "All");
     }, [status, statusOptions]);
 
+    const selectedCompanyLabel = useMemo(() => {
+        if (!company || company === "All") return "All";
+        const found = companyOptions.find(opt => {
+            const val = typeof opt === 'string' ? opt : (opt.value || opt.id || "");
+            return val === company;
+        });
+        if (!found) return company;
+        return typeof found === 'string' ? found : (found.label || found.name || company);
+    }, [company, companyOptions]);
+
     return (
         <div className="bg-white p-3 rounded-sm border border-[#ddd] mb-3 overflow-visible">
-            <div className="flex flex-col md:flex-row gap-3 md:gap-5 items-end">
+            <div className="flex flex-col md:flex-row gap-3 md:gap-5 items-end flex-wrap">
+                {/* Filter By Company Dropdown */}
+                {showCompanyFilters && (
+                    <div className="flex flex-col gap-1.5 min-w-full md:min-w-[180px]">
+                        <label className="text-xs font-bold text-black uppercase tracking-wide">
+                            Filter By Company
+                        </label>
+                        <div className="relative" ref={companyRef}>
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setIsCompanyOpen(!isCompanyOpen);
+                                    setIsStatusOpen(false);
+                                    setIsOrderOpen(false);
+                                }}
+                                className="h-[38px] w-full px-3 bg-white border border-gray-300 text-black text-xs font-bold flex items-center justify-between cursor-pointer focus:outline-none focus:border-brand-yellow rounded-md transition-colors"
+                            >
+                                <span>{selectedCompanyLabel}</span>
+                                <svg className={`w-3 h-3 text-gray-500 transition-transform duration-200 ${isCompanyOpen ? "rotate-180" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7" />
+                                </svg>
+                            </button>
+
+                            {isCompanyOpen && (
+                                <ul className="absolute top-[calc(100%+4px)] left-0 w-full bg-white z-[100] shadow-xl rounded-md border border-gray-200 py-1 max-h-[300px] overflow-y-auto animate-in fade-in zoom-in-95 duration-100">
+                                    {companyOptions.map((opt: any, idx: number) => {
+                                        const optionLabel = typeof opt === 'string' ? opt : (opt.label || opt.name || String(idx));
+                                        const optionValue = typeof opt === 'string' ? opt : (opt.value || opt.id || optionLabel);
+                                        return (
+                                            <li key={`${optionValue}-${idx}`}>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        onCompanyChange?.(optionValue);
+                                                        setIsCompanyOpen(false);
+                                                    }}
+                                                    className={`w-full text-left px-4 py-2 text-xs transition-colors truncate ${company === optionValue
+                                                        ? "bg-brand-yellow text-black font-bold"
+                                                        : "text-gray-700 hover:bg-brand-yellow-light hover:text-black"
+                                                    }`}
+                                                >
+                                                    {optionLabel}
+                                                </button>
+                                            </li>
+                                        );
+                                    })}
+                                </ul>
+                            )}
+                        </div>
+                    </div>
+                )}
+
                 {/* Status Dropdown */}
                 <div className="flex flex-col gap-1.5 min-w-full md:min-w-[180px]">
                     <label className="text-xs font-bold text-black uppercase tracking-wide">
@@ -334,6 +421,7 @@ const Filters: React.FC<FiltersProps> = ({
                             onClick={() => {
                                 setIsStatusOpen(!isStatusOpen);
                                 setIsOrderOpen(false);
+                                setIsCompanyOpen(false);
                             }}
                             className="h-[38px] w-full px-3 bg-white border border-gray-300 text-black text-xs font-bold flex items-center justify-between cursor-pointer focus:outline-none focus:border-brand-yellow rounded-md transition-colors"
                         >
@@ -392,6 +480,29 @@ const Filters: React.FC<FiltersProps> = ({
                         />
                     </div>
                 </div>
+
+                {/* Filter By Company Code (Text Input) */}
+                {showCompanyFilters && (
+                    <div className="flex-1 min-w-[200px]">
+                        <label className="block text-xs font-bold text-black mb-1.5 uppercase tracking-wide">
+                            Filter By Company Code
+                        </label>
+                        <div className="relative">
+                            <input
+                                type="text"
+                                value={companyCode || ""}
+                                onChange={(e) => onCompanyCodeChange?.(e.target.value)}
+                                onKeyDown={(e) => {
+                                    if (e.key === "Enter") {
+                                        onApplySearch();
+                                    }
+                                }}
+                                placeholder="Company Code"
+                                className="w-full h-[38px] px-3 bg-white border border-gray-300 text-xs text-black focus:outline-none focus:border-brand-yellow transition-colors rounded-md placeholder:text-gray-400"
+                            />
+                        </div>
+                    </div>
+                )}
 
                 {/* Actions */}
                 <div className="flex gap-2 min-w-fit">

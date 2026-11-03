@@ -4,7 +4,7 @@ import { getRequestToken } from "@/lib/api/auth-helper";
 import { KLEVER_SUBACCOUNT_BY_ID_QUERY } from "@/src/graphql/queries";
 import { KLEVER_UPDATE_SUBACCOUNT_MUTATION, KLEVER_DELETE_SUBACCOUNT_MUTATION } from "@/src/graphql/mutations";
 
-const MAGENTO_GRAPHQL = (process.env.NEXT_PUBLIC_MAGENTO_BASE_URL || "https://altalayi-live.btire.com") + "/graphql";
+const MAGENTO_GRAPHQL = (process.env.NEXT_PUBLIC_MAGENTO_BASE_URL || "") + "/graphql";
 
 // GET — single subaccount by id (GraphQL: kleverSubaccount(subaccountId: Int!)).
 // Returns the subaccount object at the top level (same shape as the old REST proxy).

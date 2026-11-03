@@ -4,7 +4,7 @@ import { getRequestToken } from "@/lib/api/auth-helper";
 import { CUSTOMER_CART_QUERY } from "@/src/graphql/queries";
 import { clearCustomerCartId } from "@/lib/api/customer-cart";
 
-const MAGENTO_GRAPHQL = (process.env.NEXT_PUBLIC_MAGENTO_BASE_URL || "https://altalayi-live.btire.com") + "/graphql";
+const MAGENTO_GRAPHQL = (process.env.NEXT_PUBLIC_MAGENTO_BASE_URL || "") + "/graphql";
 
 // Canonical empty-cart payload (matches the CartContext shape). Returned for guests and
 // for expired/invalid tokens so the UI shows an empty cart instead of an error/logout.

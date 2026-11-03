@@ -4,7 +4,7 @@ import { getRequestToken } from '@/lib/api/auth-helper';
 import { CUSTOMER_QUERY } from '@/src/graphql/queries';
 import { UPDATE_CUSTOMER_MUTATION } from '@/src/graphql/mutations';
 
-const MAGENTO_GRAPHQL = (process.env.NEXT_PUBLIC_MAGENTO_BASE_URL || "https://altalayi-live.btire.com") + "/graphql";
+const MAGENTO_GRAPHQL = (process.env.NEXT_PUBLIC_MAGENTO_BASE_URL || "") + "/graphql";
 
 // Pure GraphQL — no REST. The native `customer` query backs GET; `updateCustomer` backs POST.
 // Klever-only fields the old REST /my-account returned (group_id, custom_attributes,

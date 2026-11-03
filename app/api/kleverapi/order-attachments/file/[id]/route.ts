@@ -70,7 +70,7 @@ export async function GET(
 
         const { searchParams } = new URL(request.url);
         const rawFileUrl = searchParams.get('url');
-        const origin = new URL(BASE_URL || 'https://altalayi-live.btire.com').origin;
+        const origin = new URL(BASE_URL).origin;
 
         console.log('[AttachmentDownload] ID:', id, 'Raw URL:', rawFileUrl);
 

@@ -3,7 +3,7 @@
 // import { getRequestToken } from "@/lib/api/auth-helper";
 // import { KLEVER_QUICK_ORDER_REMOVE_ITEM_MUTATION } from "@/src/graphql/mutations";
 
-// const MAGENTO_GRAPHQL = (process.env.NEXT_PUBLIC_MAGENTO_BASE_URL || "https://altalayi-live.btire.com") + "/graphql";
+// const MAGENTO_GRAPHQL = (process.env.NEXT_PUBLIC_MAGENTO_BASE_URL || "") + "/graphql";
 
 // // DELETE — remove a SKU from the quick-order list (GraphQL: kleverQuickOrderRemove).
 // // Returns { success, message, items_count, grand_total, redirect_url, items[{sku,name,qty,price,row_total}] }.

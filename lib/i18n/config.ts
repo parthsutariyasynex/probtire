@@ -28,9 +28,7 @@ export const localeNames: Record<Locale, string> = {
  *   getMagentoBaseUrl("ar") → "https://altalayi-live.btire.com/rest/ar/V1/kleverapi"
  */
 export function getMagentoBaseUrl(locale: Locale = defaultLocale): string {
-    const domain =
-        process.env.NEXT_PUBLIC_MAGENTO_BASE_URL ||
-        "https://altalayi-live.btire.com";
+    const domain = process.env.NEXT_PUBLIC_MAGENTO_BASE_URL || "";
     return `${domain}/rest/${locale}/V1/kleverapi`;
 }
 
@@ -38,9 +36,7 @@ export function getMagentoBaseUrl(locale: Locale = defaultLocale): string {
  * Build the Magento auth token URL for a given locale.
  */
 export function getMagentoAuthUrl(locale: Locale = defaultLocale): string {
-    const domain =
-        process.env.NEXT_PUBLIC_MAGENTO_BASE_URL ||
-        "https://altalayi-live.btire.com";
+    const domain = process.env.NEXT_PUBLIC_MAGENTO_BASE_URL || "";
     return `${domain}/rest/${locale}/V1/integration/customer/token`;
 }
 

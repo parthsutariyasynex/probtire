@@ -134,7 +134,7 @@ export async function GET(request: NextRequest) {
             });
         }
 
-        const domain = process.env.NEXT_PUBLIC_MAGENTO_BASE_URL || "https://altalayi-live.btire.com";
+        const domain = process.env.NEXT_PUBLIC_MAGENTO_BASE_URL;
 
         const variables: Record<string, any> = {
             categoryId: parseInt(categoryId, 10),

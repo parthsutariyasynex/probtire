@@ -3,7 +3,7 @@ import { getLocaleFromRequest } from "@/lib/api/magento-url";
 import { getRequestToken } from "@/lib/api/auth-helper";
 import { KLEVER_ORDER_UPLOAD_SEARCH_QUERY } from "@/src/graphql/queries";
 
-const MAGENTO_GRAPHQL = (process.env.NEXT_PUBLIC_MAGENTO_BASE_URL || "https://altalayi-live.btire.com") + "/graphql";
+const MAGENTO_GRAPHQL = (process.env.NEXT_PUBLIC_MAGENTO_BASE_URL || "") + "/graphql";
 
 // GET — order-upload attachments search (GraphQL: kleverOrderUploadSearch).
 // Replaces REST /orderupload/search. Maps the legacy query params: order_id →
@@ -20,6 +20,8 @@ export async function GET(request: NextRequest) {
         const orderId = sp.get("order_id");
         const documentType = sp.get("document_type");
         const invoiceDue = sp.get("invoice_due");
+        const company = sp.get("company");
+        const companyCode = sp.get("company_code");
 
         const variables: Record<string, any> = { pageSize, currentPage };
         if (orderId) variables.orderIncrementId = orderId;
@@ -44,9 +46,27 @@ export async function GET(request: NextRequest) {
         }
 
         const r = json?.data?.kleverOrderUploadSearch;
+        let items: any[] = Array.isArray(r?.items) ? r.items : [];
+
+        // Client-side filtering for company/company_code (GraphQL query has no these variables)
+        if (company && company !== "All") {
+            const companyLower = company.toLowerCase();
+            items = items.filter((item: any) => {
+                const name = (item.company_name || "").toLowerCase();
+                const code = (item.company_code || "").toLowerCase();
+                return name === companyLower || code === companyLower || name.includes(companyLower);
+            });
+        }
+        if (companyCode) {
+            const codeLower = companyCode.toLowerCase().trim();
+            items = items.filter((item: any) =>
+                (item.company_code || "").toLowerCase().includes(codeLower)
+            );
+        }
+
         return NextResponse.json({
-            items: Array.isArray(r?.items) ? r.items : [],
-            total_count: r?.total_count ?? 0,
+            items,
+            total_count: items.length,
             page_size: r?.page_size ?? pageSize,
             current_page: r?.current_page ?? currentPage,
             total_pages: r?.total_pages ?? 0,

@@ -4,7 +4,7 @@ import { getRequestToken } from "@/lib/api/auth-helper";
 import { KLEVER_CHECKOUT_ORDER_COMMENT_QUERY } from "@/src/graphql/queries";
 import { KLEVER_CHECKOUT_SET_ORDER_COMMENT_MUTATION } from "@/src/graphql/mutations";
 
-const MAGENTO_GRAPHQL = (process.env.NEXT_PUBLIC_MAGENTO_BASE_URL || "https://altalayi-live.btire.com") + "/graphql";
+const MAGENTO_GRAPHQL = (process.env.NEXT_PUBLIC_MAGENTO_BASE_URL || "") + "/graphql";
 
 // GET — order comment (GraphQL: kleverGetOrderComment → scalar string/null).
 // Returns { comment } to match the route's prior shape (consumer reads data.comment).

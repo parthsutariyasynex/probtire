@@ -107,7 +107,7 @@ const Filters: React.FC<FiltersProps> = ({
     }, []);
 
     return (
-        <div className="bg-white p-3 rounded-sm border border-[#ddd] mb-6 overflow-visible">
+        <div className="mb-6">
             <div className="flex flex-wrap gap-x-5 gap-y-4 items-end">
                 {/* Status Dropdown */}
                 <div className="flex flex-col gap-1.5">

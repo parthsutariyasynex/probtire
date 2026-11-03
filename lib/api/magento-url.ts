@@ -25,9 +25,7 @@ const DEFAULT_LOCALE = "en";
  */
 export function getBaseUrl(request: Request): string {
     const locale = getLocaleFromRequest(request);
-    const domain =
-        process.env.NEXT_PUBLIC_MAGENTO_BASE_URL ||
-        "https://altalayi-live.btire.com";
+    const domain = process.env.NEXT_PUBLIC_MAGENTO_BASE_URL || "";
     return `${domain}/rest/${locale}/V1/kleverapi`;
 }
 
@@ -70,8 +68,6 @@ export function getLocaleFromRequest(request: Request): string {
  */
 export function getAuthUrl(request: Request): string {
     const locale = getLocaleFromRequest(request);
-    const domain =
-        process.env.NEXT_PUBLIC_MAGENTO_BASE_URL ||
-        "https://altalayi-live.btire.com";
+    const domain = process.env.NEXT_PUBLIC_MAGENTO_BASE_URL || "";
     return `${domain}/rest/${locale}/V1/integration/customer/token`;
 }
