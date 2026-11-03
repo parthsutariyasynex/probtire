@@ -19,6 +19,8 @@ const APP_ROUTES = new Set([
     "products", "cart", "checkout", "favorites", "quick-order",
     "my-account", "my-orders", "customer", "subaccount",
     "multi-location-delivery", "popup-demo",
+    // Post-login website picker (protected — intentionally NOT in PUBLIC_ROUTES)
+    "select-website",
     // Magento-native system URLs that have re-export pages in app/
     "sales", "wishlist",
     // CMS-page Next.js implementations (visible browser URLs may use Magento slugs)
