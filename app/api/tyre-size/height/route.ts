@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getRequestToken } from "@/lib/api/auth-helper";
 import { getLocaleFromRequest } from "@/lib/api/magento-url";
 import { KLEVER_TYRE_SIZE_HEIGHT_QUERY } from "@/src/graphql/queries";
+import { toStoreCode } from "@/lib/store/website";
 
 const CACHE_TTL_MS = 10 * 60 * 1000;
 const cache = new Map<string, { body: any; expires: number }>();
@@ -25,7 +26,7 @@ export async function GET(request: NextRequest) {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
-                Store: locale,
+                Store: toStoreCode(locale, request),
                 ...(token && token !== "null" && { Authorization: `Bearer ${token}` }),
             },
             body: JSON.stringify({

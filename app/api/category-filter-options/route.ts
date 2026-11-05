@@ -4,6 +4,7 @@ import { getRequestToken } from "@/lib/api/auth-helper";
 // Commented out — kleverCategoryProducts resolver is not available on the current backend.
 // import { KLEVER_CATEGORY_FILTER_OPTIONS_FROM_PRODUCTS_QUERY } from "@/src/graphql/queries";
 import { STANDARD_FILTERS_QUERY } from "@/src/graphql/queries";
+import { toStoreCode } from "@/lib/store/website";
 
 // Layered-navigation filter options for a category, served via Magento GraphQL.
 // Now uses standard Magento `products` query aggregations instead of the missing
@@ -40,7 +41,9 @@ export async function GET(request: NextRequest) {
 
         // ── Cache lookup ─────────────────────────────────────────────────
         const now = Date.now();
-        const cacheKey = `${locale}|${token || "guest"}|${categoryId}`;
+        // Keyed by store view — the same category has different products per website.
+        // "v2|" so entries written under the old language-only key can never match.
+        const cacheKey = `v2|${toStoreCode(locale, request)}|${token || "guest"}|${categoryId}`;
         const cached = responseCache.get(cacheKey);
         if (cached && cached.expires > now) {
             console.log("[category-filter-options] cache HIT", cacheKey);
@@ -56,7 +59,7 @@ export async function GET(request: NextRequest) {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
-                Store: locale,
+                Store: toStoreCode(locale, request),
                 ...(token && { Authorization: `Bearer ${token}` }),
             },
             body: JSON.stringify({

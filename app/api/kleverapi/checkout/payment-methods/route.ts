@@ -3,6 +3,7 @@ import { getLocaleFromRequest } from "@/lib/api/magento-url";
 import { getRequestToken } from "@/lib/api/auth-helper";
 import { getCustomerCartId } from "@/lib/api/customer-cart";
 import { CART_PAYMENT_METHODS_QUERY } from "@/src/graphql/queries";
+import { toStoreCode } from "@/lib/store/website";
 
 const MAGENTO_GRAPHQL = (process.env.NEXT_PUBLIC_MAGENTO_BASE_URL || "") + "/graphql";
 
@@ -15,12 +16,12 @@ export async function GET(req: Request) {
         if (!token) return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
 
         const locale = getLocaleFromRequest(req);
-        const cartId = await getCustomerCartId(token, locale);
+        const cartId = await getCustomerCartId(token, toStoreCode(locale, req));
         if (!cartId) return NextResponse.json([]); // no active cart → empty (consumer has fallback)
 
         const res = await fetch(MAGENTO_GRAPHQL, {
             method: "POST",
-            headers: { "Content-Type": "application/json", Store: locale, Authorization: `Bearer ${token}` },
+            headers: { "Content-Type": "application/json", Store: toStoreCode(locale, req), Authorization: `Bearer ${token}` },
             body: JSON.stringify({ query: CART_PAYMENT_METHODS_QUERY, variables: { cartId } }),
             cache: "no-store",
         });

@@ -136,14 +136,9 @@ const MultiShippingShippingPage: React.FC = () => {
                     setSelectedMethods(initialSelection);
                 } catch (methodErr) {
                     console.error("Error fetching multi-shipping methods:", methodErr);
-                    // Fallback dummy methods for UI testing
-                    const dummyMethods = [
-                        { code: 'flatrate_flatrate', title: 'Flat Rate', price: 15, currency: 'SAR' },
-                        { code: 'free_free', title: 'Free Shipping', price: 0, currency: 'SAR' }
-                    ];
-                    const fallback: Record<string, any[]> = {};
-                    processedGroups.forEach(g => fallback[g.address.id] = dummyMethods);
-                    setShippingMethods(fallback);
+                    // No invented methods — tell the customer instead of offering fake ones.
+                    toast.error(t("multi.noShippingMethods"));
+                    setShippingMethods({});
                 }
             } catch (err) {
                 console.error("Error processing multi-shipping data:", err);

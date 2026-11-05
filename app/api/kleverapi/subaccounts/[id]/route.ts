@@ -3,6 +3,7 @@ import { getLocaleFromRequest } from "@/lib/api/magento-url";
 import { getRequestToken } from "@/lib/api/auth-helper";
 import { KLEVER_SUBACCOUNT_BY_ID_QUERY } from "@/src/graphql/queries";
 import { KLEVER_UPDATE_SUBACCOUNT_MUTATION, KLEVER_DELETE_SUBACCOUNT_MUTATION } from "@/src/graphql/mutations";
+import { toStoreCode } from "@/lib/store/website";
 
 const MAGENTO_GRAPHQL = (process.env.NEXT_PUBLIC_MAGENTO_BASE_URL || "") + "/graphql";
 
@@ -32,7 +33,7 @@ export async function GET(
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
-                Store: getLocaleFromRequest(request),
+                Store: toStoreCode(getLocaleFromRequest(request), request),
                 Authorization: `Bearer ${token}`,
             },
             body: JSON.stringify({ query: KLEVER_SUBACCOUNT_BY_ID_QUERY, variables: { subaccountId } }),
@@ -114,7 +115,7 @@ export async function PUT(
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
-                Store: getLocaleFromRequest(request),
+                Store: toStoreCode(getLocaleFromRequest(request), request),
                 Authorization: `Bearer ${token}`,
             },
             body: JSON.stringify({ query: KLEVER_UPDATE_SUBACCOUNT_MUTATION, variables: { subaccountId, input } }),
@@ -154,7 +155,7 @@ export async function DELETE(
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
-                Store: getLocaleFromRequest(request),
+                Store: toStoreCode(getLocaleFromRequest(request), request),
                 Authorization: `Bearer ${token}`,
             },
             body: JSON.stringify({ query: KLEVER_DELETE_SUBACCOUNT_MUTATION, variables: { subaccountId } }),

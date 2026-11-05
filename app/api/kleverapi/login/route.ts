@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getLocaleFromRequest } from "@/lib/api/magento-url";
 import { GENERATE_CUSTOMER_TOKEN_MUTATION } from "@/src/graphql/mutations";
+import { toStoreCode } from "@/lib/store/website";
 
 const MAGENTO_GRAPHQL = (process.env.NEXT_PUBLIC_MAGENTO_BASE_URL || "") + "/graphql";
 
@@ -25,7 +26,7 @@ export async function POST(request: NextRequest) {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
-                Store: getLocaleFromRequest(request),
+                Store: toStoreCode(getLocaleFromRequest(request), request),
             },
             body: JSON.stringify({ query: GENERATE_CUSTOMER_TOKEN_MUTATION, variables: { email, password } }),
             cache: "no-store",

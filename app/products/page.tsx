@@ -21,6 +21,7 @@ import PortalDropdown from "@/components/PortalDropdown";
 import { toast } from "react-hot-toast";
 import { useTranslation } from "@/hooks/useTranslation";
 import { useLocalePath } from "@/hooks/useLocalePath";
+import { getDefaultCategoryId } from "@/lib/store/client-config";
 import { useLocale } from "@/lib/i18n/client";
 import { useElementVisibility } from "@/hooks/useElementVisibility";
 import { useLoadingOverlay } from "@/contexts/LoadingOverlayContext";
@@ -210,6 +211,10 @@ export default function ProductsPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string>("");
+  // Bumped by the "Try again" button to re-run the product request.
+  const [reloadKey, setReloadKey] = useState(0);
+  // True while the selected website's default category is being looked up.
+  const [categoryPending, setCategoryPending] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
   const [sortBy, setSortBy] = useState<string>("none");
   const [selectedFilters, setSelectedFilters] = useState<Record<string, string[]>>({});
@@ -241,20 +246,23 @@ export default function ProductsPage() {
 
   useEffect(() => {
     if (searchParams) {
-      // categoryId comes from the URL, then the menu-derived default (sessionStorage).
-      // When the menu is unavailable (e.g. WAF-blocked → no defaultCategoryId), fall back
-      // to the root catalog category so the list still renders instead of staying empty.
-      const DEFAULT_CATEGORY_ID = "5";
-      const catId = searchParams.get("categoryId")
-        || (typeof sessionStorage !== "undefined" ? sessionStorage.getItem("defaultCategoryId") : null)
-        || DEFAULT_CATEGORY_ID;
-      setCategoryId(catId);
+      // categoryId comes from the URL (middleware rewrite of a category page); otherwise the
+      // selected website's default category from Magento (menu landing → catalog tree).
+      const urlCategoryId = searchParams.get("categoryId");
+      if (urlCategoryId) {
+        setCategoryPending(false);
+        setCategoryId(urlCategoryId);
+      } else {
+        resolveWebsiteCategory();
+      }
       const { filters, page, sortBy } = parseMagentoQueryParams(searchParams);
       if (Object.keys(filters).length > 0) setSelectedFilters(filters);
       setCurrentPage(page);
       setSortBy(sortBy);
       setIsInitialized(true);
     }
+    // Re-run only when the URL changes; locale/t changes must not reset filters or paging.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
 
   // Sync selectedFilterLabels when selectedFilters or apiFilters change
@@ -385,7 +393,9 @@ export default function ProductsPage() {
   useEffect(() => {
     if (!isInitialized) return;
     if (!categoryId) {
-      // No category resolved yet — clear data and show empty state instead of skeleton
+      // Still looking up the website's default category — keep the skeleton.
+      if (categoryPending) { setLoading(true); return; }
+      // No category resolved — clear data (error state is shown if the lookup failed)
       setProducts([]);
       setTotalCount(0);
       setLoading(false);
@@ -431,7 +441,10 @@ export default function ProductsPage() {
         if (Array.isArray(data.filters)) setApiFilters(data.filters);
       } catch (err: unknown) {
         if (err instanceof Error && err.name === "AbortError") return;
-        setError(t("products.noProducts"));
+        // A failed request is NOT an empty category — show an error with a retry instead.
+        setProducts([]);
+        setTotalCount(0);
+        setError(t("products.loadFailed"));
         console.error(err);
       } finally {
         if (!abortController.signal.aborted) setLoading(false);
@@ -439,8 +452,38 @@ export default function ProductsPage() {
     };
     loadProducts();
     return () => abortController.abort();
-  }, [router, currentPage, debouncedFiltersKey, sortBy, isInitialized, categoryId, authToken]);
+  }, [router, currentPage, debouncedFiltersKey, sortBy, isInitialized, categoryId, categoryPending, authToken, reloadKey]);
 
+
+  // Ask Magento for the selected website's category (menu landing). No id → clear error.
+  function resolveWebsiteCategory() {
+    setCategoryPending(true);
+    setError("");
+    getDefaultCategoryId(locale).then((id) => {
+      setCategoryId(id);
+      // Magento returned no category for this website — say so, never guess an id.
+      if (!id) setError(t("products.noCategory"));
+    }).finally(() => setCategoryPending(false));
+  }
+
+  const renderLoadError = () => (
+    <div role="alert" className="flex flex-col items-center justify-center gap-3 py-20 text-center">
+      <AlertTriangle className="w-6 h-6 text-brand-yellow-dark" aria-hidden="true" />
+      <p className="text-xs font-black text-gray-600 uppercase tracking-widest">{error}</p>
+      <button
+        type="button"
+        onClick={() => {
+          setError("");
+          // No category yet → ask Magento again; otherwise just re-run the product request.
+          if (!categoryId) resolveWebsiteCategory();
+          else setReloadKey((k) => k + 1);
+        }}
+        className="btn-primary"
+      >
+        {t("common.tryAgain")}
+      </button>
+    </div>
+  );
 
   const handleFilterChange = useCallback(
     (filters: Record<string, string[]>, labels: Record<string, { value: string; label: string }[]>) => {
@@ -867,7 +910,9 @@ export default function ProductsPage() {
 
             {/* ── MOBILE/TABLET CARD LIST ── */}
             <div className="xl:hidden grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-              {loading ? <MobileCardShimmer /> : sortedProducts.length === 0 ? (
+              {loading ? <MobileCardShimmer /> : error ? (
+                <div className="flex-1 col-span-full">{renderLoadError()}</div>
+              ) : sortedProducts.length === 0 ? (
                 <div className="flex-1 flex items-center justify-center py-20 col-span-full"><p className="text-xs font-black text-gray-400 uppercase tracking-widest">{t("products.noProducts")}</p></div>
               ) : sortedProducts.map((p, i) => renderProductCard(p, i))}
             </div>
@@ -943,6 +988,10 @@ export default function ProductsPage() {
                   <tbody className="divide-y divide-gray-50">
                     {loading ? (
                       <ShimmerRows columnCount={totalColumns} />
+                    ) : error ? (
+                      <tr>
+                        <td colSpan={totalColumns}>{renderLoadError()}</td>
+                      </tr>
                     ) : products.length === 0 ? (
                       <tr>
                         <td colSpan={totalColumns} className="py-24 text-center">

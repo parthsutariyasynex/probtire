@@ -2,6 +2,7 @@ import { getToken } from "next-auth/jwt";
 import { NextRequest } from "next/server";
 import { getLocaleFromRequest } from "@/lib/api/magento-url";
 import { KLEVER_CATEGORY_PRODUCTS_WITH_FILTERS_QUERY } from "@/src/graphql/queries";
+import { toStoreCode } from "@/lib/store/website";
 
 // Maps frontend filter param codes → kleverCategoryProducts named arg keys.
 // Covers both snake_case (legacy URL params) and camelCase (direct from kleverCategoryFilterOptions codes).
@@ -121,7 +122,8 @@ export async function GET(request: NextRequest) {
 
         // ── Cache lookup ─────────────────────────────────────────────────
         const now = Date.now();
-        const cacheKey = `v2|${resolvedLocale}|${token || "guest"}|${categoryId}|${page}|${pageSize}|${filterKey}|${sortByParam || ""}`;
+        // Keyed by store view — the same category has different products per website.
+        const cacheKey = `v3|${toStoreCode(resolvedLocale, request)}|${token || "guest"}|${categoryId}|${page}|${pageSize}|${filterKey}|${sortByParam || ""}`;
         const cached = responseCache.get(cacheKey);
         if (cached && cached.expires > now) {
             console.log("[category-products] cache HIT", cacheKey);
@@ -150,7 +152,7 @@ export async function GET(request: NextRequest) {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
-                Store: resolvedLocale,
+                Store: toStoreCode(resolvedLocale, request),
                 ...(token && { Authorization: `Bearer ${token}` }),
             },
             body: JSON.stringify({ query: KLEVER_CATEGORY_PRODUCTS_WITH_FILTERS_QUERY, variables }),
@@ -230,3 +232,5 @@ export async function GET(request: NextRequest) {
         );
     }
 }
+
+

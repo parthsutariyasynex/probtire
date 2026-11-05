@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getLocaleFromRequest } from "@/lib/api/magento-url";
 import { getRequestToken } from "@/lib/api/auth-helper";
 import { KLEVER_PRINT_ORDER_QUERY, KLEVER_ORDER_UPLOAD_SEARCH_QUERY } from "@/src/graphql/queries";
+import { toStoreCode } from "@/lib/store/website";
 
 const MAGENTO_GRAPHQL = (process.env.NEXT_PUBLIC_MAGENTO_BASE_URL || "") + "/graphql";
 
@@ -45,7 +46,7 @@ export async function GET(
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
-                    Store: locale,
+                    Store: toStoreCode(locale, request),
                     Authorization: `Bearer ${token}`,
                 },
                 body: JSON.stringify({ query: KLEVER_PRINT_ORDER_QUERY, variables: { orderId: entityId } }),
@@ -76,7 +77,7 @@ export async function GET(
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
-                Store: locale,
+                Store: toStoreCode(locale, request),
                 Authorization: `Bearer ${token}`,
             },
             body: JSON.stringify({ query: KLEVER_ORDER_UPLOAD_SEARCH_QUERY, variables }),

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { CUSTOMER_WISHLIST_QUERY } from '@/src/graphql/queries';
 import { REMOVE_PRODUCTS_FROM_WISHLIST_MUTATION } from '@/src/graphql/mutations';
+import { toStoreCode } from "@/lib/store/website";
 
 const MAGENTO_GRAPHQL = (process.env.NEXT_PUBLIC_MAGENTO_BASE_URL || "") + "/graphql";
 
@@ -22,7 +23,7 @@ export async function DELETE(
         // Resolve the wishlist id.
         const wlRes = await fetch(MAGENTO_GRAPHQL, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', Store: locale, Authorization: authHeader },
+            headers: { 'Content-Type': 'application/json', Store: toStoreCode(locale, request), Authorization: authHeader },
             body: JSON.stringify({ query: CUSTOMER_WISHLIST_QUERY, variables: { currentPage: 1, pageSize: 1 } }),
             cache: 'no-store',
         });
@@ -34,7 +35,7 @@ export async function DELETE(
 
         const res = await fetch(MAGENTO_GRAPHQL, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', Store: locale, Authorization: authHeader },
+            headers: { 'Content-Type': 'application/json', Store: toStoreCode(locale, request), Authorization: authHeader },
             body: JSON.stringify({
                 query: REMOVE_PRODUCTS_FROM_WISHLIST_MUTATION,
                 variables: { wishlistId, itemIds: [String(id)] },

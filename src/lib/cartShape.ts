@@ -21,7 +21,8 @@ export interface KleverCartShape {
   tax_amount: number;
   tax_label: string;
   grand_total: number;
-  currency_code: string;
+  /** Magento cart currency; undefined when Magento sends none (no invented default). */
+  currency_code: string | undefined;
   applied_coupons: Array<{ code: string }>;
 }
 
@@ -59,7 +60,7 @@ export function reshapeCustomerCart(cart: CustomerCart): KleverCartShape {
     cart.prices?.subtotal_excluding_tax?.value ??
     items.reduce((sum, i) => sum + i.row_total, 0);
   const grandTotal = cart.prices?.grand_total.value ?? subtotal;
-  const currency = cart.prices?.grand_total.currency ?? "SAR";
+  const currency = cart.prices?.grand_total?.currency;
 
   return {
     cart_id: cart.id,

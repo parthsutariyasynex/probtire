@@ -133,7 +133,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
       const tax_amount = Number(data.tax_amount ?? data.cart?.tax_amount ?? 0);
       const tax_label = data.tax_label ?? data.cart?.tax_label ?? "Tax";
       const grand_total = Number(data.grand_total ?? data.cart?.grand_total ?? subtotal);
-      const currency_code = data.currency_code ?? data.cart?.currency_code ?? "SAR";
+      // Currency exactly as the cart API sends it (Magento cart / storeConfig) — no default.
+      const currency_code = data.currency_code ?? data.cart?.currency_code;
 
       // Calculate total units instead of unique SKUs for navbar count
       const items_count = items.reduce((sum: number, i: CartItem) => sum + i.qty, 0);

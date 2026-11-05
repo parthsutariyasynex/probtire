@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getLocaleFromRequest } from '@/lib/api/magento-url';
 import { KLEVER_FORECAST_FILE_QUERY } from '@/src/graphql/queries';
+import { toStoreCode } from "@/lib/store/website";
 
 const MAGENTO_GRAPHQL = (process.env.NEXT_PUBLIC_MAGENTO_BASE_URL || "") + "/graphql";
 
@@ -30,7 +31,7 @@ export async function GET(
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                Store: getLocaleFromRequest(request),
+                Store: toStoreCode(getLocaleFromRequest(request), request),
                 Authorization: authHeader,
             },
             body: JSON.stringify({ query: KLEVER_FORECAST_FILE_QUERY, variables: { forecastId } }),

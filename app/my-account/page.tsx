@@ -16,6 +16,7 @@ import PortalDropdown from "@/components/PortalDropdown";
 import { Hourglass } from "lucide-react";
 import CreditLimit from "@/app/components/CreditLimit";
 import { AccountSkeleton, SidebarSkeleton } from "@/components/skeletons";
+import { getClientStoreConfig } from "@/lib/store/client-config";
 
 
 type CustomAttribute = {
@@ -40,10 +41,19 @@ type Address = {
 
 export default function MyAccountPage() {
     const router = useRouter();
-    const { t } = useTranslation();
+    const { t, locale } = useTranslation();
     const lp = useLocalePath();
     const pathname = usePathname();
     const dispatch = useDispatch<AppDispatch>();
+    // Display currency of the selected website + language (Magento storeConfig).
+    const [currency, setCurrency] = useState("");
+    useEffect(() => {
+        let alive = true;
+        getClientStoreConfig(locale).then((cfg) => {
+            if (alive) setCurrency(cfg?.default_display_currency_code ?? "");
+        });
+        return () => { alive = false; };
+    }, [locale]);
     const { data: session, status } = useSession();
     const { data: customer, loading } = useSelector((state: RootState) => state.customer);
     const token = useSelector((state: RootState) => state.auth.token);
@@ -370,7 +380,7 @@ export default function MyAccountPage() {
                                             <div className="p-3 md:p-5 text-body text-gray-700 space-y-2.5 font-medium leading-relaxed">
                                                 <p>{t("m.sales-targets")}: {targets?.sales_target ?? "N/A"}</p>
                                                 <p>{t("m.achievements")}: {targets?.achievement ?? "N/A"}</p>
-                                                <p>{t("m.incentive")}: SAR {formatCurrency(String(targets?.incentive ?? "0"))}</p>
+                                                <p>{t("m.incentive")}: {currency} {formatCurrency(String(targets?.incentive ?? "0"))}</p>
                                             </div>
                                         </div>
                                     )}
@@ -383,7 +393,7 @@ export default function MyAccountPage() {
                                             </div>
                                             <div className="p-3 md:p-5 text-body text-gray-700 space-y-2.5 font-medium leading-relaxed">
                                                 <p>{t("m.payment-historydso")}: {getAttr("payment_history")}</p>
-                                                <p>{t("m.credit-limit")}: SAR {formatCurrency(getAttr("total_credit_limit"))}</p>
+                                                <p>{t("m.credit-limit")}: {currency} {formatCurrency(getAttr("total_credit_limit"))}</p>
                                                 <p>{t("m.credit-period")}: {getAttr("credit_period")} {t("account.days")}</p>
                                             </div>
                                         </div>

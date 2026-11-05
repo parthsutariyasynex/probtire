@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getLocaleFromRequest } from "@/lib/api/magento-url";
 import { getRequestToken } from "@/lib/api/auth-helper";
 import { KLEVER_PLACE_ORDER_MUTATION, SET_PAYMENT_METHOD_ON_CART_MUTATION } from "@/src/graphql/mutations";
+import { toStoreCode } from "@/lib/store/website";
 
 const MAGENTO_GRAPHQL = (process.env.NEXT_PUBLIC_MAGENTO_BASE_URL || "") + "/graphql";
 
@@ -27,7 +28,7 @@ export async function POST(req: Request) {
         }
 
         const paymentMethod = String(body.payment_method ?? body.paymentMethod ?? "");
-        const store = getLocaleFromRequest(req);
+        const store = toStoreCode(getLocaleFromRequest(req), req);
 
         // Step 1: set payment method on cart before placing order
         if (paymentMethod) {

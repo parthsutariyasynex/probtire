@@ -1950,6 +1950,44 @@ export function PageSkeleton({ children }: { children: React.ReactNode }) {
 
 // ─── Login Skeleton ──────────────────────────────────────────────────────────
 export function LoginSkeleton() {
+  // Mirrors the standalone login page: language link, logo, welcome text, card, footer.
+  return (
+    <div className="flex-1 w-full min-h-screen bg-canvas flex flex-col font-rubik">
+      <div className="w-full flex justify-end px-4 sm:px-6 pt-4">
+        <Pulse className="h-4 w-14 rounded" />
+      </div>
+      <main className="flex-1 w-full flex flex-col items-center px-4 pt-6 sm:pt-10 pb-10">
+        <Pulse className="h-12 sm:h-14 w-40 rounded" />
+        <Pulse className="mt-6 h-7 w-56 rounded" />
+        <span className="mt-3 block h-1 w-14 rounded-full bg-brand-yellow/40" aria-hidden="true" />
+        <Pulse className="mt-4 h-4 w-full max-w-[460px] rounded" />
+        <Pulse className="mt-2 h-4 w-2/3 max-w-[300px] rounded" />
+        <div className="mt-8 w-full max-w-[420px] bg-white rounded-[3px] border border-gray-200 shadow-[0_10px_40px_rgba(0,0,0,0.06)] p-5 sm:p-6 space-y-4">
+          <div className="flex gap-2">
+            <Pulse className="h-10 flex-1 rounded-[3px]" />
+            <Pulse className="h-10 flex-1 rounded-[3px]" />
+          </div>
+          <div className="space-y-1.5">
+            <Pulse className="h-3 w-16 rounded" />
+            <Pulse className="h-11 w-full rounded-[3px]" />
+          </div>
+          <div className="space-y-1.5">
+            <Pulse className="h-3 w-20 rounded" />
+            <Pulse className="h-11 w-full rounded-[3px]" />
+          </div>
+          <Pulse className="h-11 w-full rounded-[3px]" />
+          <Pulse className="h-3 w-48 rounded" />
+        </div>
+      </main>
+      <div className="py-5 flex justify-center">
+        <Pulse className="h-3 w-12 rounded" />
+      </div>
+    </div>
+  );
+}
+
+// Card-form skeleton for /forgot-password and /change-password (they keep the app navbar).
+export function AuthFormSkeleton() {
   return (
     <div className="flex-1 w-full h-full bg-canvas flex flex-col font-rubik">
       <main className="flex-1 w-full flex justify-center items-start pt-6 sm:pt-8 md:pt-16 pb-8 sm:pb-12 px-4 md:px-0">
@@ -2579,8 +2617,11 @@ function getBasePath(pathname: string): string {
 // parent layout already renders the real Navbar/Footer).
 function renderSkeletonForPath(base: string): React.ReactNode {
   // Auth pages
-  if (base.startsWith("/login") || base.startsWith("/forgot-password") || base.startsWith("/change-password")) {
+  if (base.startsWith("/login")) {
     return <LoginSkeleton />;
+  }
+  if (base.startsWith("/forgot-password") || base.startsWith("/change-password")) {
+    return <AuthFormSkeleton />;
   }
 
   // Cart / Checkout / Quick Order
@@ -2793,7 +2834,8 @@ export function RouteAwareSkeleton() {
 
   return (
     <div className="flex flex-col min-h-screen bg-white max-w-[1920px] mx-auto w-full">
-      <NavbarSkeleton />
+      {/* The login page is standalone (no navbar) — match ProtectedLayout. */}
+      {!base.startsWith("/login") && <NavbarSkeleton />}
       <main className="flex-1 flex flex-col w-full relative">
         {renderSkeletonForPath(base)}
       </main>

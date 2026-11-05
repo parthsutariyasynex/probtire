@@ -1445,3 +1445,34 @@ export const STANDARD_TYRE_SIZE_AGGREGATION_QUERY = /* GraphQL */ `
   }
 `;
 
+
+// ─── Store view configuration (per website + language) ───
+// Source for everything that differs per store view: branding/meta defaults, currency
+// and the catalog root used to find a default category. Public, token-free.
+export const STORE_CONFIG_QUERY = /* GraphQL */ `
+  query StoreConfig {
+    storeConfig {
+      store_code
+      store_name
+      website_id
+      website_code
+      website_name
+      locale
+      root_category_id
+      default_title
+      title_prefix
+      title_suffix
+      default_description
+      default_keywords
+      base_currency_code
+      default_display_currency_code
+    }
+  }
+`;
+
+/** Resolve a storefront URL path to its entity (category id). */
+export const URL_RESOLVER_QUERY = /* GraphQL */ `
+  query UrlResolver($url: String!) {
+    urlResolver(url: $url) { type id }
+  }
+`;

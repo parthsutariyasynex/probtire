@@ -207,6 +207,7 @@ import { fetchCustomerInfo } from "@/store/actions/customerActions";
 import { useTranslation } from "@/hooks/useTranslation";
 import { useLocalePath } from "@/hooks/useLocalePath";
 import { isValidLocale } from "@/lib/i18n/config";
+import { toStoreCode } from "@/lib/store/website";
 import { setLocaleCookie } from "@/lib/i18n/client";
 
 interface NavLink {
@@ -294,6 +295,14 @@ export default function Navbar() {
       return payload.utypid === 3;
     } catch { return false; }
   }, [(session as any)?.accessToken]);
+
+  // Track website switching events to immediately refresh the menu
+  const [storeVersion, setStoreVersion] = useState(0);
+  useEffect(() => {
+    const onWebsiteChange = () => setStoreVersion((v) => v + 1);
+    window.addEventListener("website-changed", onWebsiteChange);
+    return () => window.removeEventListener("website-changed", onWebsiteChange);
+  }, []);
 
   // shouldHideCartActions: driven by account-sidebar user_type (the only reliable source).
   // "Sales Person" and "Multiple Company User" → hide Cart, Search, Notifications.
@@ -424,14 +433,14 @@ export default function Navbar() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // Fetch dynamic menu from API (re-fetches when locale or user type changes).
-  // Sales Persons see a different menu (quick_order is_visible=true), so we use
-  // a separate cache key to prevent the guest menu from masking Quick Order.
+  // Fetch dynamic menu directly from Magento API (re-fetches when locale, website, or user type changes).
   useEffect(() => {
     let cancelled = false;
 
-    const CACHE_KEY = `navmenu_v5_${isSalesPerson ? "sp_" : ""}${locale}`;
-    const CACHE_TTL = 24 * 60 * 60 * 1000; // 24 h
+    // Keyed by store view: each website has its own menu
+    const store = typeof document !== "undefined" ? toStoreCode(locale, document.cookie) : locale;
+    const CACHE_KEY = `navmenu_v7_${isSalesPerson ? "sp_" : ""}${locale}_${store}`;
+    const CACHE_TTL = 5 * 60 * 1000; // 5 min max session cache
 
     const toLinks = (raw: any[]): NavLink[] =>
       raw
@@ -448,15 +457,11 @@ export default function Navbar() {
     const applyLinks = (links: NavLink[]) => {
       navLinksRef.current = links;
       setNavLinks(links);
-      const firstCat = links.find((l) => l.categoryId);
-      if (firstCat?.categoryId && typeof sessionStorage !== "undefined") {
-        sessionStorage.setItem("defaultCategoryId", firstCat.categoryId);
-      }
     };
 
     const readLocalCache = (): NavLink[] | null => {
       try {
-        const raw = typeof window !== "undefined" ? localStorage.getItem(CACHE_KEY) : null;
+        const raw = typeof window !== "undefined" ? sessionStorage.getItem(CACHE_KEY) : null;
         if (!raw) return null;
         const parsed = JSON.parse(raw);
         if (parsed.expires > Date.now() && Array.isArray(parsed.items) && parsed.items.length > 0)
@@ -466,10 +471,6 @@ export default function Navbar() {
     };
 
     const fetchMenu = async () => {
-      // Immediately show cached data so menu appears before API responds.
-      // Only show loading skeleton when there are no links to show at all —
-      // on re-runs (isSalesPerson just became true) keep existing links visible
-      // while the sp_ cache is being populated.
       const localCached = readLocalCache();
       if (localCached) {
         applyLinks(localCached);
@@ -486,15 +487,14 @@ export default function Navbar() {
             "Content-Type": "application/json",
             ...(token && { "Authorization": `Bearer ${token}` }),
             "x-locale": locale,
+            "x-store": store,
           },
+          cache: "no-store",
         });
 
         if (cancelled) return;
 
         if (!res.ok) {
-          // Non-2xx response is expected when unauthenticated or backend hiccups;
-          // we already cache locally and fall back gracefully. Log + bail without
-          // throwing so Next.js dev overlay doesn't flag a "real" error.
           console.warn(`[Navbar] Menu fetch HTTP ${res.status}; keeping cached menu if any`);
           if (!localCached) setNavLinks([]);
           return;
@@ -506,15 +506,13 @@ export default function Navbar() {
         if (Array.isArray(data) && data.length > 0) {
           const links = toLinks(data);
           applyLinks(links);
-          // Save fresh data to localStorage for future page loads
           try {
-            localStorage.setItem(CACHE_KEY, JSON.stringify({ items: links, expires: Date.now() + CACHE_TTL }));
+            sessionStorage.setItem(CACHE_KEY, JSON.stringify({ items: links, expires: Date.now() + CACHE_TTL }));
           } catch { }
         } else if (!localCached) {
           setNavLinks([]);
         }
       } catch (err) {
-        // Network-level failure (fetch threw) — log quietly, keep cached menu.
         console.warn("[Navbar] Menu fetch network error:", err instanceof Error ? err.message : err);
         if (!cancelled && !localCached) setNavLinks([]);
       } finally {
@@ -524,7 +522,7 @@ export default function Navbar() {
 
     fetchMenu();
     return () => { cancelled = true; };
-  }, [locale, isSalesPerson]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [locale, isSalesPerson, storeVersion]); // eslint-disable-line react-hooks/exhaustive-deps
 
 
   // Resolve the display label for a menu item in the following precedence:
@@ -709,6 +707,35 @@ export default function Navbar() {
             navLinks.map((item) => {
               const href = resolveNavHref(item);
               const isActive = pathname === href || pathname?.startsWith(href + "/");
+              const hasChildren = Boolean(item.children && item.children.length > 0);
+
+              if (hasChildren) {
+                return (
+                  <div key={item.href || item.code || item.label} className="relative group h-full flex items-center">
+                    <Link
+                      href={href}
+                      className={`py-3 flex items-center gap-1.5 h-full px-2.5 lg:px-7 text-label lg:text-h3-sm font-semibold capitalize transition-all duration-200 whitespace-nowrap ${
+                        isActive ? "bg-black text-white" : "text-black hover:bg-black hover:text-white"
+                      }`}
+                    >
+                      {item.label}
+                      <ChevronDown size={14} className="transition-transform duration-200 group-hover:rotate-180 opacity-70" />
+                    </Link>
+                    <div className="absolute top-full ltr:left-0 rtl:right-0 hidden group-hover:flex flex-col bg-white shadow-xl border border-gray-100 min-w-[200px] py-1.5 z-50 rounded-b-sm">
+                      {item.children!.map((child) => (
+                        <Link
+                          key={child.href || child.label}
+                          href={child.href}
+                          className="px-4 py-2 text-body-sm font-bold text-gray-800 hover:bg-gray-50 hover:text-brand-yellow-dark transition-colors ltr:text-left rtl:text-right"
+                        >
+                          {child.label}
+                        </Link>
+                      ))}
+                    </div>
+                  </div>
+                );
+              }
+
               return (
                 <Link
                   key={item.href || item.code || item.label}
@@ -751,6 +778,36 @@ export default function Navbar() {
               {navLinks.map((item) => {
                 const href = resolveNavHref(item);
                 const isActive = pathname === href || pathname?.startsWith(href + "/");
+                const hasChildren = Boolean(item.children && item.children.length > 0);
+
+                if (hasChildren) {
+                  return (
+                    <div key={item.href} className="flex flex-col py-1">
+                      <div className="flex items-center justify-between py-2 text-body-sm font-bold uppercase tracking-wide">
+                        <Link
+                          href={href}
+                          className={`flex-1 ${isActive ? "text-brand-yellow" : "text-black hover:text-brand-yellow"}`}
+                          onClick={() => setIsMenuOpen(false)}
+                        >
+                          {item.label}
+                        </Link>
+                      </div>
+                      <div className="ltr:pl-4 rtl:pr-4 flex flex-col gap-1 ltr:border-l-2 rtl:border-r-2 border-brand-yellow my-1">
+                        {item.children!.map((child) => (
+                          <Link
+                            key={child.href}
+                            href={child.href}
+                            onClick={() => setIsMenuOpen(false)}
+                            className="py-1.5 text-caption font-semibold text-gray-600 hover:text-black transition-colors"
+                          >
+                            {child.label}
+                          </Link>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                }
+
                 return (
                   <Link
                     key={item.href}

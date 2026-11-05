@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getRequestToken } from "@/lib/api/auth-helper";
 import { getLocaleFromRequest } from "@/lib/api/magento-url";
 import { KLEVER_MY_ORDERS_QUERY, KLEVER_ORDER_FILTER_OPTIONS_QUERY } from "@/src/graphql/queries";
+import { toStoreCode } from "@/lib/store/website";
 
 const MAGENTO_GRAPHQL = (process.env.NEXT_PUBLIC_MAGENTO_BASE_URL || "") + "/graphql";
 
@@ -51,7 +52,7 @@ export async function GET(request: NextRequest) {
         const orderNumberFilter = sp.get("orderNumber")?.trim() || null;
         const companyCodeFilter = sp.get("companyCode") && sp.get("companyCode") !== "All" ? sp.get("companyCode")! : null;
 
-        const store = getLocaleFromRequest(request);
+        const store = toStoreCode(getLocaleFromRequest(request), request);
         const isAuthError = (msg: string) => /not authoriz|isn't authoriz|unauthor|invalid token|token expired|graphql-auth/i.test(msg || "");
 
         // Fetch ALL pages from kleverMyOrders (resolver handles role scoping).

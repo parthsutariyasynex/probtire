@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getLocaleFromRequest } from "@/lib/api/magento-url";
 import { getRequestToken } from "@/lib/api/auth-helper";
 import { KLEVER_ORDER_FILTER_OPTIONS_QUERY } from "@/src/graphql/queries";
+import { toStoreCode } from "@/lib/store/website";
 
 const MAGENTO_GRAPHQL = (process.env.NEXT_PUBLIC_MAGENTO_BASE_URL || "") + "/graphql";
 
@@ -9,7 +10,8 @@ const MAGENTO_GRAPHQL = (process.env.NEXT_PUBLIC_MAGENTO_BASE_URL || "") + "/gra
 // status_options of kleverOrderFilterOptions, so this route derives them from that query.
 // Returns an array of { label, value } with an "All" entry prepended (matching the legacy
 // shape). On any failure it falls back to a minimal list so the filter UI never breaks.
-const FALLBACK = [{ label: "All", value: "All" }, { label: "Check Pending", value: "Check Pending" }];
+// Statuses come only from Magento (kleverOrderFilterOptions.status_options); on failure the
+// route returns an error — no substitute list.
 
 export async function GET(request: NextRequest) {
     try {
@@ -20,7 +22,7 @@ export async function GET(request: NextRequest) {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
-                Store: getLocaleFromRequest(request),
+                Store: toStoreCode(getLocaleFromRequest(request), request),
                 Authorization: `Bearer ${token}`,
             },
             body: JSON.stringify({ query: KLEVER_ORDER_FILTER_OPTIONS_QUERY }),
@@ -30,8 +32,7 @@ export async function GET(request: NextRequest) {
         const json = await res.json();
         if (Array.isArray(json?.errors) && json.errors.length > 0) {
             console.error("[order-statuses] GraphQL error:", JSON.stringify(json.errors).slice(0, 300));
-            // Preserve the old graceful fallback so the UI doesn't break.
-            return NextResponse.json(FALLBACK);
+            return NextResponse.json({ message: json.errors[0]?.message || "Order statuses unavailable" }, { status: 502 });
         }
 
         const statusOptions = json?.data?.kleverOrderFilterOptions?.status_options;
@@ -43,9 +44,9 @@ export async function GET(request: NextRequest) {
         );
         const result = hasAll ? items : [{ label: "All", value: "All" }, ...items];
 
-        return NextResponse.json(result.length > 0 ? result : FALLBACK);
+        return NextResponse.json(result);
     } catch (error: any) {
         console.error("[order-statuses] error:", error.message);
-        return NextResponse.json(FALLBACK);
+        return NextResponse.json({ message: error.message || "Order statuses unavailable" }, { status: 502 });
     }
 }

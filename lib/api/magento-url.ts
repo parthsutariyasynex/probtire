@@ -11,6 +11,8 @@
 //   import { getBaseUrl } from "@/lib/api/magento-url";
 //   const BASE_URL = getBaseUrl(request);
 
+import { toStoreCode } from "@/lib/store/website";
+
 const LOCALE_COOKIE = "NEXT_LOCALE";
 const VALID_LOCALES = ["en", "ar"];
 const DEFAULT_LOCALE = "en";
@@ -24,9 +26,9 @@ const DEFAULT_LOCALE = "en";
  *   - `https://altalayi-live.btire.com/rest/ar/V1/kleverapi`
  */
 export function getBaseUrl(request: Request): string {
-    const locale = getLocaleFromRequest(request);
+    const store = toStoreCode(getLocaleFromRequest(request), request);
     const domain = process.env.NEXT_PUBLIC_MAGENTO_BASE_URL || "";
-    return `${domain}/rest/${locale}/V1/kleverapi`;
+    return `${domain}/rest/${store}/V1/kleverapi`;
 }
 
 /**
@@ -67,7 +69,7 @@ export function getLocaleFromRequest(request: Request): string {
  * Get the Magento auth token URL for the given locale.
  */
 export function getAuthUrl(request: Request): string {
-    const locale = getLocaleFromRequest(request);
+    const store = toStoreCode(getLocaleFromRequest(request), request);
     const domain = process.env.NEXT_PUBLIC_MAGENTO_BASE_URL || "";
-    return `${domain}/rest/${locale}/V1/integration/customer/token`;
+    return `${domain}/rest/${store}/V1/integration/customer/token`;
 }

@@ -832,3 +832,67 @@ export const KLEVER_MULTISHIPPING_PLACE_ORDER_MUTATION = /* GraphQL */ `
     }
   }
 `;
+
+// ─── Klever Site Login (one BTire login for Al-Talayi / Roya / Afaq) ────────
+const SITE_LOGIN_ACCOUNT_FIELDS = /* GraphQL */ `
+  account_id
+  name
+  current
+  website_id
+  website_code
+  label
+  logo
+  store_code
+  store_url
+`;
+
+/** Step 1 — email+password or mobile+OTP → one-time login_key + websites. */
+export const KLEVER_SITE_LOGIN_VERIFY_MUTATION = /* GraphQL */ `
+  mutation KleverSiteLoginVerify($input: KleverSiteLoginVerifyInput!) {
+    kleverSiteLoginVerify(input: $input) {
+      login_key
+      accounts { ${SITE_LOGIN_ACCOUNT_FIELDS} }
+    }
+  }
+`;
+
+/** Step 2 — chosen website → customer token for that website (login_key works once). */
+export const KLEVER_SITE_LOGIN_SELECT_MUTATION = /* GraphQL */ `
+  mutation KleverSiteLoginSelect($login_key: String!, $account_id: Int!) {
+    kleverSiteLoginSelect(login_key: $login_key, account_id: $account_id) {
+      token
+      account { ${SITE_LOGIN_ACCOUNT_FIELDS} }
+    }
+  }
+`;
+
+/** Logged-in (Bearer) — switch to the same customer's account on another website. */
+export const KLEVER_SITE_LOGIN_SWITCH_MUTATION = /* GraphQL */ `
+  mutation KleverSiteLoginSwitch($account_id: Int!) {
+    kleverSiteLoginSwitch(account_id: $account_id) {
+      token
+      account { ${SITE_LOGIN_ACCOUNT_FIELDS} }
+    }
+  }
+`;
+
+/** Logged-in (Bearer) — own account first, then same-email accounts on other websites. */
+export const KLEVER_SITE_LOGIN_ACCOUNTS_QUERY = /* GraphQL */ `
+  query KleverSiteLoginAccounts {
+    kleverSiteLoginAccounts { ${SITE_LOGIN_ACCOUNT_FIELDS} }
+  }
+`;
+
+/** Public — websites with Site Login on, labels/logos/store codes in `lang`. */
+export const KLEVER_SITE_LOGIN_WEBSITES_QUERY = /* GraphQL */ `
+  query KleverSiteLoginWebsites($lang: String) {
+    kleverSiteLoginWebsites(lang: $lang) {
+      website_id
+      website_code
+      label
+      logo
+      store_code
+      store_url
+    }
+  }
+`;

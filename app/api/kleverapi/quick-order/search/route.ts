@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getLocaleFromRequest } from "@/lib/api/magento-url";
 import { getRequestToken } from "@/lib/api/auth-helper";
 import { KLEVER_QUICK_ORDER_SEARCH_QUERY, PRODUCTS_SEARCH_QUERY } from "@/src/graphql/queries";
+import { toStoreCode } from "@/lib/store/website";
 
 const MAGENTO_GRAPHQL = (process.env.NEXT_PUBLIC_MAGENTO_BASE_URL || "") + "/graphql";
 
@@ -27,7 +28,7 @@ export async function GET(request: NextRequest) {
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json",
-                        Store: locale,
+                        Store: toStoreCode(locale, request),
                         Authorization: `Bearer ${token}`,
                     },
                     body: JSON.stringify({
@@ -59,7 +60,7 @@ export async function GET(request: NextRequest) {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
-                Store: locale,
+                Store: toStoreCode(locale, request),
                 ...(token && token !== "null" ? { Authorization: `Bearer ${token}` } : {}),
             },
             body: JSON.stringify({

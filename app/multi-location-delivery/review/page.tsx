@@ -165,9 +165,16 @@ const MultiShippingReviewPage: React.FC = () => {
             setIsPlacingOrder(true);
 
             const savedMethodsForPayload: Record<string, string> = JSON.parse(localStorage.getItem('multi_shipping_methods') || '{}');
+            // Every address needs a method the customer chose from Magento's list — never
+            // submit an invented one.
+            if (groups.some(group => !savedMethodsForPayload[group.address.id])) {
+                toast.error(t("multi.noShippingMethods"));
+                setIsPlacingOrder(false);
+                return;
+            }
             const shippingInformation = groups.map(group => ({
                 address_id: String(group.address.id),
-                shipping_method: savedMethodsForPayload[group.address.id] || "flatrate_flatrate",
+                shipping_method: savedMethodsForPayload[group.address.id],
                 po_number: groupData[group.address.id]?.poNumber || "",
                 order_comment: groupData[group.address.id]?.comment || ""
             }));

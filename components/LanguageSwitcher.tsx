@@ -9,6 +9,24 @@ import {
 import { defaultLocale, localeNames } from "@/lib/i18n/config";
 
 /**
+ * Switch the UI language (shared by the navbar switcher and the login page link):
+ * cookie → instant direction/data update → full navigation so middleware runs fresh.
+ */
+export function switchLocale(newLocale: Locale): void {
+    // 1. Update cookie
+    setLocaleCookie(newLocale);
+
+    // 2. Notify DirectionSync + data-fetching components instantly
+    window.dispatchEvent(new CustomEvent("locale-changed", { detail: newLocale }));
+
+    // 3. Full page navigation — ensures middleware runs, cookies are set,
+    //    and all server/client state is fresh
+    const currentPath = window.location.pathname;
+    const stripped = currentPath.replace(/^\/(en|ar)/, "") || "/";
+    window.location.href = `/${newLocale}${stripped === "/" ? "" : stripped}${window.location.search}`;
+}
+
+/**
  * Language Switcher Component
  *
  * Uses useState + useEffect to avoid hydration mismatch:
@@ -27,18 +45,7 @@ export default function LanguageSwitcher() {
 
     const handleSwitch = (newLocale: Locale) => {
         if (newLocale === currentLocale) return;
-
-        // 1. Update cookie
-        setLocaleCookie(newLocale);
-
-        // 2. Notify DirectionSync + data-fetching components instantly
-        window.dispatchEvent(new CustomEvent("locale-changed", { detail: newLocale }));
-
-        // 3. Full page navigation — ensures middleware runs, cookies are set,
-        //    and all server/client state is fresh
-        const currentPath = window.location.pathname;
-        const stripped = currentPath.replace(/^\/(en|ar)/, "") || "/";
-        window.location.href = `/${newLocale}${stripped === "/" ? "" : stripped}${window.location.search}`;
+        switchLocale(newLocale);
     };
 
     return (

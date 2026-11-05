@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { KLEVER_CREDIT_ACCOUNT_QUERY } from "@/src/graphql/queries";
+import { toStoreCode } from "@/lib/store/website";
 
 const MAGENTO_GRAPHQL = (process.env.NEXT_PUBLIC_MAGENTO_BASE_URL || "") + "/graphql";
 
@@ -22,7 +23,7 @@ export async function GET(request: NextRequest) {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
-                Store: locale,
+                Store: toStoreCode(locale, request),
                 Authorization: authHeader,
             },
             body: JSON.stringify({ query: KLEVER_CREDIT_ACCOUNT_QUERY }),

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getLocaleFromRequest } from "@/lib/api/magento-url";
 import { getRequestToken } from "@/lib/api/auth-helper";
 import { CHANGE_CUSTOMER_PASSWORD_MUTATION } from "@/src/graphql/mutations";
+import { toStoreCode } from "@/lib/store/website";
 
 const MAGENTO_GRAPHQL = (process.env.NEXT_PUBLIC_MAGENTO_BASE_URL || "") + "/graphql";
 
@@ -19,7 +20,7 @@ export async function POST(req: NextRequest) {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
-                Store: getLocaleFromRequest(req),
+                Store: toStoreCode(getLocaleFromRequest(req), req),
                 Authorization: `Bearer ${token}`,
             },
             body: JSON.stringify({ query: CHANGE_CUSTOMER_PASSWORD_MUTATION, variables: { currentPassword, newPassword } }),

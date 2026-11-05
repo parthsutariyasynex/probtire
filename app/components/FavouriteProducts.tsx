@@ -15,6 +15,7 @@ import { FavouriteProductsSkeleton } from "@/components/skeletons";
 
 import { api } from "@/lib/api/api-client";
 import { useTranslation } from "@/hooks/useTranslation";
+import { getDefaultCategoryId } from "@/lib/store/client-config";
 import Pagination, { PageSizeSelect } from "@/components/Pagination";
 import { useCart } from "@/modules/cart/context/CartContext";
 import { useSession } from "next-auth/react";
@@ -314,7 +315,10 @@ export default function FavouriteProducts({ title }: { title?: React.ReactNode }
             // Extract item code from SKU (remove year suffix e.g. "PSR02347-2025" → "PSR02347")
             const itemCode = product.sku?.replace(/-\d{4}$/, "") || product.sku;
 
-            const res = await fetch(`/api/category-products?categoryId=5&page=1&pageSize=5&itemCode=${itemCode}`, { headers });
+            // Selected website's default category (from Magento) — no hardcoded id.
+            const categoryId = await getDefaultCategoryId(fetchLocale);
+            if (!categoryId) throw new Error("No default category for the selected website");
+            const res = await fetch(`/api/category-products?categoryId=${categoryId}&page=1&pageSize=5&itemCode=${encodeURIComponent(itemCode)}`, { headers });
             if (res.ok) {
                 const data = await res.json();
                 const items = data.products || data.items || [];

@@ -69,6 +69,8 @@ export default function ProtectedLayout({ children }: ProtectedLayoutProps) {
   }, [session, status, dispatch, isPublicPage, wasAuthenticated]);
 
   const hideFooter = ['/login', '/forgot-password'].some(p => pathnameWithoutLocale.startsWith(p));
+  // The login page is a standalone screen (own logo, language link and footer).
+  const hideNavbar = pathnameWithoutLocale.startsWith('/login');
   const isLoading = status === 'loading';
 
   // Redirect unauthenticated users to login on protected pages.
@@ -99,7 +101,7 @@ export default function ProtectedLayout({ children }: ProtectedLayoutProps) {
   return (
     <LoadingOverlayProvider>
       <div className="flex flex-col min-h-screen bg-white">
-        <Navbar />
+        {!hideNavbar && <Navbar />}
 
         <main className="flex-1 flex flex-col w-full relative">
           <div className="flex-1 flex flex-col w-full min-h-0">

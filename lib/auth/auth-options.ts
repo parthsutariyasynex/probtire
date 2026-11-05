@@ -1,8 +1,11 @@
 import { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
-import { getMagentoBaseUrl, isValidLocale, defaultLocale, type Locale } from "@/lib/i18n/config";
+import { isValidLocale, defaultLocale, type Locale } from "@/lib/i18n/config";
 import { GENERATE_CUSTOMER_TOKEN_MUTATION } from "@/src/graphql/mutations";
 import { CUSTOMER_QUERY } from "@/src/graphql/queries";
+import { KLEVER_SITE_LOGIN_SELECT_MUTATION, KLEVER_SITE_LOGIN_SWITCH_MUTATION } from "@/src/graphql/mutations";
+import { siteLoginGraphql } from "@/lib/site-login/server";
+import { toStoreCode } from "@/lib/store/website";
 
 /**
  * Resolve the Magento GraphQL endpoint (locale is selected via the `Store` header).
@@ -46,11 +49,47 @@ export const authOptions: NextAuthOptions = {
                 // Read locale from credentials (passed from login form)
                 const credLocale = (credentials as any).locale;
                 const locale: Locale = credLocale && isValidLocale(credLocale) ? credLocale : defaultLocale;
-                const magentoBase = getMagentoBaseUrl(locale);
 
                 // Forward browser cookies (especially cf_clearance) so Cloudflare WAF
                 // treats server-side Magento requests as coming from a verified browser.
                 const browserCookies = (req as any)?.headers?.cookie || "";
+                // Store view of the selected website for this language (from the
+                // `selected_store` cookie, filled from the Site Login API). Customers are
+                // scoped per website, so the wrong store view rejects valid credentials.
+                const storeCode = toStoreCode(locale, browserCookies);
+
+                // ── Site Login step 2 → kleverSiteLoginSelect(login_key, account_id) ──
+                // The login page already verified email/password or mobile/OTP
+                // (/api/kleverapi/site-login/verify) and the customer picked a website.
+                const loginKey = (credentials as any).login_key;
+                const accountId = Number((credentials as any).account_id);
+                if (loginKey && Number.isInteger(accountId)) {
+                    const requested = String((credentials as any).store_code || "");
+                    const selectStore = /^[a-z0-9_]+$/i.test(requested) ? requested : storeCode;
+                    try {
+                        const data = await siteLoginGraphql(
+                            KLEVER_SITE_LOGIN_SELECT_MUTATION,
+                            { login_key: String(loginKey), account_id: accountId },
+                            { store: selectStore, cookies: browserCookies },
+                        );
+                        const result = data?.kleverSiteLoginSelect;
+                        if (!result?.token) {
+                            console.error("Auth (SiteLogin): no token from kleverSiteLoginSelect");
+                            return null;
+                        }
+                        const account = result.account || {};
+                        return {
+                            id: String(account.account_id ?? accountId),
+                            email: (credentials as any).email || "",
+                            name: account.name || (credentials as any).email || "",
+                            token: String(result.token).trim(),
+                            storeCode: account.store_code || selectStore,
+                        } as any;
+                    } catch (error) {
+                        console.error("Auth (SiteLogin) error:", error);
+                        return null;
+                    }
+                }
 
                 // ── Password login → GraphQL generateCustomerToken ──
                 // The host's WAF may block server-side requests. Forwarding the user's
@@ -61,7 +100,7 @@ export const authOptions: NextAuthOptions = {
                             method: "POST",
                             headers: {
                                 "Content-Type": "application/json",
-                                Store: locale,
+                                Store: storeCode,
                                 ...(browserCookies ? { Cookie: browserCookies } : {}),
                             },
                             body: JSON.stringify({
@@ -99,7 +138,7 @@ export const authOptions: NextAuthOptions = {
                                 method: "POST",
                                 headers: {
                                     "Content-Type": "application/json",
-                                    Store: locale,
+                                    Store: storeCode,
                                     Authorization: `Bearer ${token}`,
                                     ...(browserCookies ? { Cookie: browserCookies } : {}),
                                 },
@@ -125,7 +164,7 @@ export const authOptions: NextAuthOptions = {
                 }
 
                 // ── OTP login → REST /login/otp ──
-                const url = `${magentoBase}/login/otp`;
+                const url = `${process.env.NEXT_PUBLIC_MAGENTO_BASE_URL || ""}/rest/${storeCode}/V1/kleverapi/login/otp`;
                 const body = {
                     mobile: (credentials as any).mobile,
                     otp: (credentials as any).otp,
@@ -190,9 +229,36 @@ export const authOptions: NextAuthOptions = {
             } catch { }
             return baseUrl;
         },
-        async jwt({ token, user }) {
+        async jwt({ token, user, trigger, session }) {
+            // Website switch — useSession().update({ switchAccountId }) from /select-website.
+            // Done server-side with the current Bearer token so the client never sets a token.
+            if (trigger === "update" && session?.switchAccountId && token.accessToken) {
+                const accountId = Number(session.switchAccountId);
+                if (Number.isInteger(accountId)) {
+                    try {
+                        const data = await siteLoginGraphql(
+                            KLEVER_SITE_LOGIN_SWITCH_MUTATION,
+                            { account_id: accountId },
+                            { store: String(token.storeCode || defaultLocale), token: String(token.accessToken) },
+                        );
+                        const result = data?.kleverSiteLoginSwitch;
+                        if (result?.token) {
+                            token.accessToken = String(result.token).trim();
+                            token.storeCode = result.account?.store_code || token.storeCode;
+                            if (result.account?.name) token.name = result.account.name;
+                            token.error = undefined;
+                            const exp = getMagentoTokenExpiry(token.accessToken as string);
+                            if (exp) token.magentoTokenExp = exp; else delete token.magentoTokenExp;
+                        }
+                    } catch (error) {
+                        console.error("[JWT] kleverSiteLoginSwitch failed:", error);
+                    }
+                }
+            }
+
             // First login — save the Magento token
             if (user) {
+                token.storeCode = (user as any).storeCode;
                 token.accessToken = (user as any).token;
                 // Store the Magento token expiry so we can detect when it expires
                 const exp = getMagentoTokenExpiry((user as any).token);
@@ -216,6 +282,7 @@ export const authOptions: NextAuthOptions = {
         async session({ session, token }) {
             (session as any).accessToken = token.accessToken;
             (session as any).error = token.error;
+            (session as any).storeCode = token.storeCode;
             return session;
         },
     },

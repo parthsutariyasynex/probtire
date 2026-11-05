@@ -3,6 +3,8 @@ import { getLocaleFromRequest } from "@/lib/api/magento-url";
 import { getRequestToken } from "@/lib/api/auth-helper";
 import { getCustomerCartId } from "@/lib/api/customer-cart";
 import { CART_TOTALS_QUERY } from "@/src/graphql/queries";
+import { toStoreCode } from "@/lib/store/website";
+import { getRequestStoreConfig } from "@/lib/store/store-config";
 
 const MAGENTO_GRAPHQL = (process.env.NEXT_PUBLIC_MAGENTO_BASE_URL || "") + "/graphql";
 
@@ -16,14 +18,15 @@ export async function GET(req: Request) {
         if (!token) return NextResponse.json({ message: "Unauthorized: Missing customer token" }, { status: 401 });
 
         const locale = getLocaleFromRequest(req);
-        const cartId = await getCustomerCartId(token, locale);
+        const cartId = await getCustomerCartId(token, toStoreCode(locale, req));
         if (!cartId) {
-            return NextResponse.json({ subtotal: 0, tax_amount: 0, grand_total: 0, currency_code: "SAR" });
+            const config = await getRequestStoreConfig(req, locale);
+            return NextResponse.json({ subtotal: 0, tax_amount: 0, grand_total: 0, currency_code: config?.default_display_currency_code });
         }
 
         const res = await fetch(MAGENTO_GRAPHQL, {
             method: "POST",
-            headers: { "Content-Type": "application/json", Store: locale, Authorization: `Bearer ${token}` },
+            headers: { "Content-Type": "application/json", Store: toStoreCode(locale, req), Authorization: `Bearer ${token}` },
             body: JSON.stringify({ query: CART_TOTALS_QUERY, variables: { cartId } }),
             cache: "no-store",
         });
@@ -54,7 +57,7 @@ export async function GET(req: Request) {
             shipping_amount,
             discount_amount,
             grand_total: grand,
-            currency_code: prices.grand_total?.currency ?? "SAR",
+            currency_code: prices.grand_total?.currency,
         });
     } catch (error) {
         console.error("Totals Error:", error);

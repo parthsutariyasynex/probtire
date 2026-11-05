@@ -3,6 +3,7 @@ import { getLocaleFromRequest } from "@/lib/api/magento-url";
 import { getRequestToken } from "@/lib/api/auth-helper";
 import { getCustomerCartId } from "@/lib/api/customer-cart";
 import { REMOVE_ITEM_FROM_CART_MUTATION } from "@/src/graphql/mutations";
+import { toStoreCode } from "@/lib/store/website";
 
 const MAGENTO_GRAPHQL = (process.env.NEXT_PUBLIC_MAGENTO_BASE_URL || "") + "/graphql";
 
@@ -19,12 +20,12 @@ export async function DELETE(
 
         const locale = getLocaleFromRequest(req);
         const { itemId } = await params;
-        const cartId = await getCustomerCartId(token, locale);
+        const cartId = await getCustomerCartId(token, toStoreCode(locale, req));
         if (!cartId) return NextResponse.json({ message: "No active cart" }, { status: 400 });
 
         const res = await fetch(MAGENTO_GRAPHQL, {
             method: "POST",
-            headers: { "Content-Type": "application/json", Store: locale, Authorization: `Bearer ${token}` },
+            headers: { "Content-Type": "application/json", Store: toStoreCode(locale, req), Authorization: `Bearer ${token}` },
             body: JSON.stringify({
                 query: REMOVE_ITEM_FROM_CART_MUTATION,
                 variables: { cartId, cartItemId: parseInt(itemId, 10) },

@@ -82,7 +82,7 @@
 //                 }
 //             } catch (error) {
 //                 console.error("Failed to fetch order filter options:", error);
-//                 setStatusOptions(["All", "Check Pending"]);
+//                 setStatusOptions(["All"]); // statuses come from Magento only
 //             }
 //         }
 //         fetchFilterOptions();
@@ -314,7 +314,7 @@ const Filters: React.FC<FiltersProps> = ({
                 }
             } catch (error) {
                 console.error("Failed to fetch order filter options:", error);
-                setStatusOptions(["All", "Check Pending"]);
+                setStatusOptions(["All"]); // statuses come from Magento only
             }
         }
         fetchFilterOptions();

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getToken } from "next-auth/jwt";
 import { KLEVER_MENU_ITEMS_QUERY } from "@/src/graphql/queries";
+import { toStoreCode, magentoUrlToAppPath } from "@/lib/store/website";
 
 // ─── i18n config ────────────────────────────────────────────────────────────
 const LOCALES = ["en", "ar"] as const;
@@ -56,14 +57,17 @@ const defaultLandingCache = new Map<string, { path: string; expires: number }>()
 const LANDING_CACHE_TTL_MS = 60 * 60 * 1000;
 
 async function getDefaultLandingPath(request: NextRequest, locale: string): Promise<string | null> {
-    const cached = defaultLandingCache.get(locale);
+    const store = toStoreCode(locale, request);
+    // "v2|": entries cached before the store-code fix hold /roya_en/… paths (→ 404).
+    const landingKey = `v2|${store}`;
+    const cached = defaultLandingCache.get(landingKey);
     if (cached && cached.expires > Date.now()) return cached.path;
 
     try {
         const domain = process.env.NEXT_PUBLIC_MAGENTO_BASE_URL;
         const res = await fetch(`${domain}/graphql`, {
             method: "POST",
-            headers: { "Content-Type": "application/json", Store: locale },
+            headers: { "Content-Type": "application/json", Store: store },
             body: JSON.stringify({ query: KLEVER_MENU_ITEMS_QUERY }),
             cache: "no-store",
         });
@@ -80,9 +84,10 @@ async function getDefaultLandingPath(request: NextRequest, locale: string): Prom
             const url = item?.url || "";
             if (typeof url === "string" && url.endsWith(".html")) {
                 try {
-                    const parsed = new URL(url);
-                    const path = parsed.pathname;
-                    defaultLandingCache.set(locale, { path, expires: Date.now() + LANDING_CACHE_TTL_MS });
+                    // Strip the store code Magento adds for non-default websites
+                    // (/roya_en/all-tyres/x.html → /en/all-tyres/x.html), else → 404.
+                    const path = magentoUrlToAppPath(new URL(url).pathname, store, locale);
+                    defaultLandingCache.set(landingKey, { path, expires: Date.now() + LANDING_CACHE_TTL_MS });
                     return path;
                 } catch { /* ignore */ }
             }
@@ -146,8 +151,10 @@ const CMS_SLUG_TO_ROUTE: Record<string, string> = {
     "manage": "/customer/subaccounts/manage",
 };
 
-async function resolveMagentoUrl(slugPath: string): Promise<ResolvedUrl> {
-    const cached = urlResolutionCache.get(slugPath);
+async function resolveMagentoUrl(slugPath: string, store: string): Promise<ResolvedUrl> {
+    // Cache per store view — each website can have its own category tree.
+    const cacheKey = `${store}|${slugPath}`;
+    const cached = urlResolutionCache.get(cacheKey);
     if (cached) return cached;
 
     // 1. Quick CMS slug lookup — no network needed.
@@ -159,7 +166,7 @@ async function resolveMagentoUrl(slugPath: string): Promise<ResolvedUrl> {
         const seg = segs[i];
         if (CMS_SLUG_TO_ROUTE[seg]) {
             const result: ResolvedUrl = { kind: "cms", nextjsPath: CMS_SLUG_TO_ROUTE[seg] };
-            urlResolutionCache.set(slugPath, result);
+            urlResolutionCache.set(cacheKey, result);
             return result;
         }
     }
@@ -171,7 +178,7 @@ async function resolveMagentoUrl(slugPath: string): Promise<ResolvedUrl> {
     try {
         const res = await fetch(`${domain}/graphql`, {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: { "Content-Type": "application/json", Store: store },
             body: JSON.stringify({
                 query: `{ urlResolver(url: "${queryUrl.replace(/"/g, '\\"')}") { type entity_uid } }`,
             }),
@@ -219,7 +226,7 @@ async function resolveMagentoUrl(slugPath: string): Promise<ResolvedUrl> {
             }
             if (/^\d+$/.test(id)) {
                 const result: ResolvedUrl = { kind: "category", categoryId: id };
-                urlResolutionCache.set(slugPath, result);
+                urlResolutionCache.set(cacheKey, result);
                 return result;
             }
         }
@@ -227,7 +234,7 @@ async function resolveMagentoUrl(slugPath: string): Promise<ResolvedUrl> {
         // Resolver answered cleanly but found no matching category → genuine 404.
         // Safe to cache.
         const fallback: ResolvedUrl = { kind: "unknown" };
-        urlResolutionCache.set(slugPath, fallback);
+        urlResolutionCache.set(cacheKey, fallback);
         return fallback;
     } catch (err) {
         // Network/transport failure (DNS, timeout, connection refused). Backend
@@ -340,7 +347,7 @@ export async function middleware(request: NextRequest) {
 
     // ── 3c. Magento SEO URL — resolve to category or CMS page ───────────
     const slugPath = pathnameWithoutLocale.replace(/^\//, "");
-    const resolved = await resolveMagentoUrl(slugPath);
+    const resolved = await resolveMagentoUrl(slugPath, toStoreCode(locale, request));
 
     if (resolved.kind === "category") {
         const url = request.nextUrl.clone();

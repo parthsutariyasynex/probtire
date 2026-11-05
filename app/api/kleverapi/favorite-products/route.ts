@@ -1,9 +1,13 @@
 import { NextResponse } from 'next/server';
 import { CUSTOMER_WISHLIST_QUERY, CUSTOMER_WISHLIST_LEGACY_ITEMS_QUERY, KLEVER_FAVORITE_PRODUCTS_ENRICH_QUERY } from '@/src/graphql/queries';
 import { ADD_PRODUCTS_TO_WISHLIST_MUTATION } from '@/src/graphql/mutations';
+import { toStoreCode } from "@/lib/store/website";
+import { getStoreConfig } from "@/lib/store/store-config";
+import { getLocaleFromRequest } from "@/lib/api/magento-url";
 
 const MAGENTO_GRAPHQL = (process.env.NEXT_PUBLIC_MAGENTO_BASE_URL || "") + "/graphql";
-const PRODUCTS_CATEGORY_ID = parseInt(process.env.NEXT_PUBLIC_PRODUCTS_CATEGORY_ID || "5", 10);
+// kleverCategoryProducts needs a categoryId: use the selected website's default category
+// from Magento (lib/store/store-config) — no hardcoded id.
 
 // Native product images come back as a /cache/<hash>/ path that 404s; the un-cached path works.
 function fixImageUrl(url?: string | null): string | null {
@@ -47,13 +51,15 @@ async function fetchLegacyWishlistItems(authHeader: string, locale: string, curr
 // Step 2: fetch full klever product fields by item codes (comma-separated).
 // kleverCategoryProducts with itemCode returns all products whose item_code matches any
 // of the comma-separated codes, using the customer's own pricing/stock context.
-async function fetchKleverProducts(authHeader: string, locale: string, itemCode: string, pageSize: number) {
+async function fetchKleverProducts(authHeader: string, locale: string, itemCode: string, pageSize: number, uiLocale: string) {
+    const categoryId = (await getStoreConfig(locale, uiLocale))?.default_category_id;
+    if (!categoryId) throw new Error(`No default category for store ${locale}`);
     const res = await fetch(MAGENTO_GRAPHQL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Store: locale, Authorization: authHeader },
         body: JSON.stringify({
             query: KLEVER_FAVORITE_PRODUCTS_ENRICH_QUERY,
-            variables: { categoryId: PRODUCTS_CATEGORY_ID, itemCode, pageSize },
+            variables: { categoryId, itemCode, pageSize },
         }),
         cache: 'no-store',
     });
@@ -113,7 +119,7 @@ function mapWishlistItemWithKlever(it: any, kleverMap: Record<string, any>) {
 export async function GET(request: Request) {
     try {
         const authHeader = request.headers.get('Authorization');
-        const locale = request.headers.get('x-locale') || 'en';
+        const locale = toStoreCode(request.headers.get('x-locale') || 'en', request);
         if (!authHeader) {
             return NextResponse.json({ message: 'Authentication required' }, { status: 401 });
         }
@@ -155,7 +161,7 @@ export async function GET(request: Request) {
 
         const kleverMap: Record<string, any> = {};
         try {
-            const kleverJson = await fetchKleverProducts(authHeader, locale, itemCodes, pageSize * 3);
+            const kleverJson = await fetchKleverProducts(authHeader, locale, itemCodes, pageSize * 3, request.headers.get('x-locale') || getLocaleFromRequest(request));
             if (!Array.isArray(kleverJson?.errors)) {
                 for (const kp of kleverJson?.data?.kleverCategoryProducts?.products ?? []) {
                     // Index by exact SKU for best match
@@ -185,7 +191,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
     try {
         const authHeader = request.headers.get('Authorization');
-        const locale = request.headers.get('x-locale') || 'en';
+        const locale = toStoreCode(request.headers.get('x-locale') || 'en', request);
         if (!authHeader) {
             return NextResponse.json({ message: 'Authorization required' }, { status: 401 });
         }

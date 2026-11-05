@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getLocaleFromRequest } from "@/lib/api/magento-url";
 import { KLEVER_RESET_PASSWORD_BY_MOBILE_MUTATION } from "@/src/graphql/mutations";
+import { toStoreCode } from "@/lib/store/website";
 
 const MAGENTO_GRAPHQL = (process.env.NEXT_PUBLIC_MAGENTO_BASE_URL || "") + "/graphql";
 
@@ -12,7 +13,7 @@ export async function POST(req: Request) {
 
         const res = await fetch(MAGENTO_GRAPHQL, {
             method: "POST",
-            headers: { "Content-Type": "application/json", Store: getLocaleFromRequest(req) },
+            headers: { "Content-Type": "application/json", Store: toStoreCode(getLocaleFromRequest(req), req) },
             body: JSON.stringify({
                 query: KLEVER_RESET_PASSWORD_BY_MOBILE_MUTATION,
                 variables: { resetToken, newPassword, confirmPassword },

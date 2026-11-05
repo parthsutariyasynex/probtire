@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { KLEVER_PRINT_ORDER_QUERY } from "@/src/graphql/queries";
+import { toStoreCode } from "@/lib/store/website";
 
 const MAGENTO_GRAPHQL = (process.env.NEXT_PUBLIC_MAGENTO_BASE_URL || "") + "/graphql";
 
@@ -45,7 +46,7 @@ export async function GET(
 
         const res = await fetch(MAGENTO_GRAPHQL, {
             method: "POST",
-            headers: { "Content-Type": "application/json", Store: locale, Authorization: authHeader },
+            headers: { "Content-Type": "application/json", Store: toStoreCode(locale, request), Authorization: authHeader },
             body: JSON.stringify({ query: KLEVER_PRINT_ORDER_QUERY, variables: { orderId: entityId } }),
             cache: "no-store",
         });

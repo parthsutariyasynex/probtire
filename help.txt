@@ -107,6 +107,22 @@ Provide complete working Next.js code step-by-step.
 
 
 
+Env setup 
+
+NEXT_PUBLIC_BASE_URL=https://altalayi.btire.com/rest/en/V1/kleverapi
+# NEXT_PUBLIC_MAGENTO_BASE_URL=https://altalayi.btire.com
+# NEXTAUTH_SECRET=DRC2-896D-45rf3F-fgf
+# MAGENTO_AUTH_TOKEN_URL=https://altalayi.btire.com/rest/V1/integration/customer/token
+
+# Live Environment (altalayi-live.btire.com)
+# NEXT_PUBLIC_BASE_URL=https://altalayi-live.btire.com/rest/en/V1/kleverapi
+# NEXT_PUBLIC_MAGENTO_BASE_URL=https://altalayi-live.btire.com
+# MAGENTO_AUTH_TOKEN_URL=https://altalayi-live.btire.com/rest/V1/integration/customer/token
+
+# Demo / Staging Environment (altalayi-demo.btire.com)
+# NEXT_PUBLIC_BASE_URL=https://altalayi-demo.btire.com/rest/en/V1/kleverapi
+# NEXT_PUBLIC_MAGENTO_BASE_URL=https://altalayi-demo.btire.com
+# MAGENTO_AUTH_TOKEN_URL=https://altalayi-demo.btire.com/rest/V1/integration/customer/token
 
 
 

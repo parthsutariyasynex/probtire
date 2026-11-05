@@ -3,6 +3,8 @@ import { getLocaleFromRequest } from "@/lib/api/magento-url";
 import { getRequestToken } from "@/lib/api/auth-helper";
 import { CUSTOMER_CART_QUERY } from "@/src/graphql/queries";
 import { clearCustomerCartId } from "@/lib/api/customer-cart";
+import { toStoreCode } from "@/lib/store/website";
+import { getRequestStoreConfig } from "@/lib/store/store-config";
 
 const MAGENTO_GRAPHQL = (process.env.NEXT_PUBLIC_MAGENTO_BASE_URL || "") + "/graphql";
 
@@ -15,9 +17,14 @@ const EMPTY_CART = {
     tax_amount: 0,
     tax_label: "Tax",
     grand_total: 0,
-    currency_code: "SAR",
     cart_id: null,
 };
+
+/** Empty cart (no Magento cart yet): currency is the store's display currency (storeConfig). */
+async function emptyCart(req: Request) {
+    const config = await getRequestStoreConfig(req, getLocaleFromRequest(req));
+    return { ...EMPTY_CART, currency_code: config?.default_display_currency_code };
+}
 
 // The cart item `id` is the numeric quote item id (also what removeItemFromCart /
 // updateCartItems take as cart_item_id). cart_item_uid is its base64 form, returned
@@ -60,11 +67,11 @@ export async function GET(req: Request) {
     try {
         const token = await getRequestToken(req);
         // Guest (no token) → empty cart, not 401. The cart UI should render empty, not error.
-        if (!token) return NextResponse.json(EMPTY_CART);
+        if (!token) return NextResponse.json(await emptyCart(req));
 
         const res = await fetch(MAGENTO_GRAPHQL, {
             method: "POST",
-            headers: { "Content-Type": "application/json", Store: getLocaleFromRequest(req), Authorization: `Bearer ${token}` },
+            headers: { "Content-Type": "application/json", Store: toStoreCode(getLocaleFromRequest(req), req), Authorization: `Bearer ${token}` },
             body: JSON.stringify({ query: CUSTOMER_CART_QUERY }),
             cache: "no-store",
         });
@@ -78,14 +85,14 @@ export async function GET(req: Request) {
             if (/logged in customer|not authorized|current customer/i.test(msg)) {
                 console.warn("[cart] customer not logged in (expired/invalid token) — returning empty cart");
                 clearCustomerCartId(token);
-                return NextResponse.json(EMPTY_CART);
+                return NextResponse.json(await emptyCart(req));
             }
             console.error("[cart] GraphQL error:", JSON.stringify(json.errors).slice(0, 300));
             return NextResponse.json({ message: "Magento GraphQL error", details: json.errors }, { status: 502 });
         }
 
         const cart = json?.data?.customerCart;
-        if (!cart) return NextResponse.json(EMPTY_CART);
+        if (!cart) return NextResponse.json(await emptyCart(req));
 
         const items = (Array.isArray(cart.items) ? cart.items : []).map((it: any) => {
             const name = it.product?.name ?? "";
@@ -118,7 +125,7 @@ export async function GET(req: Request) {
             tax_amount: Math.max(0, grand_total - subtotal),
             tax_label: "Tax",
             grand_total,
-            currency_code: cart.prices?.grand_total?.currency ?? "SAR",
+            currency_code: cart.prices?.grand_total?.currency,
             cart_id: cart.id ?? null,
         });
     } catch (error) {

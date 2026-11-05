@@ -1,5 +1,9 @@
 import type { Metadata } from "next";
 import { graphqlFetch } from "@/src/lib/graphqlFetch";
+import { getCurrentStoreConfig, type StoreConfig } from "@/lib/store/store-config";
+import { isValidLocale, defaultLocale, type Locale } from "@/lib/i18n/config";
+import enDict from "@/public/locales/en.json";
+import arDict from "@/public/locales/ar.json";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -31,41 +35,47 @@ const CMS_META_QUERY = /* GraphQL */ `
   }
 `;
 
-// ── Fallbacks for custom pages not backed by a Magento CMS page ───────────────
-// These are used when Magento does not return metadata for the given route.
+// ── Custom pages not backed by a Magento CMS page ─────────────────────────────
+// Page names are translated via public/locales/{lang}.json ("meta.<key>"); the site
+// name / description / keywords come from Magento storeConfig of the selected website
+// and language. Nothing about a website is hardcoded here.
+const STATIC_PAGES = [
+  "login", "products", "cart", "checkout", "checkout-success",
+  "multishipping", "multishipping-shipping", "multishipping-billing", "multishipping-review", "multishipping-success",
+  "my-account", "my-statement", "manage-accounts", "my-orders", "order-attachments",
+  "favourites", "address-book", "dashboard", "my-forecast", "notifications",
+] as const;
+type StaticPageKey = (typeof STATIC_PAGES)[number];
 
-const CUSTOM_FALLBACKS: Record<string, RawMeta> = {
-  // Auth
-  login: { title: "Customer Login" },
-  // Shop
-  products: { title: "ATCL B2B" },
-  cart: { title: "Shopping Cart" },
-  checkout: { title: "Checkout" },
-  "checkout-success": { title: "Success Page" },
-  // Multi-shipping
-  multishipping: { title: "Ship to Multiple Addresses" },
-  "multishipping-shipping": { title: "Shipping Method - ATCL B2B" },
-  "multishipping-billing": { title: "Billing Information - ATCL B2B" },
-  "multishipping-review": { title: "Review Order" },
-  "multishipping-success": { title: "Success Page" },
-  // Account
-  "my-account": { title: "My Account" },
-  "my-statement": { title: "My Statement" },
-  "manage-accounts": { title: "Manage Accounts" },
-  "my-orders": { title: "My Orders" },
-  "order-attachments": { title: "My Order Attachments" },
-  favourites: { title: "Favourite Products" },
-  "address-book": { title: "Address Book" },
-  dashboard: { title: "Dashboard" },
-  "my-forecast": { title: "My Forecast" },
-  notifications: { title: "Notifications" },
-};
+// Pages whose title has historically carried the site name ("Shipping Method - <site>").
+const TITLE_WITH_SITE_NAME = new Set<string>(["multishipping-shipping", "multishipping-billing"]);
+
+const DICTIONARIES: Record<Locale, Record<string, string>> = { en: enDict, ar: arDict };
+
+function pageName(key: string, lang: Locale): string | null {
+  return DICTIONARIES[lang][`meta.${key}`] ?? null;
+}
+
+/** Locale + Magento store config of the current request. */
+async function currentStore(): Promise<{ lang: Locale; config: StoreConfig | null }> {
+  const config = await getCurrentStoreConfig();
+  const fromConfig = config?.locale?.slice(0, 2);
+  const lang: Locale = fromConfig && isValidLocale(fromConfig) ? fromConfig : defaultLocale;
+  return { lang, config };
+}
+
+/** Apply Magento's title prefix/suffix (Content > Design > HTML Head). */
+function decorateTitle(title: string, config: StoreConfig | null): string {
+  const prefix = config?.title_prefix ? `${config.title_prefix} ` : "";
+  const suffix = config?.title_suffix ? ` ${config.title_suffix}` : "";
+  return `${prefix}${title}${suffix}`;
+}
 
 // ── Internal: fetch CMS page metadata from Magento ───────────────────────────
 // Returns null if the page is not found or on any network/GraphQL error.
 // Uses cache: "no-store" so Magento Admin changes reflect immediately.
 
-async function fetchCmsPageMeta(identifier: string, store = "en"): Promise<RawMeta | null> {
+async function fetchCmsPageMeta(identifier: string, store: string): Promise<RawMeta | null> {
   try {
     const data = await graphqlFetch<CmsPageMetaData>({
       query: CMS_META_QUERY,
@@ -87,20 +97,20 @@ async function fetchCmsPageMeta(identifier: string, store = "en"): Promise<RawMe
 
 // ── Internal: build Next.js Metadata from raw + fallback ─────────────────────
 
-function buildMetadata(raw: RawMeta | null, fallback: RawMeta): Metadata {
-  const title = raw?.title || fallback.title || "Altalayi";
-  const description = raw?.description || fallback.description || undefined;
-  const keywords = raw?.keywords || fallback.keywords || undefined;
+function buildMetadata(meta: RawMeta, config: StoreConfig | null): Metadata {
+  const title = meta.title ? decorateTitle(meta.title, config) : undefined;
+  const siteName = config?.default_title || undefined;
 
-  const meta: Metadata = {
-    title,
+  const result: Metadata = {
+    ...(title ? { title } : {}),
     openGraph: {
-      title,
+      ...(title ? { title } : {}),
+      ...(siteName ? { siteName } : {}),
       type: "website",
     },
     twitter: {
       card: "summary_large_image",
-      title,
+      ...(title ? { title } : {}),
     },
     robots: {
       index: true,
@@ -108,46 +118,59 @@ function buildMetadata(raw: RawMeta | null, fallback: RawMeta): Metadata {
     },
   };
 
-  if (description) {
-    meta.description = description;
-    (meta.openGraph as Record<string, unknown>).description = description;
-    (meta.twitter as Record<string, unknown>).description = description;
+  if (meta.description) {
+    result.description = meta.description;
+    (result.openGraph as Record<string, unknown>).description = meta.description;
+    (result.twitter as Record<string, unknown>).description = meta.description;
   }
 
-  if (keywords) {
-    meta.keywords = keywords;
+  if (meta.keywords) {
+    result.keywords = meta.keywords;
   }
 
-  return meta;
+  return result;
 }
 
 // ── Public API ────────────────────────────────────────────────────────────────
 
 /**
- * Fetch metadata for a Magento CMS page by its URL key identifier.
- * Falls back to the provided static fallback if the CMS page is unavailable.
+ * Metadata of a Magento CMS page (by URL key) for the selected website + language —
+ * exactly what Magento has (cmsPage meta_title/title, meta_description, meta_keywords).
+ * No page in Magento → no page-specific metadata (the root layout's site title applies).
  *
  * Usage (in a Server Component layout):
  *   export async function generateMetadata(): Promise<Metadata> {
- *     return getCmsMetadata("about-us", { title: "About Us" });
+ *     return getCmsMetadata("about-us");
  *   }
  */
-export async function getCmsMetadata(
-  identifier: string,
-  fallback: RawMeta,
-  store = "en"
-): Promise<Metadata> {
-  const raw = await fetchCmsPageMeta(identifier, store);
-  return buildMetadata(raw, fallback);
+export async function getCmsMetadata(identifier: string): Promise<Metadata> {
+  const { config } = await currentStore();
+  const raw = config?.store_code ? await fetchCmsPageMeta(identifier, config.store_code) : null;
+  return raw ? buildMetadata(raw, config) : {};
 }
 
 /**
- * Return static fallback metadata for custom pages (login, cart, checkout, etc.).
- * These pages have no dedicated Magento CMS page.
+ * Metadata for custom pages (login, cart, checkout, …) that have no Magento CMS page:
+ * the page name from public/locales/{lang}.json ("meta.<key>").
  *
  * Usage (in a Server Component layout):
- *   export const metadata: Metadata = getStaticMetadata("login");
+ *   export async function generateMetadata(): Promise<Metadata> {
+ *     return getStaticMetadata("login");
+ *   }
  */
-export function getStaticMetadata(key: keyof typeof CUSTOM_FALLBACKS): Metadata {
-  return buildMetadata(null, CUSTOM_FALLBACKS[key] ?? { title: "Altalayi" });
+export async function getStaticMetadata(key: StaticPageKey): Promise<Metadata> {
+  const { lang, config } = await currentStore();
+  const name = pageName(key, lang);
+  const title = name && TITLE_WITH_SITE_NAME.has(key) && config?.default_title ? `${name} - ${config.default_title}` : name;
+  return title ? buildMetadata({ title }, config) : {};
+}
+
+/** Root layout: the selected website's title, description and keywords from Magento storeConfig. */
+export async function getSiteMetadata(): Promise<Metadata> {
+  const { config } = await currentStore();
+  return buildMetadata({
+    title: config?.default_title,
+    description: config?.default_description,
+    keywords: config?.default_keywords,
+  }, config);
 }

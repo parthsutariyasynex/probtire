@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { CUSTOMER_ADDRESSES_QUERY } from '@/src/graphql/queries';
 import { UPDATE_CUSTOMER_ADDRESS_MUTATION, DELETE_CUSTOMER_ADDRESS_MUTATION } from '@/src/graphql/mutations';
+import { toStoreCode } from "@/lib/store/website";
 
 const MAGENTO_GRAPHQL = (process.env.NEXT_PUBLIC_MAGENTO_BASE_URL || "") + "/graphql";
 
@@ -61,7 +62,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
 
         const res = await fetch(MAGENTO_GRAPHQL, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', Store: locale, Authorization: authHeader },
+            headers: { 'Content-Type': 'application/json', Store: toStoreCode(locale, request), Authorization: authHeader },
             body: JSON.stringify({ query: CUSTOMER_ADDRESSES_QUERY }),
             cache: 'no-store',
         });
@@ -104,7 +105,7 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
 
         const res = await fetch(MAGENTO_GRAPHQL, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', Store: locale, Authorization: authHeader },
+            headers: { 'Content-Type': 'application/json', Store: toStoreCode(locale, request), Authorization: authHeader },
             body: JSON.stringify({ query: UPDATE_CUSTOMER_ADDRESS_MUTATION, variables: { id: addressId, input } }),
             cache: 'no-store',
         });
@@ -137,7 +138,7 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
 
         const res = await fetch(MAGENTO_GRAPHQL, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', Store: locale, Authorization: authHeader },
+            headers: { 'Content-Type': 'application/json', Store: toStoreCode(locale, request), Authorization: authHeader },
             body: JSON.stringify({ query: DELETE_CUSTOMER_ADDRESS_MUTATION, variables: { id: addressId } }),
             cache: 'no-store',
         });

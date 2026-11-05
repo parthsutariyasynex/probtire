@@ -531,6 +531,12 @@ const CheckoutPageUI: React.FC = () => {
             }
         }
 
+        // 3. A payment method Magento actually offers is required (no invented fallback).
+        if (paymentMethods.length === 0 || !paymentMethods.some(m => m.code === paymentMethod)) {
+            toast.error(t("checkout.noPaymentMethods"));
+            return;
+        }
+
         if (shippingType === "pickup") {
             if (!selectedWarehouseId) {
                 toast.error(t("checkout.selectWarehouseWarning"));

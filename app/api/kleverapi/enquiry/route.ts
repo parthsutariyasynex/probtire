@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getLocaleFromRequest } from "@/lib/api/magento-url";
 import { getRequestToken } from "@/lib/api/auth-helper";
 import { KLEVER_SUBMIT_ENQUIRY_MUTATION } from "@/src/graphql/mutations";
+import { toStoreCode } from "@/lib/store/website";
 
 const MAGENTO_GRAPHQL = (process.env.NEXT_PUBLIC_MAGENTO_BASE_URL || "") + "/graphql";
 
@@ -39,7 +40,7 @@ export async function POST(request: NextRequest) {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
-                Store: getLocaleFromRequest(request),
+                Store: toStoreCode(getLocaleFromRequest(request), request),
                 Authorization: `Bearer ${token}`,
             },
             body: JSON.stringify({ query: KLEVER_SUBMIT_ENQUIRY_MUTATION, variables: { input } }),

@@ -19,6 +19,7 @@ import {
 } from "@/lib/i18n/config";
 import { LocaleProvider } from "@/lib/i18n/LocaleProvider";
 import TranslationWrapper from "@/components/providers/TranslationWrapper";
+import { getSiteMetadata } from "@/src/lib/metadata";
 
 const rubik = Rubik({
   subsets: ["latin", "arabic"],
@@ -29,10 +30,10 @@ const rubik = Rubik({
   adjustFontFallback: true,
 });
 
-export const metadata: Metadata = {
-  title: "Altalayi",
-  description: "Shopping Platform",
-};
+// Site title/description of the selected website + language, from Magento storeConfig.
+export async function generateMetadata(): Promise<Metadata> {
+  return getSiteMetadata();
+}
 
 export default async function RootLayout({
   children,

@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/auth-options";
 import { getLocaleFromRequest } from "@/lib/api/magento-url";
 import { KLEVER_CATEGORY_PRODUCTS_QUERY } from "@/src/graphql/queries";
+import { toStoreCode } from "@/lib/store/website";
 
 const MAGENTO_GRAPHQL = (process.env.NEXT_PUBLIC_MAGENTO_BASE_URL || "") + "/graphql";
 
@@ -42,7 +43,7 @@ export async function GET(request: NextRequest) {
     try {
         const res = await fetch(MAGENTO_GRAPHQL, {
             method: "POST",
-            headers: { "Content-Type": "application/json", Store: getLocaleFromRequest(request), Authorization: `Bearer ${token}` },
+            headers: { "Content-Type": "application/json", Store: toStoreCode(getLocaleFromRequest(request), request), Authorization: `Bearer ${token}` },
             body: JSON.stringify({ query: KLEVER_CATEGORY_PRODUCTS_QUERY, variables }),
             cache: "no-store",
         });

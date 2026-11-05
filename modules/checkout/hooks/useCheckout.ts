@@ -173,10 +173,8 @@ export function useCheckout(options: UseCheckoutOptions = {}) {
 
     // ─── Fetch Shipping Methods ───
     const fetchShippingMethods = useCallback(async () => {
-        const FALLBACK_METHODS: ShippingMethod[] = [
-            { code: "flatrate_flatrate", carrierCode: "flatrate", methodCode: "flatrate", title: "Flat Rate", description: "Standard Delivery", price: 15.00, currency: "SAR" },
-            { code: "free_free", carrierCode: "free", methodCode: "free", title: "Free Shipping", description: "Orders over 500 SAR", price: 0, currency: "SAR" },
-        ];
+        // Only Magento's methods: if it returns none (or fails), the list is empty and
+        // checkout asks the customer to select a method — nothing is invented.
 
         try {
             const token = await getAuthToken();
@@ -200,7 +198,7 @@ export function useCheckout(options: UseCheckoutOptions = {}) {
                     title: m.method_title || m.carrier_title || m.title || "Shipping",
                     description: m.carrier_title || m.description || "",
                     price: m.amount || m.price || 0,
-                    currency: m.base_currency_code || m.currency || "SAR",
+                    currency: m.base_currency_code ?? m.currency,
                 }));
                 if (mapped.length > 0) {
                     setShippingMethods(mapped);
@@ -216,11 +214,11 @@ export function useCheckout(options: UseCheckoutOptions = {}) {
                     console.warn(`[shipping-methods] HTTP ${res.status}: ${body.slice(0, 200)}`);
                 }
             }
-            setShippingMethods(FALLBACK_METHODS);
+            setShippingMethods([]);
         } catch (err) {
             // Network failure or unexpected runtime error
             console.warn("[shipping-methods] network error, using fallback:", err);
-            setShippingMethods(FALLBACK_METHODS);
+            setShippingMethods([]);
         }
     }, []);
 
@@ -254,11 +252,8 @@ export function useCheckout(options: UseCheckoutOptions = {}) {
                     return;
                 }
             }
-            // Fallback
-            setPaymentMethods([
-                { code: "cashondelivery", title: "Cash on Delivery" },
-                { code: "online_payment", title: "Online Payment" },
-            ]);
+            // No invented methods — only what Magento offers for this store/cart.
+            setPaymentMethods([]);
         } catch (err) {
             // Silently handle "empty cart" errors during background fetch
             if (err instanceof Error && err.message.toLowerCase().includes("empty cart")) {
@@ -266,10 +261,7 @@ export function useCheckout(options: UseCheckoutOptions = {}) {
             } else {
                 console.error("Fetch Payment Methods Error:", err);
             }
-            setPaymentMethods([
-                { code: "cashondelivery", title: "Cash on Delivery" },
-                { code: "online_payment", title: "Online Payment" },
-            ]);
+            setPaymentMethods([]);
         }
     }, []);
 
@@ -398,7 +390,7 @@ export function useCheckout(options: UseCheckoutOptions = {}) {
                     title: m.method_title || m.carrier_title || m.title || "Shipping",
                     description: m.carrier_title || m.description || "",
                     price: m.amount || m.price || 0,
-                    currency: m.base_currency_code || m.currency || "SAR",
+                    currency: m.base_currency_code ?? m.currency,
                 }));
                 if (mapped.length > 0) setShippingMethods(mapped);
             }
