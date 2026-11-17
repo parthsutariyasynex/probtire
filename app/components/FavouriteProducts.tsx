@@ -148,8 +148,8 @@ export default function FavouriteProducts({ title }: { title?: React.ReactNode }
             let valB: any = "";
 
             if (sortField === 'brand') {
-                valA = a.brand || a.name.split(' ')[0] || "";
-                valB = b.brand || b.name.split(' ')[0] || "";
+                valA = a.brand || "";
+                valB = b.brand || "";
             } else if (sortField === 'tyre_size') {
                 valA = a.tyre_size || "";
                 valB = b.tyre_size || "";
@@ -218,7 +218,7 @@ export default function FavouriteProducts({ title }: { title?: React.ReactNode }
                     original_price: originalPrice,
                     offer: offerLabel,
                     stock_qty: Number(p.stock_qty || 0),
-                    brand: p.brand || (p.name ? p.name.split(' ')[0] : "—"),
+                    brand: p.brand || "",
                     tyre_size: p.tyre_size || "—",
                     favorite_id: p.favorite_id || p.id,
                     item_code: p.item_code || p.sku,
@@ -273,9 +273,18 @@ export default function FavouriteProducts({ title }: { title?: React.ReactNode }
             const deleteId = product.favorite_id || product.product_id;
             await api.delete(`/kleverapi/favorite-products/${deleteId}`);
 
+            const remainingOnPage = favProducts.filter(p => p.product_id !== product.product_id).length;
+            const remainingTotal = Math.max(0, totalCount - 1);
             setFavProducts(prev => prev.filter(p => p.product_id !== product.product_id));
-            setTotalCount(prev => Math.max(0, prev - 1));
+            setTotalCount(remainingTotal);
             toast.success(t("favorites.removeSuccess"));
+            // Keep the pages consistent: an emptied page goes back one page; otherwise
+            // reload so the next favourite moves up from the following page.
+            if (remainingOnPage === 0 && currentPage > 1) {
+                setCurrentPage(currentPage - 1);
+            } else if (remainingTotal >= currentPage * pageSize) {
+                loadFavourites();
+            }
         } catch (err) {
             toast.error(t("favorites.removeFailed"));
         } finally {
@@ -429,7 +438,7 @@ export default function FavouriteProducts({ title }: { title?: React.ReactNode }
                 ) : sortedProducts.length === 0 ? (
                     <div className="py-16 text-center text-gray-400 italic text-body">{t("favorites.empty")}</div>
                 ) : sortedProducts.map((product) => {
-                    const brandName = product.brand || product.name.split(' ')[0] || "—";
+                    const brandName = product.brand || "—";
                     const isOutOfStock = product.stock_status === "Out of Stock" || product.stock_status === "Not Available" || Number(product.stock_qty || 0) <= 0;
                     const isLimited = product.stock_qty > 0 && product.stock_qty <= 10;
                     const dotColor = isOutOfStock ? "bg-red-500" : isLimited ? "bg-brand-yellow" : "bg-green-500";
@@ -580,7 +589,7 @@ export default function FavouriteProducts({ title }: { title?: React.ReactNode }
                                 </tr>
                             ) : (
                                 sortedProducts.map((product) => {
-                                    const brandName = product.brand || product.name.split(' ')[0] || "—";
+                                    const brandName = product.brand || "—";
                                     const patternName = product.pattern || product.name || "—";
                                     const isOutOfStock = product.stock_status === "Out of Stock" || product.stock_status === "Not Available" || Number(product.stock_qty || 0) <= 0;
                                     const isLimited = product.stock_qty > 0 && product.stock_qty <= 10;
@@ -744,9 +753,10 @@ export default function FavouriteProducts({ title }: { title?: React.ReactNode }
                 </div>
             </div>
 
-            {/* Bottom Pagination */}
+            {/* Bottom Pagination — shown whenever there are favourites (like My Orders / Addresses),
+                so the page-size selector and "x of y" are always available. */}
             {
-                totalCount > pageSize && (
+                totalCount > 0 && (
                     <div className="mt-0 w-full">
                         <Pagination
                             currentPage={currentPage}

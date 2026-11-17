@@ -445,9 +445,9 @@ export function CartPageSkeleton({ items = 3 }: { items?: number }) {
               {/* Summary body */}
               <div className="px-5 pt-2 pb-5 flex flex-col">
 
-                {/* Price rows */}
+                {/* Price rows (subtotal + VAT; shipping only appears once Magento has an amount) */}
                 <div className="space-y-6 mt-2">
-                  {Array.from({ length: 3 }).map((_, i) => (
+                  {Array.from({ length: 2 }).map((_, i) => (
                     <div key={i} className="flex justify-between items-center py-0.5">
                       <Pulse className="h-2.5 w-16" />
                       <Pulse className="h-3.5 w-14" />
@@ -509,10 +509,10 @@ export function CheckoutSkeleton() {
       <main className="flex-1 w-full max-w-[1920px] mx-auto px-4 md:px-6 lg:px-8 py-4 md:py-6 lg:py-10 pt-2 md:pt-4">
         {/* Header: back link + centered title + gradient line */}
         <div className="flex flex-col items-center justify-center text-center gap-4 mb-12 relative">
-          <div className="lg:absolute left-0 top-1/2 lg:-translate-y-1/2 flex items-center gap-2 mb-4 lg:mb-0">
+          {/* <div className="lg:absolute left-0 top-1/2 lg:-translate-y-1/2 flex items-center gap-2 mb-4 lg:mb-0">
             <Pulse className="w-8 h-8 rounded-full border border-black !bg-transparent" />
             <Pulse className="hidden sm:block h-3 w-32" />
-          </div>
+          </div> */}
           <div className="flex flex-col items-center gap-4">
             <Pulse className="h-7 md:h-8 w-44" />
             <div className="h-[2px] w-full max-w-[400px] bg-gradient-to-r from-transparent via-brand-yellow to-transparent" />
@@ -581,8 +581,8 @@ export function CheckoutSkeleton() {
           </div>
 
           {/* Right column — sticky Order Summary */}
-          <div className="lg:col-span-4 space-y-6">
-            <div className="bg-white border border-subtle shadow-lg rounded-sm sticky top-24 overflow-hidden">
+          <div className="lg:col-span-4 space-y-6 lg:sticky lg:top-24 self-start">
+            <div className="bg-white border border-subtle shadow-lg rounded-sm overflow-hidden">
               {/* Header: black check circle + title */}
               <div className="bg-gray-50 px-4 sm:px-6 py-3 sm:py-4 flex items-center gap-2 sm:gap-3 border-b border-subtle">
                 <div className="w-5 h-5 rounded-full bg-black animate-pulse" />
@@ -593,9 +593,9 @@ export function CheckoutSkeleton() {
                 <Pulse className="h-4 w-24" />
                 <Pulse className="h-5 w-5 rounded" />
               </div>
-              {/* Totals area */}
+              {/* Totals area (subtotal + VAT, as Magento's checkout summary) */}
               <div className="p-5 space-y-3">
-                {Array.from({ length: 4 }).map((_, i) => (
+                {Array.from({ length: 2 }).map((_, i) => (
                   <div key={i} className="flex justify-between items-center">
                     <Pulse className="h-3.5 w-24" />
                     <Pulse className="h-3.5 w-16" />
@@ -606,10 +606,14 @@ export function CheckoutSkeleton() {
                   <Pulse className="h-5 w-20" />
                   <Pulse className="h-5 w-24" />
                 </div>
-                {/* Place Order button */}
-                <Pulse className="h-12 w-full rounded-sm mt-2" />
               </div>
             </div>
+            {/* Comment box (separate, as Magento) */}
+            <div className="bg-[#f2f2f2] p-5 rounded-sm">
+              <Pulse className="h-[95px] w-full rounded-sm" />
+            </div>
+            {/* Place Order button */}
+            <Pulse className="h-12 w-full rounded-sm" />
           </div>
         </div>
       </main>
@@ -1575,17 +1579,17 @@ export function OrderAttachmentsSkeleton({ rows = 6 }: { rows?: number }) {
 // ─── Multi-Location Delivery (selection page) Skeleton ───────────────────────
 // Matches /multi-location-delivery layout: centered title + bordered table with
 // product rows × address columns (qty inputs) + gray footer actions bar.
-export function MultiLocationDeliverySkeleton({ rows = 4, addresses = 3 }: { rows?: number; addresses?: number }) {
-  const headerColCount = 2 + addresses + 1; // product + cartQty + N addresses + validation
+export function MultiLocationDeliverySkeleton({ rows = 3, addresses = 1 }: { rows?: number; addresses?: number }) {
   return (
     <div className="bg-white min-h-screen font-sans pb-16 md:pb-32">
       <div className="max-w-[1920px] mx-auto py-6 sm:py-8 md:py-12 px-3 sm:px-6 lg:px-10">
-        {/* Centered heading */}
-        <div className="text-center mb-6 md:mb-10">
+        {/* Heading + note */}
+        <div className="text-center mb-6 md:mb-10 space-y-2">
           <Pulse className="h-6 md:h-7 w-72 md:w-96 mx-auto" />
+          <Pulse className="h-3.5 md:h-4 w-64 md:w-[420px] max-w-full mx-auto" />
         </div>
 
-        {/* Main table */}
+        {/* Main table — single header row like the page */}
         <div className="relative border border-gray-300 overflow-hidden bg-white">
           <div className="overflow-x-auto">
             <table className="w-full border-collapse border-spacing-0 min-w-max">
@@ -1595,42 +1599,33 @@ export function MultiLocationDeliverySkeleton({ rows = 4, addresses = 3 }: { row
                     <Pulse className="h-3 w-20" />
                   </th>
                   <th className="py-3 md:py-4 px-2 md:px-4 border-r border-b border-gray-300 w-[80px] md:w-[110px] bg-white">
-                    <Pulse className="h-3 w-12 mx-auto" />
+                    <Pulse className="h-3 w-16 mx-auto" />
                   </th>
-                  <th className="py-3 md:py-4 px-2 md:px-4 border-b border-gray-300 bg-white" colSpan={addresses + 1}>
-                    <Pulse className="h-3 w-24 mx-auto" />
+                  <th className="py-3 md:py-4 px-2 md:px-4 border-b border-gray-300 bg-white" colSpan={addresses}>
+                    <Pulse className="h-3 w-48 mx-auto" />
                   </th>
-                </tr>
-                <tr>
-                  <th className="py-3 md:py-4 border-r border-b border-gray-300 bg-white">
-                    <Pulse className="h-3 w-8 mx-auto" />
-                  </th>
-                  {Array.from({ length: addresses }).map((_, i) => (
-                    <th key={i} className="py-3 md:py-4 px-2 md:px-4 border-r border-b border-gray-300 bg-white min-w-[100px] md:min-w-[150px]">
-                      <Pulse className="h-3 w-20 mx-auto" />
-                    </th>
-                  ))}
-                  <th className="border-b border-gray-300 bg-white min-w-[90px] md:min-w-[140px]" />
                 </tr>
               </thead>
               <tbody>
                 {Array.from({ length: rows }).map((_, i) => (
-                  <tr key={i} className="border-b border-gray-300 last:border-b-0">
-                    <td className="py-3 md:py-6 px-3 md:px-5 border-r border-gray-300 align-middle">
+                  <tr key={i} className="group">
+                    <td className="py-3 md:py-6 px-3 md:px-5 border-r border-b group-last:border-b-0 border-gray-300 align-middle">
                       <Pulse className="h-4 w-48 max-w-full" />
                     </td>
-                    <td className="py-3 md:py-6 px-2 md:px-4 border-r border-gray-300 align-middle">
-                      <div className="flex flex-col items-center gap-1.5">
+                    <td className="py-3 md:py-6 px-2 md:px-4 border-r border-b group-last:border-b-0 border-gray-300 align-middle">
+                      <div className="flex flex-col items-center gap-1.5 md:gap-2">
                         <Pulse className="h-2.5 w-8" />
-                        <Pulse className="h-7 w-12 rounded-sm" />
+                        <Pulse className="w-[40px] md:w-[50px] h-[34px] md:h-[38px] rounded-none" />
                       </div>
                     </td>
                     {Array.from({ length: addresses }).map((_, j) => (
-                      <td key={j} className="py-3 md:py-6 px-2 md:px-4 border-r border-gray-300 align-middle">
-                        <Pulse className="h-9 w-14 mx-auto rounded-sm border border-gray-200" />
+                      <td key={j} className={`py-3 md:py-6 px-2 md:px-4 border-b group-last:border-b-0 border-gray-300 ${j < addresses - 1 ? "border-r" : ""} align-middle min-w-[100px] md:min-w-[150px]`}>
+                        <div className="flex flex-col items-center gap-1.5 md:gap-2">
+                          <Pulse className="h-2.5 w-12" />
+                          <Pulse className="w-[40px] md:w-[50px] h-[34px] md:h-[38px] rounded-none" />
+                        </div>
                       </td>
                     ))}
-                    <td className="py-3 md:py-6 px-2 md:px-4 align-middle bg-white" />
                   </tr>
                 ))}
               </tbody>
@@ -1640,8 +1635,8 @@ export function MultiLocationDeliverySkeleton({ rows = 4, addresses = 3 }: { row
 
         {/* Footer actions bar */}
         <div className="mt-6 md:mt-8 bg-surface-muted p-4 sm:p-6 flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-6 border border-gray-100">
-          <Pulse className="w-full sm:w-44 h-12 rounded-none" />
           <Pulse className="w-full sm:w-56 h-12 rounded-none" />
+          <Pulse className="w-full sm:w-72 h-12 rounded-none" />
         </div>
       </div>
     </div>
@@ -1741,7 +1736,7 @@ export function MultiLocationShippingSkeleton({ groups = 1 }: { groups?: number 
                   </div>
                 </div>
 
-                {/* Items card (with mini table + shipping method radios) */}
+                {/* Items card (mini table) */}
                 <div className="bg-surface-muted min-h-[200px] md:min-h-[250px] flex flex-col">
                   <div className="bg-subtle py-2.5 px-4 md:px-6 text-center">
                     <Pulse className="h-3 w-16 mx-auto" />
@@ -1756,6 +1751,7 @@ export function MultiLocationShippingSkeleton({ groups = 1 }: { groups?: number 
                   </div>
                 </div>
               </div>
+
             </div>
           ))}
         </div>
@@ -1872,7 +1868,7 @@ export function MultiLocationReviewSkeleton({ groups = 1 }: { groups?: number })
                   ))}
                   <div className="space-y-1.5 mt-3 pt-2 border-t border-gray-300">
                     <div className="flex justify-end gap-3"><Pulse className="h-3 w-20" /><Pulse className="h-3 w-12" /></div>
-                    <div className="flex justify-end gap-3"><Pulse className="h-3 w-12" /><Pulse className="h-3 w-12" /></div>
+                    <div className="flex justify-end gap-3"><Pulse className="h-3 w-28" /><Pulse className="h-3 w-12" /></div>
                   </div>
                 </div>
               </div>
@@ -1880,8 +1876,18 @@ export function MultiLocationReviewSkeleton({ groups = 1 }: { groups?: number })
           </div>
         ))}
 
+        {/* Order totals (subtotal, shipping, tax lines, grand total) */}
+        <div className="mt-8 md:mt-12 mb-6 md:mb-8 flex justify-center md:justify-end">
+          <div className="w-full max-w-md space-y-2">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="flex justify-between"><Pulse className="h-4 w-32" /><Pulse className="h-4 w-20" /></div>
+            ))}
+            <div className="flex justify-between pt-2"><Pulse className="h-6 w-36" /><Pulse className="h-6 w-28" /></div>
+          </div>
+        </div>
+
         {/* Footer actions */}
-        <div className="bg-surface-muted p-4 sm:p-6 md:p-8 flex flex-col sm:flex-row justify-between items-center gap-3 sm:gap-4 mt-8">
+        <div className="bg-surface-muted p-4 sm:p-6 md:p-8 flex flex-col sm:flex-row justify-between items-center gap-3 sm:gap-4">
           <Pulse className="w-full sm:w-44 h-12 rounded-none" />
           <Pulse className="w-full sm:w-56 h-12 rounded-none" />
         </div>

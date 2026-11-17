@@ -234,12 +234,15 @@ export const authOptions: NextAuthOptions = {
             // Done server-side with the current Bearer token so the client never sets a token.
             if (trigger === "update" && session?.switchAccountId && token.accessToken) {
                 const accountId = Number(session.switchAccountId);
-                if (Number.isInteger(accountId)) {
+                // The switch runs in the store view of the account the customer is signed in to
+                // (set from Magento at login). Without it there is no store to use — no default.
+                if (!token.storeCode) console.error("[JWT] kleverSiteLoginSwitch skipped: no store code on the session");
+                if (Number.isInteger(accountId) && token.storeCode) {
                     try {
                         const data = await siteLoginGraphql(
                             KLEVER_SITE_LOGIN_SWITCH_MUTATION,
                             { account_id: accountId },
-                            { store: String(token.storeCode || defaultLocale), token: String(token.accessToken) },
+                            { store: String(token.storeCode), token: String(token.accessToken) },
                         );
                         const result = data?.kleverSiteLoginSwitch;
                         if (result?.token) {

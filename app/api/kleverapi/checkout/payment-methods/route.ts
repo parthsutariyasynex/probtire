@@ -29,12 +29,12 @@ export async function GET(req: Request) {
         const json = await res.json();
         if (Array.isArray(json?.errors) && json.errors.length > 0) {
             console.error("[payment-methods] GraphQL error:", JSON.stringify(json.errors).slice(0, 300));
-            return NextResponse.json([]);
+            return NextResponse.json({ message: json.errors[0]?.message || "Payment methods unavailable" }, { status: 502 });
         }
         const methods = json?.data?.cart?.available_payment_methods ?? [];
         return NextResponse.json(methods);
     } catch (error) {
         console.error("Payment Methods Error:", error);
-        return NextResponse.json([]);
+        return NextResponse.json({ message: "Internal server error" }, { status: 500 });
     }
 }

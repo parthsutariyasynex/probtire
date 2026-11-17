@@ -1,4 +1,10 @@
 "use client";
+import { useCountryNames } from "@/hooks/useCountryNames";
+import { magentoFileUrl, magentoFileName, openMagentoFile, UPLOAD_EXTENSIONS, UPLOAD_ACCEPT, UPLOAD_TYPES_TEXT, UPLOAD_MAX_BYTES } from "@/src/lib/magentoFiles";
+import { useMagentoLabel } from "@/hooks/useMagentoLabel";
+import { getClientStoreConfig } from "@/lib/store/client-config";
+import { getClientLocale } from "@/lib/api/api-client";
+import { pickupNeedsDetails } from "@/lib/store/pickup-rules";
 import { useTranslation } from "@/hooks/useTranslation";
 import { useLocalePath } from "@/hooks/useLocalePath";
 import { CheckoutSkeleton } from "@/components/skeletons";
@@ -8,7 +14,7 @@ import React, { useState, useEffect, useMemo, useRef, useCallback } from "react"
 import { createPortal } from "react-dom";
 import Navbar from "@/app/components/Navbar";
 import { useCart } from "@/modules/cart/hooks/useCart";
-import { useCheckout, Address } from "@/modules/checkout/hooks/useCheckout";
+import { useCheckout, Address, isPickupMethod } from "@/modules/checkout/hooks/useCheckout";
 import {
     Search,
     Plus,
@@ -59,6 +65,16 @@ const CheckoutPageUI: React.FC = () => {
     const { data: session, status } = useSession();
     const router = useRouter();
     const { t } = useTranslation();
+    const countryName = useCountryNames();
+    const taxTitle = useMagentoLabel("Tax", t("cart.vat"));
+
+    // Magento website of the selected store view (storeConfig.website_code) — decides whether
+    // Pickup from Warehouse takes warehouse + pickup details (lib/store/pickup-rules.ts).
+    const [websiteCode, setWebsiteCode] = useState<string | null>(null);
+    useEffect(() => {
+        getClientStoreConfig(getClientLocale()).then((cfg) => setWebsiteCode(cfg?.website_code ?? null));
+    }, []);
+    const pickupDetailsRequired = pickupNeedsDetails(websiteCode) === true;
     const lp = useLocalePath();
 
     // Hooks
@@ -80,6 +96,7 @@ const CheckoutPageUI: React.FC = () => {
         setShippingMethod,
         setShippingExtras,
         stores,
+        pickupStoresLoaded,
         refetchPickupStores,
         fetchPickupTimeSlots,
         getOrderComment,
@@ -95,7 +112,8 @@ const CheckoutPageUI: React.FC = () => {
     const [selectedWarehouseId, setSelectedWarehouseId] = useState("");
     const [selectedShippingMethodCode, setSelectedShippingMethodCode] = useState("");
     const [isAddressSetOnBackend, setIsAddressSetOnBackend] = useState(false);
-    const [paymentMethod, setPaymentMethod] = useState("checkmo");
+    // No preset method: the customer picks one of Magento's methods (a single method is selected).
+    const [paymentMethod, setPaymentMethod] = useState("");
     const [comment, setComment] = useState("");
     const [isPlacingOrder, setIsPlacingOrder] = useState(false);
     const { showLoading, hideLoading } = useLoadingOverlay();
@@ -106,12 +124,12 @@ const CheckoutPageUI: React.FC = () => {
     const [isPaymentCommitmentOpen, setIsPaymentCommitmentOpen] = useState(false);
     const [isItemsListOpen, setIsItemsListOpen] = useState(true);
     const [isWarehouseModalOpen, setIsWarehouseModalOpen] = useState(false);
-    // Payment-commitment files support MULTIPLE uploads. Live File objects (this session) are
-    // kept in paymentCommitmentFiles; their names are mirrored in paymentCommitmentNames and
-    // persisted to localStorage so the uploaded files stay visible after a page refresh (a File
-    // object itself can't survive a reload).
-    const [paymentCommitmentFiles, setPaymentCommitmentFiles] = useState<File[]>([]);
+    // Payment-commitment files are uploaded to Magento (kleverUploadPoFile, type "payment") — the
+    // same store the PO files use. paymentCommitmentNames holds the names Magento stored them
+    // under (Magento adds "-<number>" to each name); they are kept in localStorage only to tell
+    // payment files apart from PO files in Magento's shared list.
     const [paymentCommitmentNames, setPaymentCommitmentNames] = useState<string[]>([]);
+    const [isUploadingPayment, setIsUploadingPayment] = useState(false);
     const [tempSelectedWarehouse, setTempSelectedWarehouse] = useState<{ id: string; name: string } | null>(null);
 
     // Pickup Form States
@@ -170,14 +188,15 @@ const CheckoutPageUI: React.FC = () => {
     }, [pickupDate]);
     // Fetch stores if pickup is selected
     useEffect(() => {
-        if (shippingType === "pickup" && stores.length === 0) {
+        // Warehouses are only loaded where Magento takes them (not on websites without pickup details).
+        if (shippingType === "pickup" && pickupDetailsRequired && stores.length === 0) {
             refetchPickupStores();
         }
-    }, [shippingType, stores.length, refetchPickupStores]);
+    }, [shippingType, pickupDetailsRequired, stores.length, refetchPickupStores]);
     // Fetch dynamic time slots
     useEffect(() => {
         const getSlots = async () => {
-            if (shippingType === "pickup" && selectedWarehouseId && pickupDate) {
+            if (shippingType === "pickup" && pickupDetailsRequired && selectedWarehouseId && pickupDate) {
                 setIsLoadingTimeSlots(true);
                 try {
                     const year = pickupDate.getFullYear();
@@ -185,28 +204,8 @@ const CheckoutPageUI: React.FC = () => {
                     const day = String(pickupDate.getDate()).padStart(2, '0');
                     const formattedDate = `${year}-${month}-${day}`;
 
-                    let slots = await fetchPickupTimeSlots(selectedWarehouseId, formattedDate);
-
-                    // If API returns empty or we want to ensure "this type proper" intervals as per user image
-                    if (!slots || slots.length === 0) {
-                        const generatedSlots = [];
-                        for (let h = 0; h < 24; h++) {
-                            for (let m = 0; m < 60; m += 30) {
-                                let hh = h % 12;
-                                if (hh === 0) hh = 12;
-                                const ampm = h < 12 ? 'am' : 'pm';
-                                const mm = m === 0 ? '00' : '30';
-                                const h24 = String(h).padStart(2, '0');
-                                const m24 = String(m).padStart(2, '0');
-                                generatedSlots.push({
-                                    time: `${h24}:${m24}`,
-                                    label: `${hh}:${mm}${ampm}`,
-                                    enabled: true
-                                });
-                            }
-                        }
-                        slots = generatedSlots;
-                    }
+                    // Only Magento's time slots for this warehouse and date — none are invented.
+                    const slots = await fetchPickupTimeSlots(selectedWarehouseId, formattedDate);
 
                     setAvailableTimeSlots(slots);
                 } catch (error) {
@@ -218,7 +217,7 @@ const CheckoutPageUI: React.FC = () => {
             }
         };
         getSlots();
-    }, [shippingType, selectedWarehouseId, pickupDate, fetchPickupTimeSlots]);
+    }, [shippingType, pickupDetailsRequired, selectedWarehouseId, pickupDate, fetchPickupTimeSlots]);
 
     // NOTE: intentionally NO effect that clears pickupTime when availableTimeSlots reloads.
     // The slots list can re-fetch and return a different set (e.g. the fallback only spans
@@ -293,39 +292,115 @@ const CheckoutPageUI: React.FC = () => {
         if (paymentMethods.length > 0) {
             const isValid = paymentMethods.some(m => m.code === paymentMethod);
             if (!isValid) {
-                const creditMethod = paymentMethods.find(m => m.code === 'checkmo');
-                setPaymentMethod(creditMethod ? creditMethod.code : paymentMethods[0].code);
+                setPaymentMethod(paymentMethods.length === 1 ? paymentMethods[0].code : "");
             }
         }
     }, [paymentMethods, paymentMethod]);
 
-    // Restore the previously-selected payment-commitment filenames after a refresh.
+    // All files Magento holds in the checkout file store (PO + payment share it), with
+    // Magento's type when it gives one.
+    const fetchStoredFiles = useCallback(async (): Promise<Array<{ name: string; type: string }>> => {
+        const raw: any = await getPoUpload();
+        let data: any = raw;
+        if (typeof raw === "string") { try { data = JSON.parse(raw); } catch { data = [raw]; } }
+        const list: any[] = Array.isArray(data) ? data
+            : Array.isArray(data?.files) ? data.files
+            : Array.isArray(data?.data) ? data.data : [];
+        return list
+            .map((item: any) => typeof item === "string"
+                ? { name: item, type: "" }
+                : {
+                    name: String(item?.fileName || item?.filename || item?.file_name || item?.name || item?.file || ""),
+                    type: String(item?.type || item?.file_type || "").toLowerCase(),
+                })
+            .filter((f) => f.name);
+    }, [getPoUpload]);
+    const fetchStoredFileNames = useCallback(async () => (await fetchStoredFiles()).map((f) => f.name), [fetchStoredFiles]);
+
+    // Magento stores an upload as "<name>-<number>.<ext>".
+    const originalNameOf = (stored: string) => stored.replace(/-\d+(\.[^.]+)$/, "$1");
+
+    // Upload one file to Magento's checkout file store as "po" or "payment" and return the exact
+    // name Magento stored it under (its list can lag a moment, so it is re-read a few times).
+    const uploadToMagento = async (file: File, type: "po" | "payment"): Promise<string> => {
+        const before = await fetchStoredFileNames();
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("type", type);
+        await uploadPoFile(formData);
+        for (const wait of [0, 400, 800, 1500]) {
+            if (wait) await new Promise((r) => setTimeout(r, wait));
+            const created = (await fetchStoredFileNames()).filter((n) => !before.includes(n));
+            const match = created.find((n) => originalNameOf(n) === file.name || n === file.name) || (created.length === 1 ? created[0] : "");
+            if (match) return match;
+        }
+        return file.name;
+    };
+
+    const savePoNames = (names: string[]) => {
+        if (names.length > 0) localStorage.setItem("po_file_names", JSON.stringify(names));
+        else localStorage.removeItem("po_file_names");
+    };
+    const readNames = (key: string): string[] => {
+        try {
+            const arr = JSON.parse(localStorage.getItem(key) || "[]");
+            return Array.isArray(arr) ? arr.filter((n) => typeof n === "string") : [];
+        } catch { return []; }
+    };
+
+    const savePaymentNames = (names: string[]) => {
+        if (names.length > 0) localStorage.setItem("payment_commitment_file_names", JSON.stringify(names));
+        else localStorage.removeItem("payment_commitment_file_names");
+    };
+
+    // Show the payment files Magento holds for this cart: the ones Magento marks as payment
+    // files (also files uploaded on the Magento site), plus ones this browser uploaded as payment
+    // files when Magento's list carries no type. Names Magento no longer has are dropped.
     useEffect(() => {
         if (typeof window === "undefined") return;
-        const saved = localStorage.getItem("payment_commitment_file_names");
-        if (saved) {
-            try {
-                const arr = JSON.parse(saved);
-                if (Array.isArray(arr)) setPaymentCommitmentNames(arr.filter((n) => typeof n === "string"));
-            } catch { /* ignore malformed value */ }
-        }
-    }, []);
+        let saved: string[] = [];
+        try {
+            const arr = JSON.parse(localStorage.getItem("payment_commitment_file_names") || "[]");
+            if (Array.isArray(arr)) saved = arr.filter((n) => typeof n === "string");
+        } catch { /* ignore malformed value */ }
+        fetchStoredFiles()
+            .then((stored) => {
+                // What Magento sends for the stored files (to check how it marks payment files).
+                console.info("[checkout] Magento uploaded files:", stored);
+                const poNames = readNames("po_file_names");
+                const typedPayment = stored.filter((f) => f.type === "payment" && !poNames.includes(f.name)).map((f) => f.name);
+                const fromBrowser = saved.filter((n) => stored.some((f) => f.name === n) && !poNames.includes(n));
+                const names = [...typedPayment, ...fromBrowser.filter((n) => !typedPayment.includes(n))];
+                setPaymentCommitmentNames(names);
+                savePaymentNames(names);
+            })
+            .catch(() => setPaymentCommitmentNames(saved));
+    }, [fetchStoredFiles]);
 
-    // Append one or more files (dedupe by name) and persist the full name list.
-    const addPaymentCommitmentFiles = (files: File[]) => {
-        if (!files.length) return;
-        setPaymentCommitmentFiles((prev) => {
-            const existing = new Set(prev.map((f) => f.name));
-            const merged = [...prev, ...files.filter((f) => !existing.has(f.name))];
-            return merged;
-        });
-        setPaymentCommitmentNames((prev) => {
-            const next = [...prev];
-            files.forEach((f) => { if (!next.includes(f.name)) next.push(f.name); });
-            localStorage.setItem("payment_commitment_file_names", JSON.stringify(next));
-            return next;
-        });
-        toast.success(files.length > 1 ? t("checkout.filesSelected").replace("{0}", String(files.length)) : t("checkout.fileSelectedSuccess"));
+    // Upload each file to Magento as a payment-commitment file; Magento's stored name is shown.
+    const addPaymentCommitmentFiles = async (files: File[]) => {
+        const valid = files.filter(validateFile);
+        if (!valid.length) return;
+        setIsUploadingPayment(true);
+        let added: string[] = [];
+        try {
+            for (const file of valid) {
+                const storedName = await uploadToMagento(file, "payment");
+                added = [...added, storedName];
+                toast.success(t("checkout.uploadedSuccess").replace("{0}", file.name));
+            }
+        } catch (error: any) {
+            toast.error((typeof error === "string" ? error : error?.message) || t("checkout.failedUploadFiles"));
+        } finally {
+            if (added.length) {
+                const next = [...paymentCommitmentNames, ...added.filter((n) => !paymentCommitmentNames.includes(n))];
+                savePaymentNames(next);          // saved first: the PO list uses it to leave payment files out
+                setPaymentCommitmentNames(next);
+                refreshPoFiles();
+            }
+            setIsUploadingPayment(false);
+            if (paymentCommitmentRef.current) paymentCommitmentRef.current.value = "";
+        }
     };
 
     const handlePaymentCommitmentChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -334,46 +409,44 @@ const CheckoutPageUI: React.FC = () => {
         }
     };
 
-    const removePaymentCommitment = (name: string) => {
-        setPaymentCommitmentFiles((prev) => prev.filter((f) => f.name !== name));
-        setPaymentCommitmentNames((prev) => {
-            const next = prev.filter((n) => n !== name);
-            if (next.length > 0) localStorage.setItem("payment_commitment_file_names", JSON.stringify(next));
-            else localStorage.removeItem("payment_commitment_file_names");
-            return next;
-        });
-        if (paymentCommitmentRef.current) {
-            paymentCommitmentRef.current.value = "";
+    // Remove the file from Magento, then from the list.
+    const removePaymentCommitment = async (name: string) => {
+        setIsUploadingPayment(true);
+        try {
+            await deletePoFile(name);
+            setPaymentCommitmentNames((prev) => {
+                const next = prev.filter((n) => n !== name);
+                savePaymentNames(next);
+                return next;
+            });
+            toast.success(t("checkout.fileRemoved"));
+        } catch (error: any) {
+            toast.error((typeof error === "string" ? error : error?.message) || t("checkout.failedRemoveFile"));
+        } finally {
+            setIsUploadingPayment(false);
+            if (paymentCommitmentRef.current) paymentCommitmentRef.current.value = "";
         }
-        toast.success(t("checkout.fileRemoved"));
     };
 
-    // Auto-select shipping method when they become available or when type changes
+    // The selection is always one of Magento's methods for this website's cart. When the current
+    // selection is not (or no longer) in Magento's list, Magento's first method is selected.
     useEffect(() => {
-        if (shippingMethods.length > 0) {
-            const method = shippingMethods.find(m =>
-                shippingType === "pickup" ? m.code.includes("pickup") : !m.code.includes("pickup")
-            );
+        if (shippingMethods.length === 0) return;
+        if (shippingMethods.some(m => m.code === selectedShippingMethodCode)) return;
+        if (!(isAddressSetOnBackend && !isTotalsLoading && cart && cart.items.length > 0)) return;
+        const method = shippingMethods[0];
+        setSelectedShippingMethodCode(method.code);
+        setShippingMethod(method.carrierCode, method.methodCode).catch(err => {
+            console.error("Auto-sync shipping method failed:", err);
+        });
+    }, [shippingMethods, selectedShippingMethodCode, setShippingMethod, isAddressSetOnBackend, isTotalsLoading, cart]);
 
-            // Validate current selection
-            const currentSelectedMethod = shippingMethods.find(m => m.code === selectedShippingMethodCode);
-            const isCorrectType = currentSelectedMethod ?
-                (shippingType === "pickup" ? currentSelectedMethod.code.includes("pickup") : !currentSelectedMethod.code.includes("pickup")) :
-                false;
-
-            if (method && (!selectedShippingMethodCode || !isCorrectType)) {
-                // Only sync if address is confirmed on backend, cart has items, and not loading
-                if (isAddressSetOnBackend && !isTotalsLoading && cart && cart.items.length > 0) {
-                    console.log("DEBUG: Auto-selecting shipping method:", method.code, "for type:", shippingType);
-                    setSelectedShippingMethodCode(method.code);
-
-                    setShippingMethod(method.carrierCode, method.methodCode).catch(err => {
-                        console.error("Auto-sync shipping method failed:", err);
-                    });
-                }
-            }
-        }
-    }, [shippingMethods, shippingType, selectedShippingMethodCode, setShippingMethod, isAddressSetOnBackend, isTotalsLoading, cart]);
+    // Delivery vs pickup follows the selected Magento method.
+    const selectedShippingMethod = shippingMethods.find(m => m.code === selectedShippingMethodCode) || null;
+    const selectedIsPickup = !!selectedShippingMethod && isPickupMethod(selectedShippingMethod);
+    useEffect(() => {
+        setShippingType(selectedIsPickup ? "pickup" : "delivery");
+    }, [selectedIsPickup]);
 
     // Fetch existing Order Comment
     useEffect(() => {
@@ -417,21 +490,20 @@ const CheckoutPageUI: React.FC = () => {
             // are tracked separately under their own localStorage key — exclude any of those names
             // here so a Payment file can never bleed into the PO Number section. Also drop any
             // item explicitly typed "payment" if the backend provides a type.
-            let paymentNames = new Set<string>();
-            try {
-                const arr = JSON.parse(localStorage.getItem("payment_commitment_file_names") || "[]");
-                if (Array.isArray(arr)) paymentNames = new Set(arr);
-            } catch { /* ignore */ }
+            const paymentNames = new Set(readNames("payment_commitment_file_names"));
+            const poNames = new Set(readNames("po_file_names"));
 
             const normalized = filesArray
                 .map((item: any) => {
                     if (typeof item === 'string') return { fileName: item, type: "" };
                     return {
-                        fileName: item.fileName || item.filename || item.file_name || item.name || item.file || "Unknown File",
+                        fileName: item.fileName || item.filename || item.file_name || item.name || item.file || "",
                         type: String(item.type || item.file_type || ""),
                     };
                 })
-                .filter((f) => f.type.toLowerCase() !== "payment" && !paymentNames.has(f.fileName))
+                // A file uploaded here as PO is always PO; a payment file never is.
+                .filter((f) => f.fileName)
+                .filter((f) => poNames.has(f.fileName) || (f.type.toLowerCase() !== "payment" && !paymentNames.has(f.fileName)))
                 .map(({ fileName }) => ({ fileName }));
 
             setUploadedPOs(normalized);
@@ -502,9 +574,7 @@ const CheckoutPageUI: React.FC = () => {
         // 2. Ensure Shipping Method is selected and SYNCED
         if (!selectedShippingMethodCode) {
             if (shippingMethods.length > 0) {
-                const method = shippingMethods.find(m =>
-                    shippingType === "pickup" ? m.code.includes("pickup") : !m.code.includes("pickup")
-                ) || shippingMethods[0];
+                const method = shippingMethods[0];
                 setSelectedShippingMethodCode(method.code);
                 try {
                     await setShippingMethod(method.carrierCode, method.methodCode);
@@ -537,8 +607,10 @@ const CheckoutPageUI: React.FC = () => {
             return;
         }
 
-        if (shippingType === "pickup") {
-            if (!selectedWarehouseId) {
+        // Magento's pickup rules (Ecomteck_StorePickup): a warehouse is required only when
+        // Magento lists more than one; pickup details only once a warehouse is chosen.
+        if (shippingType === "pickup" && pickupDetailsRequired && (stores.length > 1 || selectedWarehouseId)) {
+            if (stores.length > 1 && !selectedWarehouseId) {
                 toast.error(t("checkout.selectWarehouseWarning"));
                 document.getElementById('step-pickup')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
                 return;
@@ -561,7 +633,7 @@ const CheckoutPageUI: React.FC = () => {
         showLoading("PLACING ORDER...");
         try {
             // 2. Call Shipping Extras if Pickup
-            if (shippingType === "pickup") {
+            if (shippingType === "pickup" && pickupDetailsRequired && selectedWarehouseId && pickupDate) {
                 const year = pickupDate!.getFullYear();
                 const month = String(pickupDate!.getMonth() + 1).padStart(2, '0');
                 const day = String(pickupDate!.getDate()).padStart(2, '0');
@@ -607,7 +679,7 @@ const CheckoutPageUI: React.FC = () => {
             // Only treat it as a failure when there's NO order id AND an explicit error. A valid
             // order with status "approval_pending" (or any status) is a SUCCESS — never an error.
             if (!orderId && (result?.success === false || result?.error || result?.message)) {
-                throw new Error(result?.error || result?.message || "Failed to place order.");
+                throw new Error(result?.error || result?.message || t("checkout.failedPlaceOrder"));
             }
 
             // Mark placed BEFORE clearing the cart so the empty-cart effect won't hijack navigation.
@@ -671,7 +743,7 @@ const CheckoutPageUI: React.FC = () => {
         "text/csv", "application/vnd.ms-outlook"
     ];
 
-    const ALLOWED_EXTENSIONS = [".jpg", ".jpeg", ".png", ".zip", ".rar", ".docx", ".doc", ".pdf", ".xls", ".xlsx", ".csv", ".msg"];
+    const ALLOWED_EXTENSIONS = UPLOAD_EXTENSIONS;
 
     const validateFile = (file: File) => {
         const extension = file.name.substring(file.name.lastIndexOf(".")).toLowerCase();
@@ -679,7 +751,7 @@ const CheckoutPageUI: React.FC = () => {
             toast.error(t("checkout.invalidFileType").replace("{0}", file.name).replace("{1}", ALLOWED_EXTENSIONS.join(", ")));
             return false;
         }
-        if (file.size > 5 * 1024 * 1024) {
+        if (file.size > UPLOAD_MAX_BYTES) {
             toast.error(t("checkout.fileTooLarge").replace("{0}", file.name));
             return false;
         }
@@ -703,20 +775,16 @@ const CheckoutPageUI: React.FC = () => {
         try {
             for (const file of validFiles) {
                 // Check for duplicates in UI
-                if (uploadedPOs.some(p => p.fileName === file.name)) {
+                if (uploadedPOs.some(p => p.fileName === file.name || originalNameOf(p.fileName) === file.name)) {
                     toast.error(t("checkout.fileAlreadyUploaded").replace("{0}", file.name));
                     continue;
                 }
 
-                const formData = new FormData();
-                formData.append("file", file);
-                formData.append("type", "po");
-
-                await uploadPoFile(formData);
-                // Optimistically show the uploaded file immediately (keyed by its own name so
-                // remove can target it). Don't refetch the server list here — it may not reflect
-                // the new file yet and would make it flicker/vanish.
-                setUploadedPOs(prev => prev.some(p => p.fileName === file.name) ? prev : [...prev, { fileName: file.name }]);
+                // Upload as a PO file; keep the exact name Magento stored it under, recorded as PO
+                // so it is never shown under Payment (and Remove targets Magento's own name).
+                const storedName = await uploadToMagento(file, "po");
+                savePoNames([...readNames("po_file_names").filter((n) => n !== storedName), storedName]);
+                setUploadedPOs(prev => prev.some(p => p.fileName === storedName) ? prev : [...prev, { fileName: storedName }]);
                 toast.success(t("checkout.uploadedSuccess").replace("{0}", file.name));
             }
         } catch (error: any) {
@@ -753,6 +821,7 @@ const CheckoutPageUI: React.FC = () => {
         setIsUploading(true);
         try {
             await deletePoFile(fileName);
+            savePoNames(readNames("po_file_names").filter((n) => n !== fileName));
             toast.success(t("checkout.fileRemovedSuccess"));
         } catch (error: any) {
             toast.error((typeof error === "string" ? error : error?.message) || t("checkout.failedRemoveFile"));
@@ -794,7 +863,6 @@ const CheckoutPageUI: React.FC = () => {
     const displayTotals = {
         subtotal: totals?.subtotal ?? cart.subtotal,
         tax_amount: totals?.tax_amount ?? cart.tax_amount,
-        shipping_amount: totals?.shipping_amount ?? 0,
         grand_total: totals?.grand_total ?? cart.grand_total,
     };
 
@@ -803,15 +871,15 @@ const CheckoutPageUI: React.FC = () => {
             <main className="flex-1 w-full max-w-[1920px] mx-auto px-4 md:px-6 lg:px-8 py-4 md:py-6 lg:py-10 pt-2 md:pt-4">
                 {/* Header Section */}
                 <div className="flex flex-col items-center justify-center text-center gap-4 mb-12 relative">
-                    <Link href={lp("/checkout/cart")} className="lg:absolute left-0 top-1/2 lg:-translate-y-1/2 flex items-center gap-2 text-black hover:text-brand-yellow transition-all text-caption font-black uppercase tracking-[0.2em] group mb-4 lg:mb-0">
+                    {/* <Link href={lp("/checkout/cart")} className="lg:absolute left-0 top-1/2 lg:-translate-y-1/2 flex items-center gap-2 text-black hover:text-brand-yellow transition-all text-caption font-black uppercase tracking-[0.2em] group mb-4 lg:mb-0">
                         <div className="w-8 h-8 rounded-full border border-black flex items-center justify-center group-hover:border-brand-yellow transition-all">
                             <ArrowLeft size={14} strokeWidth={3} className="group-hover:-translate-x-1 transition-transform" />
                         </div>
                         <span className="hidden sm:inline text-sm mt-0.5">{t("m.back-to-shopping-cart")}</span>
-                    </Link>
+                    </Link> */}
 
                     <div className="flex flex-col items-center gap-4">
-                        <h1 className="text-h3 sm:text-h2 md:text-[26px] font-bold text-black uppercase tracking-tight">Checkout</h1>
+                        <h1 className="text-h3 sm:text-h2 md:text-[26px] font-bold text-black uppercase tracking-tight">{t("m.checkout")}</h1>
                         <div className="h-[3.5px] w-12 bg-brand-yellow mx-auto"></div>
                     </div>
                 </div>
@@ -828,7 +896,7 @@ const CheckoutPageUI: React.FC = () => {
                                 <div className="mb-6">
                                     <input
                                         type="text"
-                                        placeholder={t("m.search")}
+                                        placeholder={t("checkout.searchAddress")}
                                         className="w-full px-4 py-2.5 bg-gray-50/50 border border-subtle rounded-sm outline-none text-body-sm font-medium transition-all placeholder:text-gray-400 focus:bg-white focus:border-brand-yellow shadow-sm focus:ring-4 focus:ring-brand-yellow/10"
                                         value={searchQuery}
                                         onChange={(e) => setSearchQuery(e.target.value)}
@@ -864,7 +932,7 @@ const CheckoutPageUI: React.FC = () => {
                                                         <p className="text-[13px] md:text-[14px] text-gray-600 leading-relaxed font-[500]" dir="ltr" style={{ unicodeBidi: "isolate" }}>
                                                             <span className="font-[800] text-black">{addr.firstname} {addr.lastname}</span>{" "}
                                                             {addr.street} {addr.city}, {addr.postcode}{" "}
-                                                            {addr.country_id === 'SA' ? t("data.Saudi Arabia") : addr.country_id} {addr.telephone}
+                                                            {countryName(addr.country_id)} {addr.telephone}
                                                             {[
                                                                 addr.custom_attributes?.find(ca => ca.attribute_code === 'store_view')?.value,
                                                                 addr.custom_attributes?.find(ca => ca.attribute_code === 'region_ship_to_party')?.value
@@ -908,7 +976,7 @@ const CheckoutPageUI: React.FC = () => {
 
                         {/* 2. Customer PO Number */}
                         <div className="bg-white border border-subtle shadow-sm rounded-sm transition-all duration-300 hover:shadow-md">
-                            <SectionHeader title={t("m.po-number")} step={2} />
+                            <SectionHeader title={t("multi.customerPo")} step={2} />
                             <div className="p-4 sm:p-6 grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
                                 <div className="space-y-1.5 w-full">
                                     <input
@@ -932,7 +1000,7 @@ const CheckoutPageUI: React.FC = () => {
                                             className={`bg-gray-50/50 px-4 py-2.5 flex items-center justify-between cursor-pointer hover:bg-white transition-colors rounded-t-sm ${isPoUploadOpen ? "border-b border-subtle" : "rounded-sm"}`}
                                             onClick={() => setIsPoUploadOpen(!isPoUploadOpen)}
                                         >
-                                            <span className="text-body font-bold text-black capitalize">{t("m.upload-file")}</span>
+                                            <span className="text-body font-bold text-black">{t("multi.uploadPo")}</span>
                                             <ChevronDown
                                                 size={16}
                                                 className={`text-gray-400 transition-transform duration-300 ${isPoUploadOpen ? "rotate-180" : ""}`}
@@ -952,14 +1020,14 @@ const CheckoutPageUI: React.FC = () => {
                                                 >
                                                     <p className="text-body font-medium text-black">{t("m.drop-files-here")}</p>
                                                     <p className="text-caption text-gray-400 text-center">
-                                                        {t("m.allowed-file-types")} : <span className="text-gray-600">jpg,jpeg,png,zip,rar,docx,doc,pdf,xls,xlsx,csv,msg</span>
+                                                        {t("m.allowed-file-types")} : <span className="text-gray-600">{UPLOAD_TYPES_TEXT}</span>
                                                     </p>
                                                     <input
                                                         type="file"
                                                         className="hidden"
                                                         ref={poUploadRef}
                                                         onChange={handleFileUpload}
-                                                        accept=".jpg,.jpeg,.png,.zip,.rar,.docx,.doc,.pdf,.xls,.xlsx,.csv,.msg"
+                                                        accept={UPLOAD_ACCEPT}
                                                         multiple
                                                     />
                                                 </div>
@@ -969,9 +1037,13 @@ const CheckoutPageUI: React.FC = () => {
                                                     <div className="flex flex-wrap gap-x-4 gap-y-3">
                                                         {uploadedPOs.map((po, idx) => (
                                                             <div key={idx} className="flex border border-subtle rounded-sm overflow-hidden group shadow-sm bg-white">
-                                                                <div className="px-4 py-2 flex-1 flex items-center min-w-0">
+                                                                <div
+                                                                    className={`px-4 py-2 flex-1 flex items-center min-w-0 ${magentoFileUrl(po.fileName) ? "cursor-pointer hover:underline" : ""}`}
+                                                                    title={magentoFileUrl(po.fileName) ? undefined : t("checkout.fileNoLink")}
+                                                                    onClick={(e) => { e.stopPropagation(); openMagentoFile(po.fileName); }}
+                                                                >
                                                                     <span className="text-body-sm font-black text-black truncate ltr:mr-2 rtl:ml-2">
-                                                                        {po.fileName}
+                                                                        {magentoFileName(po.fileName)}
                                                                     </span>
                                                                 </div>
                                                                 <button
@@ -1011,59 +1083,62 @@ const CheckoutPageUI: React.FC = () => {
                         </div> */}
 
                         <div className="bg-white border border-subtle shadow-sm rounded-sm overflow-hidden" id="step-3">
-                            <SectionHeader title={t("checkout.shippingMethod")} step={3} />
+                            <SectionHeader title={t("checkout.shippingMethods")} step={3} />
                             <div className="p-4 sm:px-4 sm:py-6">
                                 <div className="space-y-6">
-                                    {/* Delivery Option */}
-                                    <div
-                                        className="flex items-center gap-4 cursor-pointer group"
-                                        onClick={() => setShippingType("delivery")}
-                                    >
-                                        <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${shippingType === "delivery" ? "border-black" : "border-gray-400 group-hover:border-gray-600"}`}>
-                                            {shippingType === "delivery" && (
-                                                <div className="w-2.5 h-2.5 bg-black rounded-full" />
-                                            )}
-                                        </div>
-                                        <span className={`text-body font-bold transition-colors ${shippingType === "delivery" ? "text-black" : "text-[#555]"}`}>
-                                            {t("m.delivery")}
-                                        </span>
-                                    </div>
+                                    {/* Shipping methods — exactly the methods Magento returns for this website's cart,
+                                        with Magento's titles and charges. Nothing is added or assumed. */}
+                                    {shippingMethods.length === 0 && (
+                                        <p className="text-body font-bold text-[#e02b27]">{t("multi.noShippingMethods")}</p>
+                                    )}
+                                    {shippingMethods.map((m, idx) => {
+                                        const isSelected = selectedShippingMethodCode === m.code;
+                                        return (
+                                            <React.Fragment key={m.code}>
+                                                {idx > 0 && <div className="border-t border-dotted border-gray-300 w-full" />}
+                                                <div
+                                                    className="flex items-center gap-4 cursor-pointer group"
+                                                    onClick={() => {
+                                                        setShippingType(isPickupMethod(m) ? "pickup" : "delivery");
+                                                        handleShippingMethodSelect(m.code);
+                                                    }}
+                                                >
+                                                    <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${isSelected ? "border-black" : "border-gray-400 group-hover:border-gray-600"}`}>
+                                                        {isSelected && <div className="w-2.5 h-2.5 bg-black rounded-full" />}
+                                                    </div>
+                                                    <span className={`text-body font-bold transition-colors ${isSelected ? "text-black" : "text-[#555]"}`}>
+                                                        {m.title}
+                                                    </span>
+                                                    {m.price > 0 && (
+                                                        <span className="ms-auto text-body font-bold text-black"><Price amount={m.price} /></span>
+                                                    )}
+                                                </div>
+                                            </React.Fragment>
+                                        );
+                                    })}
 
-                                    <div className="border-t border-dotted border-gray-300 w-full" />
-
-                                    {/* Pickup Option */}
+                                    {/* Pickup details — only for a pickup method Magento returned, once it is selected */}
                                     <div className="space-y-5">
-                                        <div
-                                            className="flex items-center gap-4 cursor-pointer group"
-                                            onClick={() => setShippingType("pickup")}
-                                        >
-                                            <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${shippingType === "pickup" ? "border-black" : "border-gray-400 group-hover:border-gray-600"}`}>
-                                                {shippingType === "pickup" && (
-                                                    <div className="w-2.5 h-2.5 bg-black rounded-full" />
-                                                )}
-                                            </div>
-                                            <span className={`text-body font-bold transition-colors ${shippingType === "pickup" ? "text-black" : "text-[#555]"}`}>
-                                                {t("m.pickup-from-warehouse")}
-                                            </span>
-                                        </div>
-
-                                        {shippingType === "pickup" && (
+                                        {selectedIsPickup && pickupDetailsRequired && (
                                             <div className="ml-9 space-y-4">
                                                 <div className="flex flex-col items-start gap-4">
-                                                    <button
-                                                        className="bg-brand-yellow text-black px-6 py-2.5 text-label font-black uppercase tracking-widest hover:bg-black hover:text-white transition-all active:scale-95 border border-transparent shadow-sm"
-                                                        onClick={() => {
-                                                            setIsWarehouseModalOpen(true);
-                                                            setIsPickupFormOpen(!isPickupFormOpen);
-                                                        }}
-                                                    >
-                                                        {t("m.select-warehouse")}
-                                                    </button>
+                                                    {/* As Magento: "Select Warehouse" (the popup) only when Magento lists at least one warehouse for this website */}
+                                                    {pickupStoresLoaded && stores.length >= 1 && (
+                                                        <button
+                                                            className="bg-brand-yellow text-black px-6 py-2.5 text-label font-black uppercase tracking-widest hover:bg-black hover:text-white transition-all active:scale-95 border border-transparent shadow-sm"
+                                                            onClick={() => {
+                                                                setIsWarehouseModalOpen(true);
+                                                                setIsPickupFormOpen(!isPickupFormOpen);
+                                                            }}
+                                                        >
+                                                            {t("m.select-warehouse")}
+                                                        </button>
+                                                    )}
 
                                                     {selectedWarehouse && (
                                                         <div className="flex items-center gap-2 px-3 py-1 bg-gray-100 rounded-sm">
                                                             <span className="text-body-sm font-bold text-gray-800 uppercase tracking-widest">
-                                                                Selected: <span className="text-black">{selectedWarehouse}</span>
+                                                                {t("m.selected")}: <span className="text-black">{selectedWarehouse}</span>
                                                             </span>
                                                             <button
                                                                 onClick={(e) => {
@@ -1072,7 +1147,7 @@ const CheckoutPageUI: React.FC = () => {
                                                                 }}
                                                                 className="text-caption text-blue-600 font-bold hover:underline"
                                                             >
-                                                                Change
+                                                                {t("m.change")}
                                                             </button>
                                                             <div className="w-px h-3 bg-gray-300 mx-1" />
                                                             <button
@@ -1082,19 +1157,20 @@ const CheckoutPageUI: React.FC = () => {
                                                                 }}
                                                                 className="text-caption text-black font-bold hover:underline"
                                                             >
-                                                                {isPickupFormOpen ? t("m.close") : t("m.edit")} Details
+                                                                {isPickupFormOpen ? t("m.close") : t("m.edit")} {t("m.details")}
                                                             </button>
                                                         </div>
                                                     )}
                                                 </div>
 
                                                 {/* Pickup Details Form */}
-                                                {isPickupFormOpen && (
+                                                {/* As Magento: pickup details only once a warehouse is chosen */}
+                                                {isPickupFormOpen && selectedWarehouseId && (
                                                     <div className="p-4 bg-[#F8F9FA] border border-gray-200 rounded-sm space-y-4 animate-in slide-in-from-top-2 duration-300">
                                                         {/* Row 1: Name & ID */}
                                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                                             <div className="flex flex-col w-full">
-                                                                <label className="text-label font-bold text-black uppercase tracking-[0.15em] mb-1.5">Person Name *</label>
+                                                                <label className="text-label font-bold text-black uppercase tracking-[0.15em] mb-1.5">{t("m.person-name")} <span className="text-[#e02b27]">*</span></label>
                                                                 <input
                                                                     type="text"
                                                                     value={pickupName}
@@ -1104,7 +1180,7 @@ const CheckoutPageUI: React.FC = () => {
                                                                 />
                                                             </div>
                                                             <div className="flex flex-col w-full">
-                                                                <label className="text-label font-bold text-black uppercase tracking-[0.15em] mb-1.5">Person ID *</label>
+                                                                <label className="text-label font-bold text-black uppercase tracking-[0.15em] mb-1.5">{t("m.person-id")} <span className="text-[#e02b27]">*</span></label>
                                                                 <input
                                                                     type="text"
                                                                     value={pickupId}
@@ -1117,13 +1193,13 @@ const CheckoutPageUI: React.FC = () => {
 
                                                         {/* Row 2: Mobile Number */}
                                                         <div className="flex flex-col w-full">
-                                                            <label className="text-label font-bold text-black uppercase tracking-[0.15em] mb-1.5">Mobile Number *</label>
+                                                            <label className="text-label font-bold text-black uppercase tracking-[0.15em] mb-1.5">{t("m.mobile-number")} <span className="text-[#e02b27]">*</span></label>
                                                             <input
                                                                 type="tel"
                                                                 value={pickupMobile}
                                                                 onChange={(e) => setPickupMobile(e.target.value)}
                                                                 className="w-full px-4 py-2 bg-white border border-gray-300 outline-none text-body font-medium transition-all focus:border-black hover:border-gray-400 h-11 rounded-none"
-                                                                placeholder="Enter Mobile Number"
+                                                                placeholder={t("m.mobile-number")}
                                                             />
                                                         </div>
 
@@ -1131,7 +1207,7 @@ const CheckoutPageUI: React.FC = () => {
                                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                                             {/* Calendar Date Picker */}
                                                             <div className="flex flex-col w-full">
-                                                                <label className="text-label font-bold text-black uppercase tracking-[0.15em] mb-1.5">Pick Up Date *</label>
+                                                                <label className="text-label font-bold text-black uppercase tracking-[0.15em] mb-1.5">{t("m.pick-up-date")} <span className="text-[#e02b27]">*</span></label>
                                                                 <div className="relative w-full pickup-datepicker">
                                                                     <DatePicker
                                                                         ref={datePickerRef}
@@ -1181,7 +1257,7 @@ const CheckoutPageUI: React.FC = () => {
 
                                                             {/* Scrollable Time Picker */}
                                                             <div className="flex flex-col w-full">
-                                                                <label className="text-label font-bold text-black uppercase tracking-[0.15em] mb-1.5">Pick Up Time *</label>
+                                                                <label className="text-label font-bold text-black uppercase tracking-[0.15em] mb-1.5">{t("m.pick-up-time")} <span className="text-[#e02b27]">*</span></label>
                                                                 <div className="relative w-full">
                                                                     {isLoadingTimeSlots ? (
                                                                         <div className="w-full h-11 px-4 py-2 bg-white border border-gray-300 flex items-center gap-2">
@@ -1222,9 +1298,10 @@ const CheckoutPageUI: React.FC = () => {
                                                                                             }}
                                                                                             className={`px-4 py-2 text-body font-medium cursor-pointer transition-colors ${pickupTime === "" ? "bg-brand-yellow text-white" : "hover:bg-gray-100 text-gray-400"}`}
                                                                                         >
-                                                                                            Select Time
+                                                                                            {availableTimeSlots.some((slot: any) => slot.enabled !== false) ? t("m.select-time") : t("checkout.noTimeSlots")}
                                                                                         </li>
-                                                                                        {availableTimeSlots.map((slot: any) => (
+                                                                                        {/* Only the times Magento offers (unavailable ones are not selectable) */}
+                                                                                        {availableTimeSlots.filter((slot: any) => slot.enabled !== false).map((slot: any) => (
                                                                                             <li
                                                                                                 key={slot.time || slot.label}
                                                                                                 onClick={() => {
@@ -1260,17 +1337,17 @@ const CheckoutPageUI: React.FC = () => {
 
                             <div className="p-5">
                                 {(() => {
-                                    // Exclusively render Credit Account and Bank Transfer
-                                    const methodsToRender = [
-                                        { code: "checkmo", title: "Credit Account" },
-                                    ];
+                                    // Exactly Magento's payment methods for this cart + store view.
+                                    const methodsToRender = paymentMethods;
+                                    if (methodsToRender.length === 0) {
+                                        return <p className="text-body font-bold text-[#e02b27]">{t("multi.noPaymentMethods")}</p>;
+                                    }
 
                                     return (
                                         <div className="space-y-4">
                                             {methodsToRender.map((method) => {
                                                 const isSelected = paymentMethod === method.code;
-                                                const titleKey = `payment_method.${method.code}`;
-                                                const title = t(titleKey) !== titleKey ? t(titleKey) : method.title;
+                                                const title = method.title;
 
                                                 return (
                                                     <div key={method.code} className="space-y-3">
@@ -1343,7 +1420,7 @@ const CheckoutPageUI: React.FC = () => {
                                                                             <div className="text-center px-3 md:px-6">
                                                                                 <p className="text-h3 text-black font-bold mb-3 tracking-tight">{t("m.drop-files-here")}</p>
                                                                                 <p className="text-body-lg text-black/80 font-medium">
-                                                                                    {t("m.allowed-file-types")} : jpg,jpeg,png,zip,rar,docx,doc,pdf,xls,xlsx,csv,msg
+                                                                                    {t("m.allowed-file-types")} : {UPLOAD_TYPES_TEXT}
                                                                                 </p>
                                                                             </div>
                                                                         </div>
@@ -1353,21 +1430,35 @@ const CheckoutPageUI: React.FC = () => {
                                                                             multiple
                                                                             ref={paymentCommitmentRef}
                                                                             onChange={handlePaymentCommitmentChange}
-                                                                            accept=".jpg,.jpeg,.png,.zip,.rar,.docx,.doc,.pdf,.xls,.xlsx,.csv,.msg"
+                                                                            accept={UPLOAD_ACCEPT}
                                                                         />
 
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        )}
+
+                                                        {/* Uploaded payment-commitment files — always visible under the
+                                                            method (not inside the dropdown), as on Magento */}
+                                                        {method.code === "checkmo" && isSelected && (
+                                                            <div className="mt-2">
                                                                         {/* File List */}
                                                                         {paymentCommitmentNames.length > 0 && (
                                                                             <div className="flex flex-wrap gap-x-4 gap-y-3 pt-2">
                                                                                 {paymentCommitmentNames.map((name) => (
                                                                                     <div key={name} className="flex border border-subtle rounded-sm overflow-hidden group shadow-sm bg-white">
-                                                                                        <div className="px-6 py-3 flex-1 flex items-center min-w-0">
+                                                                                        <div
+                                                                                            className={`px-6 py-3 flex-1 flex items-center min-w-0 ${magentoFileUrl(name) ? "cursor-pointer hover:underline" : ""}`}
+                                                                                            title={magentoFileUrl(name) ? undefined : t("checkout.fileNoLink")}
+                                                                                            onClick={(e) => { e.stopPropagation(); openMagentoFile(name); }}
+                                                                                        >
                                                                                             <span className="text-body font-black text-black truncate ltr:mr-2 rtl:ml-2">
-                                                                                                {name}
+                                                                                                {magentoFileName(name)}
                                                                                             </span>
                                                                                         </div>
                                                                                         <button
                                                                                             type="button"
+                                                                                            disabled={isUploadingPayment}
                                                                                             onClick={(e) => { e.stopPropagation(); removePaymentCommitment(name); }}
                                                                                             className="bg-red-50 text-red-600 px-6 py-3 text-label font-black uppercase tracking-widest transition-all hover:bg-red-600 hover:text-white border-l border-subtle active:scale-95"
                                                                                         >
@@ -1377,8 +1468,6 @@ const CheckoutPageUI: React.FC = () => {
                                                                                 ))}
                                                                             </div>
                                                                         )}
-                                                                    </div>
-                                                                )}
                                                             </div>
                                                         )}
                                                     </div>
@@ -1392,8 +1481,9 @@ const CheckoutPageUI: React.FC = () => {
                     </div>
 
                     {/* ═══════════ Right Column (Order Summary) ═══════════ */}
-                    <div className="lg:col-span-4 xl:col-span-3 space-y-6">
-                        <div className="sticky top-24 overflow-hidden bg-white border border-[#ddd] rounded-sm transition-all duration-300">
+                    {/* Summary, comment box and Place Order stick together while the page scrolls */}
+                    <div className="lg:col-span-4 xl:col-span-3 space-y-6 lg:sticky lg:top-24 self-start">
+                        <div className="overflow-hidden bg-white border border-[#ddd] rounded-sm transition-all duration-300">
                             {/* Header exactly as per image */}
                             <div className="bg-gray-50/80 p-3 border-b border-[#ddd] flex items-center gap-2.5 h-[50px]">
                                 <div className="w-5 h-5 rounded-full bg-black flex items-center justify-center">
@@ -1422,20 +1512,22 @@ const CheckoutPageUI: React.FC = () => {
                                 {/* Collapsible Product List */}
                                 <div
                                     className={`overflow-hidden transition-all duration-500 ease-in-out ${isItemsListOpen ? "max-height-none border-b border-gray-100" : "max-h-0"}`}
-                                    style={{ maxHeight: isItemsListOpen ? "1000px" : "0" }}
+                                    style={{ maxHeight: isItemsListOpen ? "240px" : "0" }}
                                 >
-                                    <div className="space-y-3 sm:space-y-3 md:space-y-4 p-4">
+                                    <div className="space-y-3 sm:space-y-3 md:space-y-4 p-4 max-h-[240px] overflow-y-auto card-scrollbar">
                                         {cart?.items?.map((item) => (
                                             <div key={item.item_id} className="flex gap-4 items-start pb-3 border-b border-[#ddd] last:border-0 last:pb-0">
                                                 <div className="w-13 h-13 flex-shrink-0 border border-[#ddd] rounded-sm overflow-hidden bg-gray-50 p-1">
-                                                    <img
-                                                        src={item.image_url || "/images/tyre-sample.png"}
-                                                        alt={item.name}
-                                                        className="w-full h-full object-contain"
-                                                    />
+                                                    {item.image_url && (
+                                                        <img
+                                                            src={item.image_url}
+                                                            alt={item.name}
+                                                            className="w-full h-full object-contain"
+                                                        />
+                                                    )}
                                                 </div>
                                                 <div className="flex-1 min-w-0 pt-0.5">
-                                                    <h4 className="text-body font-semibold text-black leading-tight mb-1.5 uppercase">
+                                                    <h4 className="text-body font-semibold text-black leading-tight mb-1.5">
                                                         {item.name}
                                                     </h4>
 
@@ -1468,7 +1560,7 @@ const CheckoutPageUI: React.FC = () => {
                                 {/* Totals Section */}
                                 <div className="px-4 py-3 space-y-2.5 sm:space-y-3">
                                     <div className="flex justify-between items-center text-body-lg">
-                                        <span className="text-body md:text-body-lg font-semibold text-black uppercase tracking-tight">{t("cart.subtotal")}</span>
+                                        <span className="text-body md:text-body-lg font-semibold text-black tracking-tight">{t("cart.subtotal")}</span>
                                         <span className="text-body md:text-body-lg font-semibold text-black price">
                                             <Price amount={displayTotals.subtotal} />
                                         </span>
@@ -1476,70 +1568,53 @@ const CheckoutPageUI: React.FC = () => {
 
                                     {totals?.discount_amount && totals.discount_amount !== 0 ? (
                                         <div className="flex justify-between items-center text-body-lg">
-                                            <span className="text-body md:text-body-lg font-semibold text-green-600 uppercase tracking-tight">{t("m.discount")}</span>
+                                            <span className="text-body md:text-body-lg font-semibold text-green-600 tracking-tight">{totals.discount_label || t("m.discount")}</span>
                                             <span className="text-body md:text-body-lg font-semibold text-green-600">
                                                 - <Price amount={Math.abs(totals.discount_amount)} />
                                             </span>
                                         </div>
                                     ) : null}
 
+                                    {/* Tax — one row titled as Magento's checkout titles it (its "Tax" translation for this
+                                        store view, e.g. "VAT (15%)"), with Magento's total tax */}
                                     <div className="flex justify-between items-center">
-                                        <span className="text-body md:text-body-lg font-semibold text-black uppercase tracking-tight">{t("cart.vat")}</span>
+                                        <span className="text-body md:text-body-lg font-semibold text-black tracking-tight">{taxTitle}</span>
                                         <span className="text-body md:text-body-lg font-semibold text-black">
                                             <Price amount={displayTotals.tax_amount} />
                                         </span>
                                     </div>
 
-                                    <div className="flex justify-between items-center">
-                                        <span className="text-body md:text-body-lg font-semibold text-black uppercase tracking-tight">{t("m.shipping")}</span>
-                                        <span className="text-body md:text-body-lg font-semibold text-black">
-                                            <Price amount={displayTotals.shipping_amount} />
-                                        </span>
-                                    </div>
-
                                     <div className="flex justify-between items-center pt-3 border-t border-[#ddd]">
-                                        <span className="text-body-lg md:text-h3-sm font-semibold text-black uppercase tracking-tight">{t("common.grandTotal")}</span>
-                                        <span className="text-body-lg md:text-h3-sm font-semibold text-black">
+                                        <span className="text-body-lg md:text-h3-sm font-bold text-black tracking-tight">{t("common.grandTotal")}</span>
+                                        <span className="text-body-lg md:text-h3-sm font-bold text-black">
                                             <Price amount={displayTotals.grand_total} />
                                         </span>
                                     </div>
                                 </div>
 
-                                {/* Order Comment */}
-                                <div className="px-4 py-3 border-t border-[#ddd]">
-                                    <div className="space-y-1.5">
-                                        <label className="text-[11px] font-semibold text-black uppercase tracking-widest mb-2 block">
-                                            {t("m.order-comment")}
-                                        </label>
-                                        <textarea
-                                            placeholder={t("m.enter-your-comment")}
-                                            className="w-full min-h-[70px] resize-none px-4 py-2.5 text-sm font-medium text-black bg-white border border-gray-200 rounded focus:border-primary focus:outline-none transition-all placeholder:text-black/40 placeholder:font-normal"
-                                            onChange={(e) => setComment(e.target.value)}
-                                        />
-                                    </div>
-                                </div>
-
-                                {/* Place Order Button */}
-                                <div className="px-4 pb-3">
-                                    <button
-                                        onClick={handlePlaceOrder}
-                                        className={`w-full px-2 py-3 xl:py-4 text-sm font-semibold uppercase tracking-normal xl:tracking-[0.2em] leading-tight transition-all duration-300 shadow-md rounded text-center border ${isPlacingOrder
-                                            ? "bg-gray-100 text-gray-400 cursor-not-allowed border-subtle"
-                                            : "bg-brand-yellow text-black hover:bg-black hover:text-white border-brand-yellow hover:border-black active:scale-[0.98]"
-                                            }`}
-                                    >
-                                        {isPlacingOrder ? (
-                                            t("common.loading")
-                                        ) : (
-                                            <>
-                                                {t("common.placeOrder")}
-                                                <span className="hidden xl:inline"> ➜</span>
-                                            </>
-                                        )}
-                                    </button>
-                                </div>
                             </div>
                         </div>
+
+                        {/* Order comment — separate box under the summary, no title (as Magento) */}
+                        <div className="bg-[#f2f2f2] p-5 rounded-sm">
+                            <textarea
+                                placeholder={t("m.enter-your-comment")}
+                                value={comment}
+                                className="w-full min-h-[95px] resize-y px-3 py-2.5 text-sm text-black bg-white border border-[#ccc] rounded-sm focus:border-black focus:outline-none placeholder:text-black/50"
+                                onChange={(e) => setComment(e.target.value)}
+                            />
+                        </div>
+
+                        {/* Place Order — full-width button under the comment box (as Magento) */}
+                        <button
+                            onClick={handlePlaceOrder}
+                            className={`w-full px-2 py-3 xl:py-4 text-sm font-bold uppercase tracking-wide leading-tight transition-all duration-300 shadow-md rounded-sm text-center border ${isPlacingOrder
+                                ? "bg-gray-100 text-gray-400 cursor-not-allowed border-subtle"
+                                : "bg-brand-yellow text-black hover:bg-black hover:text-white border-brand-yellow hover:border-black active:scale-[0.98]"
+                                }`}
+                        >
+                            {isPlacingOrder ? t("common.loading") : t("common.placeOrder")}
+                        </button>
                     </div>
                 </div>
             </main>
@@ -1575,25 +1650,45 @@ const CheckoutPageUI: React.FC = () => {
                                     >
                                         <h4 className="text-h3-sm font-bold text-black uppercase mb-0 tracking-wide">{wh.name}</h4>
                                         <div className="space-y-1 text-body tracking-[1px] pb-[2px]">
-                                            <p className="flex items-start gap-2">
-                                                <span className="font-bold text-black min-w-[66px] flex-shrink-0">Address:</span>
-                                                <span className="text-gray-700">{wh.address}</span>
-                                            </p>
-                                            <p className="flex items-start gap-2">
-                                                <span className="font-bold text-black min-w-[66px] flex-shrink-0">E-Mail:</span>
-                                                {wh.email && (
+                                            {/* Same rows as Magento's popup: Address, E-Mail, GPS Location */}
+                                            {(wh.address || wh.city) && (
+                                                <p className="flex items-start gap-2">
+                                                    <span className="font-bold text-black min-w-[66px] flex-shrink-0">{t("m.address")}:</span>
+                                                    <span className="text-gray-700">{
+                                                        // Magento's address, followed by the city unless the address already ends with it
+                                                        wh.city && !wh.address.toLowerCase().includes(wh.city.toLowerCase())
+                                                            ? [wh.address, wh.city].filter(Boolean).join(", ")
+                                                            : wh.address
+                                                    }</span>
+                                                </p>
+                                            )}
+                                            {wh.email && (
+                                                <p className="flex items-start gap-2">
+                                                    <span className="font-bold text-black min-w-[66px] flex-shrink-0">{t("checkout.warehouseEmail")}:</span>
                                                     <a href={`mailto:${wh.email}`} className="text-blue-600 hover:underline font-bold" onClick={(e) => e.stopPropagation()}>{wh.email}</a>
-                                                )}
-                                            </p>
-                                            <p className="flex items-start gap-2">
-                                                <span className="font-bold text-black min-w-[66px] flex-shrink-0">GPS Location:</span>
-                                                <a href={wh.gps_location} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline font-bold" onClick={(e) => e.stopPropagation()}>
-                                                    {t("m.view-on-maps")}
-                                                </a>
-                                            </p>
+                                                </p>
+                                            )}
+                                            {wh.gps_location && (
+                                                <p className="flex items-start gap-2">
+                                                    <span className="font-bold text-black min-w-[66px] flex-shrink-0">{t("m.gps-location")}:</span>
+                                                    <a
+                                                        href={/^https?:\/\//i.test(wh.gps_location) ? wh.gps_location : `https://${wh.gps_location}`}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        dir="ltr"
+                                                        className="text-blue-600 hover:underline font-bold break-all"
+                                                        onClick={(e) => e.stopPropagation()}
+                                                    >
+                                                        {/* Shown like Magento's link text (without https://) */}
+                                                        {wh.gps_location.replace(/^https?:\/\/(www\.)?/i, "")}
+                                                    </a>
+                                                </p>
+                                            )}
                                         </div>
                                     </div>
                                 ))
+                            ) : pickupStoresLoaded ? (
+                                <p className="py-10 text-center text-body font-bold text-gray-600">{t("checkout.noWarehouses")}</p>
                             ) : (
                                 <div className="py-6 space-y-3">
                                     {[0, 1, 2].map((i) => (

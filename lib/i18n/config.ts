@@ -20,25 +20,6 @@ export const localeNames: Record<Locale, string> = {
     ar: "العربية",
 };
 
-/**
- * Build the Magento base URL for a given locale.
- *
- * @example
- *   getMagentoBaseUrl("en") → "https://altalayi-live.btire.com/rest/en/V1/kleverapi"
- *   getMagentoBaseUrl("ar") → "https://altalayi-live.btire.com/rest/ar/V1/kleverapi"
- */
-export function getMagentoBaseUrl(locale: Locale = defaultLocale): string {
-    const domain = process.env.NEXT_PUBLIC_MAGENTO_BASE_URL || "";
-    return `${domain}/rest/${locale}/V1/kleverapi`;
-}
-
-/**
- * Build the Magento auth token URL for a given locale.
- */
-export function getMagentoAuthUrl(locale: Locale = defaultLocale): string {
-    const domain = process.env.NEXT_PUBLIC_MAGENTO_BASE_URL || "";
-    return `${domain}/rest/${locale}/V1/integration/customer/token`;
-}
 
 /**
  * Check if a string is a valid locale.

@@ -1,3 +1,4 @@
+import { getLocaleFromRequest } from "@/lib/api/magento-url";
 import { NextResponse } from 'next/server';
 import { CUSTOMER_ADDRESSES_QUERY } from '@/src/graphql/queries';
 import { CREATE_CUSTOMER_ADDRESS_MUTATION } from '@/src/graphql/mutations';
@@ -59,7 +60,7 @@ function buildAddressInput(src: any) {
 export async function GET(request: Request) {
     try {
         const authHeader = request.headers.get('Authorization');
-        const locale = request.headers.get('x-locale') || 'en';
+        const locale = getLocaleFromRequest(request);
         if (!authHeader) {
             return NextResponse.json({ message: 'Authentication required. Authorization header is missing.' }, { status: 401 });
         }
@@ -90,7 +91,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
     try {
         const authHeader = request.headers.get('Authorization');
-        const locale = request.headers.get('x-locale') || 'en';
+        const locale = getLocaleFromRequest(request);
         if (!authHeader) {
             return NextResponse.json({ message: 'Authorization required' }, { status: 401 });
         }

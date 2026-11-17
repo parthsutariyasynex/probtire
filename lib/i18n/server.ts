@@ -1,33 +1,14 @@
-// ─── Server-side helper for API route handlers ─────────────────────────────
-// Reads the locale from the request (cookie or header) and returns the
-// correct Magento base URL.
+// ─── Server-side locale helpers ─────────────────────────────────────────────
+// The Magento REST base URL is built per request from the selected website's store
+// code (lib/api/magento-url getBaseUrl) — never from the language alone.
 
 import { cookies } from "next/headers";
 import {
     LOCALE_COOKIE,
     defaultLocale,
-    getMagentoBaseUrl,
     isValidLocale,
     type Locale,
 } from "./config";
-
-/**
- * Get the Magento base URL for the current request's locale.
- * Reads the locale from the NEXT_LOCALE cookie (set by middleware).
- *
- * Usage in API route handlers:
- * ```ts
- * import { getLocaleMagentoUrl } from "@/lib/i18n/server";
- * const BASE_URL = await getLocaleMagentoUrl();
- * ```
- */
-export async function getLocaleMagentoUrl(): Promise<string> {
-    const cookieStore = await cookies();
-    const localeCookie = cookieStore.get(LOCALE_COOKIE)?.value;
-    const locale: Locale =
-        localeCookie && isValidLocale(localeCookie) ? localeCookie : defaultLocale;
-    return getMagentoBaseUrl(locale);
-}
 
 /**
  * Get the current locale from cookies.

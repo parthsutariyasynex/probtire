@@ -4,10 +4,11 @@ import { useLocalePath } from "@/hooks/useLocalePath";
 
 import React, { useEffect, useState, useMemo, useRef } from "react";
 import { useCart } from "@/modules/cart/hooks/useCart";
-import { useCheckout, Address } from "@/modules/checkout/hooks/useCheckout";
+import { useCheckout, Address, MultiShippingMethodChoice } from "@/modules/checkout/hooks/useCheckout";
+import { useCountryNames } from "@/hooks/useCountryNames";
+import Price from "@/app/components/Price";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
-import Price from "@/app/components/Price";
 import { MultiLocationShippingSkeleton } from "@/components/skeletons";
 
 type Assignments = Record<number, Record<string, number>>;
@@ -36,7 +37,8 @@ const MultiShippingShippingPage: React.FC = () => {
 
     const [groups, setGroups] = useState<AddressGroup[]>([]);
     const [shippingMethods, setShippingMethods] = useState<Record<string, any[]>>({});
-    const [selectedMethods, setSelectedMethods] = useState<Record<string, string>>({});
+    const [selectedMethods, setSelectedMethods] = useState<Record<string, MultiShippingMethodChoice>>({});
+    const countryName = useCountryNames();
     const [isLoading, setIsLoading] = useState(true);
 
     // Use a ref to prevent infinite loop triggered by isCheckoutLoading changes
@@ -62,7 +64,8 @@ const MultiShippingShippingPage: React.FC = () => {
 
             try {
                 const saved = localStorage.getItem('multi_shipping_assignments');
-                if (!saved) {
+                const savedItems: Array<{ item_id: number; name: string }> = JSON.parse(localStorage.getItem('multi_shipping_items') || '[]');
+                if (!saved || savedItems.length === 0) {
                     router.push(lp('/multi-location-delivery'));
                     return;
                 }
@@ -76,7 +79,7 @@ const MultiShippingShippingPage: React.FC = () => {
 
                 Object.entries(assignments).forEach(([itemIdStr, addrQtyMap]) => {
                     const itemId = parseInt(itemIdStr);
-                    const cartItem = cart.items.find(i => i.item_id === itemId);
+                    const cartItem = savedItems.find(i => i.item_id === itemId);
                     if (!cartItem) return;
 
                     Object.entries(addrQtyMap).forEach(([addrId, qty]) => {
@@ -100,40 +103,40 @@ const MultiShippingShippingPage: React.FC = () => {
 
                 // 2. Fetch Shipping Methods
                 try {
+                    // Magento's shipping methods per quote address: { addresses: [{ customer_address_id,
+                    // quote_address_id, methods: [...] }] }. Keyed by customer_address_id (the UI groups),
+                    // remembering each quote_address_id for the save step.
                     const methodsData = await fetchMultiShippingMethods();
                     const normalizedMethods: Record<string, any[]> = {};
                     const custToQuoteAddr: Record<string, string> = {};
+                    const errors: Record<string, string> = {};
+                    const previous: Record<string, MultiShippingMethodChoice> = JSON.parse(localStorage.getItem('multi_shipping_methods') || '{}');
+                    const initialSelection: Record<string, MultiShippingMethodChoice> = {};
 
-                    if (Array.isArray(methodsData?.addresses)) {
-                        // GraphQL shape: { addresses: [{ customer_address_id, quote_address_id, methods: [...] }] }.
-                        // Key UI methods by customer_address_id (matches group.address.id) and remember the
-                        // backend quote_address_id per address so step 4 sends the dynamic value.
-                        methodsData.addresses.forEach((a: any) => {
-                            const custId = String(a.customer_address_id);
-                            normalizedMethods[custId] = Array.isArray(a.methods) ? a.methods : [];
-                            if (a.quote_address_id != null) custToQuoteAddr[custId] = String(a.quote_address_id);
-                        });
-                    } else if (methodsData?.methods) {
-                        Object.entries(methodsData.methods).forEach(([addrId, methods]: [string, any]) => {
-                            normalizedMethods[addrId] = Array.isArray(methods) ? methods : [];
-                        });
-                    } else if (Array.isArray(methodsData)) {
-                        processedGroups.forEach(g => normalizedMethods[g.address.id] = methodsData);
+                    for (const a of (Array.isArray(methodsData?.addresses) ? methodsData.addresses : [])) {
+                        const custId = String(a.customer_address_id);
+                        const all: any[] = Array.isArray(a.methods) ? a.methods : [];
+                        const available = all.filter((m: any) => m.available !== false && m.carrier_code && m.method_code);
+                        normalizedMethods[custId] = available;
+                        if (a.quote_address_id != null) custToQuoteAddr[custId] = String(a.quote_address_id);
+                        if (available.length === 0) {
+                            // Magento's own reason, if it gave one.
+                            errors[custId] = all.map((m: any) => m.error_message).filter(Boolean).join(" ");
+                        }
+                        // Keep the customer's earlier choice while Magento still offers it.
+                        const prev = previous[custId];
+                        const keep = prev && available.find((m: any) => m.carrier_code === prev.carrier_code && m.method_code === prev.method_code);
+                        // Otherwise Magento's first available method for this address.
+                        const chosen = keep || available[0];
+                        if (chosen) initialSelection[custId] = { carrier_code: chosen.carrier_code, method_code: chosen.method_code };
                     }
 
                     quoteAddrByCustomerRef.current = custToQuoteAddr;
                     setShippingMethods(normalizedMethods);
-
-                    // Auto-select first method for each address
-                    const initialSelection: Record<string, string> = {};
-                    Object.entries(normalizedMethods).forEach(([addrId, methods]) => {
-                        if (methods.length > 0) {
-                            const m: any = methods[0];
-                            initialSelection[addrId] = m.code
-                                || (m.carrier_code && m.method_code ? `${m.carrier_code}_${m.method_code}` : m.method_code);
-                        }
-                    });
                     setSelectedMethods(initialSelection);
+                    // An address Magento cannot ship to: show Magento's reason.
+                    const noMethod = Object.values(errors);
+                    if (noMethod.length > 0) toast.error(noMethod.find(Boolean) || t("multi.noShippingMethods"));
                 } catch (methodErr) {
                     console.error("Error fetching multi-shipping methods:", methodErr);
                     // No invented methods — tell the customer instead of offering fake ones.
@@ -151,9 +154,12 @@ const MultiShippingShippingPage: React.FC = () => {
         loadInitialData();
     }, [cart, addresses, isCartLoading, isCheckoutLoading, fetchMultiShippingMethods, router]);
 
-    const handleSelectMethod = (addressId: string, methodCode: string) => {
-        setSelectedMethods(prev => ({ ...prev, [addressId]: methodCode }));
+    const handleSelectMethod = (addressId: string, method: MultiShippingMethodChoice) => {
+        setSelectedMethods(prev => ({ ...prev, [addressId]: method }));
     };
+
+    // Every address needs one of Magento's methods before continuing.
+    const allMethodsChosen = groups.length > 0 && groups.every(g => !!selectedMethods[g.address.id]);
 
     if (isLoading || isCartLoading || isCheckoutLoading) {
         return <MultiLocationShippingSkeleton groups={2} />;
@@ -206,8 +212,8 @@ const MultiShippingShippingPage: React.FC = () => {
                                             {/* <p className="mb-0.5">{group.address.company || "Company Name"}</p> */}
                                             <p className="mb-0.5" dir="ltr" style={{ unicodeBidi: "isolate" }}>{group.address.street}</p>
                                             <p className="mb-0.5" dir="ltr" style={{ unicodeBidi: "isolate" }}>{group.address.city}, {group.address.postcode}</p>
-                                            <p className="mb-4">{t("multi.saudiArabia")}</p>
-                                            <p dir="ltr" style={{ unicodeBidi: "isolate" }}>T: {group.address.telephone}</p>
+                                            <p className="mb-4">{countryName(group.address.country_id)}</p>
+                                            <p dir="ltr" style={{ unicodeBidi: "isolate" }}>{t("multi.phonePrefix")} {group.address.telephone}</p>
                                         </div>
                                     </div>
 
@@ -243,7 +249,6 @@ const MultiShippingShippingPage: React.FC = () => {
                                     </div>
                                 </div>
 
-                                {/* Shipping Methods Selection UI removed as per user request */}
                             </div>
                         );
                     })}
@@ -261,18 +266,19 @@ const MultiShippingShippingPage: React.FC = () => {
                     <button
                         onClick={async () => {
                             try {
-                                // Translate the per-address selection (keyed by customer_address_id, which the
-                                // UI groups use) to the backend quote_address_id captured from the shipping-methods
-                                // response, then send those dynamic ids to step 4.
-                                const methodsByQuoteAddr: Record<string, string> = {};
-                                Object.entries(selectedMethods).forEach(([custId, code]) => {
-                                    const quoteAddrId = quoteAddrByCustomerRef.current[custId];
-                                    if (quoteAddrId) methodsByQuoteAddr[quoteAddrId] = code;
-                                });
-                                if (Object.keys(methodsByQuoteAddr).length > 0) {
-                                    await setMultiShippingMethods(methodsByQuoteAddr);
+                                if (!allMethodsChosen) {
+                                    toast.error(t("multi.selectShippingMethod"));
+                                    return;
                                 }
-                                // Automatically save the auto-selected shipping methods
+                                // Selection is keyed by customer_address_id (the UI groups); Magento needs
+                                // its quote_address_id from the shipping-methods response.
+                                const methodsByQuoteAddr: Record<string, MultiShippingMethodChoice> = {};
+                                for (const group of groups) {
+                                    const quoteAddrId = quoteAddrByCustomerRef.current[group.address.id];
+                                    if (!quoteAddrId) throw new Error(t("multi.noShippingMethods"));
+                                    methodsByQuoteAddr[quoteAddrId] = selectedMethods[group.address.id];
+                                }
+                                await setMultiShippingMethods(methodsByQuoteAddr);
                                 localStorage.setItem('multi_shipping_methods', JSON.stringify(selectedMethods));
                                 router.push(lp('/multi-location-delivery/billing'));
                             } catch (err: any) {
@@ -280,7 +286,7 @@ const MultiShippingShippingPage: React.FC = () => {
                                 toast.error(err.message || t("multi.shippingSaveFailed"));
                             }
                         }}
-                        disabled={isLoading || isCheckoutLoading}
+                        disabled={isLoading || isCheckoutLoading || !allMethodsChosen}
                         className="w-full sm:w-auto text-center bg-brand-yellow text-black px-6 md:px-10 py-3 md:py-3.5 text-label font-bold uppercase tracking-wider hover:bg-black hover:text-white transition-all shadow-sm disabled:opacity-50 font-sans"
                     >
                         {t("multi.continueToBilling")}

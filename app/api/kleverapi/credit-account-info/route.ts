@@ -1,3 +1,4 @@
+import { getLocaleFromRequest } from "@/lib/api/magento-url";
 import { NextRequest, NextResponse } from "next/server";
 import { KLEVER_CREDIT_ACCOUNT_QUERY } from "@/src/graphql/queries";
 import { toStoreCode } from "@/lib/store/website";
@@ -13,7 +14,7 @@ export async function GET(request: NextRequest) {
     try {
         // Same token/session handling as before: forward the client's Authorization header.
         const authHeader = request.headers.get("authorization");
-        const locale = request.headers.get("x-locale") || "en";
+        const locale = getLocaleFromRequest(request);
 
         if (!authHeader) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

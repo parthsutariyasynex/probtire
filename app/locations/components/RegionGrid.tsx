@@ -3,38 +3,33 @@
 import React from "react";
 import RegionCard from "./RegionCard";
 import { useTranslation } from "@/hooks/useTranslation";
+import { useBranchLocations } from "../useBranchLocations";
 
+// Branch regions of the selected website + language, exactly as Magento's Branch Locations
+// page lists them (title, address lines, Magento's own map link).
 const RegionGrid: React.FC = () => {
     const { t } = useTranslation();
+    const { locations, loading } = useBranchLocations();
 
-    const regionsData = [
-        {
-            id: 1,
-            title: t("locations.westRegion"),
-            address: t("locations.westAddress"),
-            mapLink: "https://www.google.com/maps/search/?api=1&query=FazCo+Trading+Company+Limited+Head+Office+Jeddah"
-        },
-        {
-            id: 2,
-            title: t("locations.centRegion"),
-            address: t("locations.centAddress"),
-            mapLink: "https://www.google.com/maps/search/?api=1&query=Al-Talayi+Company+Riyadh+Khurais+Road"
-        },
-        {
-            id: 3,
-            title: t("locations.eastRegion"),
-            address: t("locations.eastAddress"),
-            mapLink: "https://www.google.com/maps/search/?api=1&query=Al-Talayi+Company+Khobar+Al-Rakah"
-        }
-    ];
+    if (loading) {
+        return (
+            <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 lg:gap-6">
+                {[0, 1, 2].map((i) => <div key={i} className="h-40 bg-gray-100 animate-pulse rounded-sm" />)}
+            </section>
+        );
+    }
+
+    if (!locations || locations.regions.length === 0) {
+        return <p className="text-center text-body text-gray-600 py-10">{t("cms.unavailable")}</p>;
+    }
 
     return (
         <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 lg:gap-6">
-            {regionsData.map((region, index) => (
+            {locations.regions.map((region, index) => (
                 <RegionCard
-                    key={region.id}
+                    key={`${region.title}-${index}`}
                     title={region.title}
-                    address={region.address}
+                    address={region.lines.join("\n")}
                     mapLink={region.mapLink}
                     index={index}
                 />

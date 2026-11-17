@@ -20,7 +20,15 @@ export interface Address {
     country_id: string;
     telephone: string;
     isDefault?: boolean;
+    /** Magento default billing address. */
+    isDefaultBilling?: boolean;
     custom_attributes?: CustomAttribute[];
+}
+
+/** A Magento shipping method, identified exactly as Magento does (carrier + method). */
+export interface MultiShippingMethodChoice {
+    carrier_code: string;
+    method_code: string;
 }
 
 export interface ShippingMethod {
@@ -33,24 +41,42 @@ export interface ShippingMethod {
     currency: string;
 }
 
+/**
+ * Whether a shipping method Magento returned is its warehouse-pickup method, so the checkout
+ * shows the warehouse / pickup-details form under it. Magento's API has no flag for this; the
+ * only signal is Magento's own carrier/method code. It never adds a method: only methods
+ * Magento returned are listed.
+ */
+export function isPickupMethod(m: Pick<ShippingMethod, "carrierCode" | "methodCode">): boolean {
+    return /pickup/i.test(`${m.carrierCode}_${m.methodCode}`);
+}
+
 export interface PaymentMethod {
     code: string;
     title: string;
 }
 
+/** A Magento pickup warehouse (Klever REST checkout/pickup-stores). */
 export interface Store {
     id: string;
     name: string;
     address: string;
+    city: string;
     email: string;
+    /** Google Maps link at Magento's latitude/longitude; "" when Magento has no coordinates. */
     gps_location: string;
 }
 
 export interface CheckoutTotals {
     subtotal: number;
     tax_amount: number;
-    shipping_amount?: number;
+    /** Magento applied tax lines (label + amount) of the cart. */
+    taxes?: Array<{ label: string; amount: number }>;
+    /** Magento's selected shipping method amount; null when no method is selected yet. */
+    shipping_amount?: number | null;
     discount_amount?: number;
+    /** Magento's discount label(s). */
+    discount_label?: string;
     grand_total: number;
     currency_code: string;
 }
@@ -99,6 +125,14 @@ export function useCheckout(options: UseCheckoutOptions = {}) {
     const [stores, setStores] = useState<Store[]>([]);
     const [totals, setTotals] = useState<CheckoutTotals | null>(null);
     const [isLoading, setIsLoading] = useState(false);
+    // True once Magento's payment-method list has been requested at least once (it may be empty).
+    const [paymentMethodsLoaded, setPaymentMethodsLoaded] = useState(false);
+    // Multi-address checkout: Magento's billing-step payment methods (kleverMultishippingPaymentMethods).
+    const [multiShippingPaymentMethods, setMultiShippingPaymentMethods] = useState<PaymentMethod[]>([]);
+    const [multiShippingPaymentMethodsLoaded, setMultiShippingPaymentMethodsLoaded] = useState(false);
+    const [multiShippingPaymentMethodsError, setMultiShippingPaymentMethodsError] = useState<string | null>(null);
+    // True once Magento's pickup warehouses have been requested (the list may be empty).
+    const [pickupStoresLoaded, setPickupStoresLoaded] = useState(false);
     const [isTotalsLoading, setIsTotalsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
@@ -157,9 +191,10 @@ export function useCheckout(options: UseCheckoutOptions = {}) {
                     city: addr.city || "",
                     region: typeof addr.region === 'string' ? addr.region : (addr.region?.region || addr.region?.region_code || ""),
                     postcode: addr.postcode || "",
-                    country_id: addr.country_id || "SA",
+                    country_id: addr.country_id || "",
                     telephone: addr.telephone || "",
                     isDefault: !!(addr.default_shipping || addr.is_default_shipping),
+                    isDefaultBilling: !!(addr.default_billing || addr.is_default_billing),
                     custom_attributes: addr.custom_attributes || [],
                 }));
                 setAddresses(mapped);
@@ -195,9 +230,9 @@ export function useCheckout(options: UseCheckoutOptions = {}) {
                     code: m.code || `${m.carrier_code}_${m.method_code}`,
                     carrierCode: m.carrier_code || m.carrierCode || m.code?.split('_')[0] || "",
                     methodCode: m.method_code || m.methodCode || m.code?.split('_')[1] || m.code || "",
-                    title: m.method_title || m.carrier_title || m.title || "Shipping",
+                    title: m.method_title || m.carrier_title || m.title || "",
                     description: m.carrier_title || m.description || "",
-                    price: m.amount || m.price || 0,
+                    price: Number(m.amount ?? m.price ?? 0),
                     currency: m.base_currency_code ?? m.currency,
                 }));
                 if (mapped.length > 0) {
@@ -262,6 +297,8 @@ export function useCheckout(options: UseCheckoutOptions = {}) {
                 console.error("Fetch Payment Methods Error:", err);
             }
             setPaymentMethods([]);
+        } finally {
+            setPaymentMethodsLoaded(true);
         }
     }, []);
 
@@ -286,17 +323,29 @@ export function useCheckout(options: UseCheckoutOptions = {}) {
             if (res.ok) {
                 const data = await res.json();
                 const storesData = Array.isArray(data) ? data : (data.stores || []);
-                const mapped: Store[] = storesData.map((s: any) => ({
-                    id: s.id?.toString() || s.store_id?.toString() || "",
-                    name: s.name || s.store_name || "",
-                    address: s.address || "",
-                    email: s.email || "",
-                    gps_location: s.gps_location || "",
-                }));
+                // GPS link: Magento's saved link (field `gps_location`, the link its popup shows,
+                // e.g. goo.gl/maps/…) once Magento's pickup-stores API returns it. Until then,
+                // Google Maps at Magento's own latitude/longitude.
+                const coord = (v: unknown) => (v == null ? "" : String(v).trim());
+                const mapped: Store[] = storesData.map((s: any) => {
+                    const lat = coord(s.latitude);
+                    const lng = coord(s.longitude);
+                    return {
+                        id: s.id?.toString() || s.store_id?.toString() || "",
+                        name: String(s.name || s.store_name || "").trim(),
+                        address: String(s.address || "").trim(),
+                        city: String(s.city || "").trim(),
+                        email: String(s.email || "").trim(),
+                        gps_location: String(s.gps_location || "").trim()
+                            || (lat && lng ? `https://www.google.com/maps?q=${lat},${lng}` : ""),
+                    };
+                });
                 setStores(mapped);
             }
         } catch (err) {
             console.error("Fetch Pickup Stores Error:", err);
+        } finally {
+            setPickupStoresLoaded(true);
         }
     }, []);
 
@@ -330,26 +379,10 @@ export function useCheckout(options: UseCheckoutOptions = {}) {
                     };
                 });
 
-                if (slots.length > 0) return slots;
+                // Only Magento's slots for this warehouse + date (may be none).
+                return slots;
             }
-
-            // Fallback generated slots if API fails or returns empty
-            const generatedSlots = [];
-            for (let h = 9; h <= 21; h++) { // 9 AM to 9 PM
-                for (let m = 0; m < 60; m += 30) {
-                    const hh = h % 12 || 12;
-                    const ampm = h < 12 ? 'am' : 'pm';
-                    const mm = m === 0 ? '00' : '30';
-                    const h24 = String(h).padStart(2, '0');
-                    const m24 = String(m).padStart(2, '0');
-                    generatedSlots.push({
-                        time: `${h24}:${m24}`,
-                        label: `${hh}:${mm} ${ampm.toUpperCase()}`,
-                        enabled: true
-                    });
-                }
-            }
-            return generatedSlots;
+            return [];
         } catch (err) {
             console.error("Fetch Pickup Time Slots Error:", err);
             return [];
@@ -387,9 +420,9 @@ export function useCheckout(options: UseCheckoutOptions = {}) {
                     code: m.code || `${m.carrier_code}_${m.method_code}`,
                     carrierCode: m.carrier_code || m.carrierCode || "",
                     methodCode: m.method_code || m.methodCode || "",
-                    title: m.method_title || m.carrier_title || m.title || "Shipping",
+                    title: m.method_title || m.carrier_title || m.title || "",
                     description: m.carrier_title || m.description || "",
-                    price: m.amount || m.price || 0,
+                    price: Number(m.amount ?? m.price ?? 0),
                     currency: m.base_currency_code ?? m.currency,
                 }));
                 if (mapped.length > 0) setShippingMethods(mapped);
@@ -710,6 +743,46 @@ export function useCheckout(options: UseCheckoutOptions = {}) {
         }
     }, []);
 
+    // ─── Multi-Shipping Payment Methods (Magento's multi-address billing list) ───
+    // kleverMultishippingPaymentMethods for this website's cart. Only methods Magento marks
+    // is_available === true are offered — nothing is added. Magento's message is kept on failure.
+    // `startIfNeeded`: when Magento refuses because the multi-address checkout isn't started, start
+    // it (kleverMultishippingStart) and ask once more — used by the billing step only.
+    const requestMultiShippingPaymentMethods = async (token: string) => {
+        const res = await fetch("/api/kleverapi/multishipping/payment-methods", {
+            headers: { Authorization: `Bearer ${token}`, "x-locale": getClientLocale() },
+            cache: "no-store",
+        });
+        const data = await res.json().catch(() => null);
+        return { res, data };
+    };
+    const fetchMultiShippingPaymentMethods = useCallback(async (options?: { startIfNeeded?: boolean }) => {
+        try {
+            setMultiShippingPaymentMethodsError(null);
+            const token = await getAuthToken();
+            if (!token) throw new Error("Not authenticated");
+            let { res, data } = await requestMultiShippingPaymentMethods(token);
+            // 400 = Magento refused the request (not an authorization problem), e.g. not started.
+            if (res.status === 400 && options?.startIfNeeded) {
+                const started = await fetch("/api/kleverapi/multishipping/start", {
+                    method: "POST",
+                    headers: { Authorization: `Bearer ${token}`, "x-locale": getClientLocale() },
+                });
+                if (started.ok) ({ res, data } = await requestMultiShippingPaymentMethods(token));
+            }
+            if (!res.ok) throw new Error(formatMagentoError(data));
+            const list: any[] = Array.isArray(data?.methods) ? data.methods : [];
+            setMultiShippingPaymentMethods(list
+                .filter((m) => m.is_available !== false)
+                .map((m) => ({ code: String(m.code), title: String(m.title ?? "") })));
+        } catch (err) {
+            setMultiShippingPaymentMethods([]);
+            setMultiShippingPaymentMethodsError(err instanceof Error ? err.message : "Payment methods unavailable");
+        } finally {
+            setMultiShippingPaymentMethodsLoaded(true);
+        }
+    }, []);
+
     // ─── Start Multi-Shipping ───
     const startMultiShipping = useCallback(async () => {
         try {
@@ -802,31 +875,21 @@ export function useCheckout(options: UseCheckoutOptions = {}) {
     }, []);
 
     // ─── Set Multi-Shipping Shipping Methods ───
-    const setMultiShippingMethods = useCallback(async (methodsObj: Record<string, string>) => {
+    // methodsByQuoteAddress: { [quote_address_id]: { carrier_code, method_code } } — the codes
+    // exactly as Magento returned them (never split from a joined string).
+    const setMultiShippingMethods = useCallback(async (methodsByQuoteAddress: Record<string, MultiShippingMethodChoice>) => {
         try {
             setIsLoading(true);
             const token = await getAuthToken();
             if (!token) throw new Error("Not authenticated");
 
-            console.log(">>> setMultiShippingMethods input:", JSON.stringify(methodsObj, null, 2));
-
-            const formattedMethods = Object.entries(methodsObj).map(([addrId, fullCode]) => {
-                const parts = fullCode.split('_');
-                const carrier = parts[0];
-                const method = parts.slice(1).join('_') || parts[0];
-                const numId = Number(addrId);
-                return {
-                    quoteAddressId: isNaN(numId) ? 0 : numId,
-                    carrierCode: carrier,
-                    methodCode: method
-                };
-            }).filter(m => m.quoteAddressId > 0);
-
-            console.log(">>> setMultiShippingMethods formatted:", JSON.stringify(formattedMethods, null, 2));
-
-            if (formattedMethods.length === 0) {
-                console.warn("No valid shipping methods to set — skipping");
-                return null;
+            const formattedMethods = Object.entries(methodsByQuoteAddress).map(([addrId, m]) => ({
+                quoteAddressId: Number(addrId),
+                carrierCode: m.carrier_code,
+                methodCode: m.method_code,
+            }));
+            if (formattedMethods.length === 0 || formattedMethods.some(m => !(m.quoteAddressId > 0) || !m.carrierCode || !m.methodCode)) {
+                throw new Error("Invalid shipping method selection");
             }
 
             const res = await fetch("/api/kleverapi/multishipping/shipping-methods", {
@@ -939,6 +1002,12 @@ export function useCheckout(options: UseCheckoutOptions = {}) {
         error,
         refetchAddresses: fetchAddresses,
         refetchTotals: fetchTotals,
+        paymentMethodsLoaded,
+        multiShippingPaymentMethods,
+        multiShippingPaymentMethodsLoaded,
+        multiShippingPaymentMethodsError,
+        fetchMultiShippingPaymentMethods,
+        pickupStoresLoaded,
         refetchShippingMethods: fetchShippingMethods,
         refetchPaymentMethods: fetchPaymentMethods,
         refetchPickupStores: fetchPickupStores,
@@ -958,6 +1027,7 @@ export function useCheckout(options: UseCheckoutOptions = {}) {
                     headers: {
                         "Content-Type": "application/json",
                         Authorization: `Bearer ${token}`,
+                        "x-locale": getClientLocale(),
                     },
                     body: JSON.stringify(orderData),
                 });

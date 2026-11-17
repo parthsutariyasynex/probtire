@@ -2,12 +2,14 @@
 import { useTranslation } from "@/hooks/useTranslation";
 import { useLocalePath } from "@/hooks/useLocalePath";
 
-import React, { useEffect, useState, useMemo, useRef } from "react";
+import React, { useEffect, useState, useMemo, useRef, useCallback } from "react";
 import { useCart } from "@/modules/cart/hooks/useCart";
-import { useCheckout, Address } from "@/modules/checkout/hooks/useCheckout";
+import { useCheckout, Address, MultiShippingMethodChoice } from "@/modules/checkout/hooks/useCheckout";
+import { useMagentoLabel } from "@/hooks/useMagentoLabel";
+import { useCountryNames } from "@/hooks/useCountryNames";
 import { useRouter } from "next/navigation";
-import { Upload } from "lucide-react";
 import toast from "react-hot-toast";
+import { magentoFileUrl, UPLOAD_ACCEPT, UPLOAD_TYPES_TEXT, UPLOAD_EXTENSIONS, UPLOAD_MAX_BYTES } from "@/src/lib/magentoFiles";
 import Price from "@/app/components/Price";
 import { MultiLocationReviewSkeleton } from "@/components/skeletons";
 
@@ -29,21 +31,140 @@ const MultiShippingReviewPage: React.FC = () => {
     const router = useRouter();
     const { t } = useTranslation();
     const lp = useLocalePath();
-    const { cart, isLoading: isCartLoading, clearCart } = useCart();
+    const { cart, isLoading: isCartLoading, refetchCart } = useCart();
     const {
         addresses,
-        paymentMethods,
+        // Magento's multi-address billing payment methods (same list as the billing step)
+        multiShippingPaymentMethods: paymentMethods,
+        multiShippingPaymentMethodsLoaded: paymentMethodsLoaded,
+        fetchMultiShippingPaymentMethods,
         isLoading: isCheckoutLoading,
-        placeOrder,
         placeMultiShippingOrder,
-        startMultiShipping,
-        assignMultiShipping,
         fetchMultiShippingMethods,
-        setMultiShippingMethods,
-        setMultiShippingBillingAddress,
         refetchTotals,
-        totals
+        totals,
+        uploadPoFile,
+        getPoUpload,
+        deletePoFile
     } = useCheckout();
+    const countryName = useCountryNames();
+    const taxTitle = useMagentoLabel("Tax", t("cart.vat"));
+    // Shipping method + amount per customer address, from Magento's quote addresses.
+    const [shippingByAddress, setShippingByAddress] = useState<Record<string, { title: string; amount: number }>>({});
+    const loadedRef = useRef(false);
+
+    useEffect(() => {
+        fetchMultiShippingPaymentMethods();
+    }, [fetchMultiShippingPaymentMethods]);
+
+    // Payment Commitment Upload — files are stored in Magento (kleverUploadPoFile with
+    // type "payment"); the list is always re-read from Magento so names match what it stored.
+    const [paymentFiles, setPaymentFiles] = useState<Array<{ name: string; url: string | null }>>([]);
+    const [isUploadingPayment, setIsUploadingPayment] = useState(false);
+    const paymentInputRef = useRef<HTMLInputElement>(null);
+
+
+    const refreshPaymentFiles = useCallback(async () => {
+        try {
+            const raw: any = await getPoUpload();
+            // Magento may send the list as JSON text.
+            let data: any = raw;
+            if (typeof raw === "string") { try { data = JSON.parse(raw); } catch { data = [raw]; } }
+            // What Magento sends for the uploaded files (to check which link it gives).
+            console.info("[review] Magento payment commitment files:", data);
+            const list: any[] = Array.isArray(data) ? data
+                : Array.isArray(data?.files) ? data.files
+                : Array.isArray(data?.data) ? data.data
+                : data && typeof data === "object" ? Object.values(data) : [];
+
+            const base = (process.env.NEXT_PUBLIC_MAGENTO_BASE_URL || "").replace(/\/+$/, "");
+            // A link from Magento: a full address, or a path on the Magento site (/media/…).
+            const toUrl = (value: unknown): string | null => {
+                if (typeof value !== "string" || !value) return null;
+                if (/^https?:\/\//i.test(value)) return value;
+                if (/^\/?(pub\/)?media\//i.test(value) && base) return `${base}/${value.replace(/^\/+/, "").replace(/^pub\//, "")}`;
+                return null;
+            };
+            const fileNameOf = (value: string) => decodeURIComponent(value.split("?")[0].split("/").pop() || value);
+            const magentoUrl = (item: any): string | null => {
+                for (const key of ["file_url", "url", "fileUrl", "link", "download_url", "src", "path", "file_path", "file"]) {
+                    const url = toUrl(item?.[key]);
+                    if (url) return url;
+                }
+                for (const value of Object.values(item || {})) {
+                    const url = toUrl(value);
+                    if (url) return url;
+                }
+                return null;
+            };
+            const entries = list.map((item: any) => {
+                if (typeof item === "string") {
+                    const url = toUrl(item);
+                    return { name: url ? fileNameOf(item) : item, type: "", url };
+                }
+                const url = magentoUrl(item);
+                const name = String(item?.fileName || item?.filename || item?.file_name || item?.name || item?.label || (url ? fileNameOf(url) : ""));
+                return { name, type: String(item?.type || item?.file_type || ""), url };
+            });
+            // When Magento says which upload a file belongs to, show only the payment ones.
+            const typed = entries.some(e => e.type);
+            setPaymentFiles(entries
+                .filter(e => e.name && (!typed || e.type.toLowerCase() === "payment"))
+                .map(e => ({ name: e.name, url: e.url || magentoFileUrl(e.name) })));
+        } catch (err) {
+            console.error("Failed to load payment commitment files:", err);
+        }
+    }, [getPoUpload]);
+
+    useEffect(() => { refreshPaymentFiles(); }, [refreshPaymentFiles]);
+
+    // Same upload rules as the checkout (file type + size).
+    const isAllowedFile = (file: File) => {
+        const ext = file.name.substring(file.name.lastIndexOf(".")).toLowerCase();
+        if (!UPLOAD_EXTENSIONS.includes(ext)) {
+            toast.error(t("checkout.invalidFileType").replace("{0}", file.name).replace("{1}", UPLOAD_EXTENSIONS.join(", ")));
+            return false;
+        }
+        if (file.size > UPLOAD_MAX_BYTES) {
+            toast.error(t("checkout.fileTooLarge").replace("{0}", file.name));
+            return false;
+        }
+        return true;
+    };
+
+    const handlePaymentFiles = async (allFiles: File[]) => {
+        const files = allFiles.filter(isAllowedFile);
+        if (files.length === 0) return;
+        setIsUploadingPayment(true);
+        try {
+            for (const file of files) {
+                const formData = new FormData();
+                formData.append("file", file);
+                formData.append("type", "payment");
+                await uploadPoFile(formData);
+                toast.success(t("checkout.uploadedSuccess").replace("{0}", file.name));
+            }
+        } catch (error: any) {
+            toast.error((typeof error === "string" ? error : error?.message) || t("checkout.failedUploadFiles"));
+        } finally {
+            setIsUploadingPayment(false);
+            if (paymentInputRef.current) paymentInputRef.current.value = "";
+            await refreshPaymentFiles();
+        }
+    };
+
+    const handleRemovePaymentFile = async (name: string) => {
+        setIsUploadingPayment(true);
+        try {
+            await deletePoFile(name);
+            toast.success(t("checkout.fileRemovedSuccess"));
+        } catch (error: any) {
+            toast.error((typeof error === "string" ? error : error?.message) || t("checkout.failedRemoveFile"));
+        } finally {
+            setIsUploadingPayment(false);
+            await refreshPaymentFiles();
+        }
+    };
 
     const [groups, setGroups] = useState<AddressGroup[]>([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -56,40 +177,56 @@ const MultiShippingReviewPage: React.FC = () => {
 
     useEffect(() => {
         const loadReviewData = async () => {
-            if (orderPlaced || isPlacingOrder) return;
+            if (orderPlaced || isPlacingOrder || loadedRef.current) return;
             if (isCartLoading || isCheckoutLoading) return;
-            if (!cart?.items || addresses.length === 0) return;
+            if (!cart?.items || addresses.length === 0 || !paymentMethodsLoaded) return;
+            loadedRef.current = true;
 
             try {
                 const savedAssignments = localStorage.getItem('multi_shipping_assignments');
+                const savedItems: Array<{ item_id: number; name: string }> = JSON.parse(localStorage.getItem('multi_shipping_items') || '[]');
                 const savedPaymentCode = localStorage.getItem('multi_shipping_payment_method');
                 const savedBillingId = localStorage.getItem('multi_shipping_billing_address_id');
 
-                if (!savedAssignments) {
+                if (!savedAssignments || savedItems.length === 0) {
                     router.push(lp('/multi-location-delivery'));
                     return;
                 }
 
+                // Billing address and payment method must be the ones chosen on the billing
+                // step and still offered by Magento — otherwise go back and choose again.
+                const bAddr = addresses.find(a => a.id === savedBillingId);
+                const pMethod = paymentMethods.find(m => m.code === savedPaymentCode);
+                if (!bAddr || !pMethod) {
+                    toast.error(t("multi.missingBilling"));
+                    router.push(lp('/multi-location-delivery/billing'));
+                    return;
+                }
+                setBillingAddress(bAddr);
+                setPaymentMethod(pMethod);
+
                 setIsLoading(true);
 
-                // 1. Process Groups (from localStorage assignments)
+                // 1. Groups: the quantities assigned in Magento on step 1; names from Magento's
+                //    multi-address item list, prices from the Magento cart.
                 const assignments: Assignments = JSON.parse(savedAssignments);
                 const groupedMap: Record<string, AddressGroup> = {};
 
                 Object.entries(assignments).forEach(([itemIdStr, addrQtyMap]) => {
                     const itemId = parseInt(itemIdStr);
+                    const msItem = savedItems.find(i => i.item_id === itemId);
                     const cartItem = cart?.items.find(i => i.item_id === itemId);
-                    if (!cartItem) return;
+                    if (!msItem || !cartItem) return;
 
                     Object.entries(addrQtyMap).forEach(([addrId, qty]) => {
                         if (qty > 0) {
                             if (!groupedMap[addrId]) {
-                                const address = addresses.find(a => a.id === addrId || a.id === addrId.toString());
+                                const address = addresses.find(a => a.id === addrId);
                                 if (!address) return;
                                 groupedMap[addrId] = { address, items: [] };
                             }
                             groupedMap[addrId].items.push({
-                                name: cartItem.name,
+                                name: msItem.name,
                                 qty: qty,
                                 price: cartItem.price,
                                 itemId: itemId
@@ -100,21 +237,17 @@ const MultiShippingReviewPage: React.FC = () => {
 
                 setGroups(Object.values(groupedMap));
 
-                // 2. Set Billing Info
-                if (savedBillingId) {
-                    const bAddr = addresses.find(a => a.id === savedBillingId);
-                    if (bAddr) setBillingAddress(bAddr);
-                } else {
-                    setBillingAddress(addresses.find(a => a.isDefault) || addresses[0] || null);
+                // 2. Shipping method + amount of each address, as set on Magento's quote.
+                const chosen: Record<string, MultiShippingMethodChoice> = JSON.parse(localStorage.getItem('multi_shipping_methods') || '{}');
+                const methodsData = await fetchMultiShippingMethods();
+                const byAddress: Record<string, { title: string; amount: number }> = {};
+                for (const a of (Array.isArray(methodsData?.addresses) ? methodsData.addresses : [])) {
+                    const custId = String(a.customer_address_id);
+                    const c = chosen[custId];
+                    const m = c && (a.methods || []).find((x: any) => x.carrier_code === c.carrier_code && x.method_code === c.method_code);
+                    if (m) byAddress[custId] = { title: [m.carrier_title, m.method_title].filter(Boolean).join(" - "), amount: Number(m.amount ?? 0) };
                 }
-
-                if (savedPaymentCode && paymentMethods.length > 0) {
-                    const pMethod = paymentMethods.find(m => m.code === savedPaymentCode);
-                    if (pMethod) setPaymentMethod(pMethod);
-                    else setPaymentMethod(paymentMethods[0]);
-                } else if (paymentMethods.length > 0) {
-                    setPaymentMethod(paymentMethods[0]);
-                }
+                setShippingByAddress(byAddress);
 
                 await refetchTotals();
 
@@ -127,19 +260,7 @@ const MultiShippingReviewPage: React.FC = () => {
         };
 
         loadReviewData();
-    }, [cart, addresses, paymentMethods, isCartLoading, isCheckoutLoading, refetchTotals, router, isPlacingOrder, orderPlaced]);
-
-    // Set payment method once paymentMethods loads (may arrive after initial effect)
-    useEffect(() => {
-        if (paymentMethod || paymentMethods.length === 0) return;
-        const savedPaymentCode = localStorage.getItem('multi_shipping_payment_method');
-        if (savedPaymentCode) {
-            const pMethod = paymentMethods.find(m => m.code === savedPaymentCode);
-            setPaymentMethod(pMethod || paymentMethods[0]);
-        } else {
-            setPaymentMethod(paymentMethods[0]);
-        }
-    }, [paymentMethods, paymentMethod]);
+    }, [cart, addresses, paymentMethods, paymentMethodsLoaded, isCartLoading, isCheckoutLoading, refetchTotals, fetchMultiShippingMethods, router, isPlacingOrder, orderPlaced]);
 
     // Per-address group inputs state
     const [groupData, setGroupData] = useState<Record<string, { poNumber: string, comment: string }>>({});
@@ -164,7 +285,7 @@ const MultiShippingReviewPage: React.FC = () => {
         try {
             setIsPlacingOrder(true);
 
-            const savedMethodsForPayload: Record<string, string> = JSON.parse(localStorage.getItem('multi_shipping_methods') || '{}');
+            const savedMethodsForPayload: Record<string, MultiShippingMethodChoice> = JSON.parse(localStorage.getItem('multi_shipping_methods') || '{}');
             // Every address needs a method the customer chose from Magento's list — never
             // submit an invented one.
             if (groups.some(group => !savedMethodsForPayload[group.address.id])) {
@@ -174,58 +295,44 @@ const MultiShippingReviewPage: React.FC = () => {
             }
             const shippingInformation = groups.map(group => ({
                 address_id: String(group.address.id),
-                shipping_method: savedMethodsForPayload[group.address.id],
+                shipping_method: `${savedMethodsForPayload[group.address.id].carrier_code}_${savedMethodsForPayload[group.address.id].method_code}`,
                 po_number: groupData[group.address.id]?.poNumber || "",
                 order_comment: groupData[group.address.id]?.comment || ""
             }));
 
             const payload = {
                 billing_address_id: String(billingAddress.id),
-                payment_method: paymentMethod.code || "checkmo",
+                payment_method: paymentMethod.code,
                 general_comment: generalComment || "",
                 shipping_information: shippingInformation
             };
 
-            console.log(">>> Multi-Shipping Place Order Payload:", JSON.stringify(payload, null, 2));
-
             const result = await placeMultiShippingOrder(payload);
-            console.log(">>> Multi-Shipping Place Order RESULT:", JSON.stringify(result, null, 2));
+
+            // Magento must confirm the orders: success flag + the created order ids.
+            if (!result?.success || !Array.isArray(result.order_ids) || result.order_ids.length === 0) {
+                throw new Error(t("multi.orderFailed"));
+            }
 
             // Mark order as placed BEFORE clearing localStorage to prevent effect re-triggering
             setOrderPlaced(true);
-            toast.success("Order placed successfully!");
+            toast.success(t("multi.orderPlaced"));
 
-            // Extract ALL entity_ids (numeric) from the place-order result
-            // Magento success API needs comma-separated entity_ids like: /success/28675,28676,28677
-            let entityIds: string[] = [];
-            if (result) {
-                if (Array.isArray(result.order_ids)) {
-                    entityIds = result.order_ids.map((id: any) => String(id));
-                } else if (Array.isArray(result.orders)) {
-                    entityIds = result.orders.map((o: any) => String(o.order_id || o.entity_id || o.id));
-                } else if (Array.isArray(result)) {
-                    entityIds = result.map((o: any) => typeof o === 'object' ? String(o.order_id || o.entity_id || o.id) : String(o));
-                } else if (result.order_id || result.entity_id || result.id) {
-                    entityIds = [String(result.order_id || result.entity_id || result.id)];
-                } else if (typeof result === "number" || typeof result === "string") {
-                    entityIds = [String(result)];
-                }
-            }
+            // Magento's order entity ids → success page (/success?order_id=28675,28676)
+            const entityIds: string[] = result.order_ids.map((id: any) => String(id));
 
-            console.log(">>> Extracted entity IDs for success page:", entityIds);
-
-            // Clear cart after successful order
-            try { await clearCart(); } catch { /* cart will refresh on next visit */ }
+            // Magento closes the quote when the orders are placed — reload the (new) cart.
+            try { await refetchCart(); window.dispatchEvent(new Event("cart-updated")); } catch { /* refreshed on next visit */ }
 
             // Clean up localStorage for this flow
             localStorage.removeItem('multi_shipping_assignments');
             localStorage.removeItem('multi_shipping_methods');
             localStorage.removeItem('multi_shipping_billing_address_id');
             localStorage.removeItem('multi_shipping_payment_method');
+            localStorage.removeItem('multi_shipping_items');
 
             // Redirect with comma-separated entity_ids — success page will call the API
-            const redirectId = entityIds.length > 0 ? entityIds.join(",") : "placed";
-            router.push(lp(`/multi-location-delivery/success?order_id=${redirectId}`));
+            router.push(lp(`/multi-location-delivery/success?order_id=${entityIds.join(",")}`));
         } catch (err: any) {
             console.error("Multi-Shipping Place Order Error:", err);
             toast.error(err.message || t("multi.orderFailed"));
@@ -238,11 +345,6 @@ const MultiShippingReviewPage: React.FC = () => {
         return <MultiLocationReviewSkeleton groups={1} />;
     }
 
-    const grandTotal = groups.reduce((acc, group) => {
-        const itemTotal = group.items.reduce((sum, item) => sum + item.price * item.qty, 0);
-        const vat = itemTotal * 0.15; // 15% VAT placeholder
-        return acc + itemTotal + vat;
-    }, 0);
 
     return (
         <div className="bg-white min-h-screen font-sans pb-10 md:pb-20">
@@ -250,8 +352,9 @@ const MultiShippingReviewPage: React.FC = () => {
                 <h1 className="text-h3 sm:text-h2 md:text-h1-sm font-bold text-black text-center uppercase mb-3 md:mb-4 tracking-tight">
                     {t("multi.reviewOrder")}
                 </h1>
-
-
+                <h2 className="text-body-lg md:text-body-xl font-bold text-black text-center mb-6 md:mb-8">
+                    {t("multi.billingInformation")}
+                </h2>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-8 mb-8 md:mb-12">
                     {/* Billing Address */}
@@ -264,12 +367,12 @@ const MultiShippingReviewPage: React.FC = () => {
                         <div className="p-5 md:p-8 text-body md:text-body-lg text-black leading-[1.7]">
                             {billingAddress ? (
                                 <>
-                                    <p className="font-bold uppercase tracking-tight mb-0.5" dir="ltr" style={{ unicodeBidi: "isolate" }}>{billingAddress.firstname} {billingAddress.lastname}</p>
+                                    <p className="mb-0.5" dir="ltr" style={{ unicodeBidi: "isolate" }}>{billingAddress.firstname} {billingAddress.lastname}</p>
                                     <p className="mb-0.5" dir="ltr" style={{ unicodeBidi: "isolate" }}>{billingAddress.company}</p>
                                     <p className="mb-0.5" dir="ltr" style={{ unicodeBidi: "isolate" }}>{billingAddress.street}</p>
                                     <p className="mb-0.5" dir="ltr" style={{ unicodeBidi: "isolate" }}>{billingAddress.city}, {billingAddress.postcode}</p>
-                                    <p className="mb-0.5">{t("multi.saudiArabia")}</p>
-                                    <p className="mt-3" dir="ltr" style={{ unicodeBidi: "isolate" }}>T: {billingAddress.telephone}</p>
+                                    <p className="mb-0.5">{countryName(billingAddress.country_id)}</p>
+                                    <p className="mt-3" dir="ltr" style={{ unicodeBidi: "isolate" }}>{t("multi.phonePrefix")} {billingAddress.telephone}</p>
                                 </>
                             ) : <p className="text-gray-400">{t("multi.loadingBilling")}</p>}
                         </div>
@@ -285,23 +388,58 @@ const MultiShippingReviewPage: React.FC = () => {
                         <div className="p-5 md:p-8 space-y-4 md:space-y-6">
                             <div className="text-center">
                                 <p className="text-body md:text-body-lg font-bold text-black uppercase tracking-tight">
-                                    {paymentMethod?.title || t("m.credit-account")}
+                                    {paymentMethod?.title}
                                 </p>
                             </div>
 
                             <div className="space-y-4">
                                 <div>
-                                    <p className="text-label font-bold text-black uppercase tracking-widest mb-2">{t("multi.paymentCommitment")}</p>
-                                    <div className="border-2 border-dashed border-gray-300 bg-white p-6 md:p-10 flex flex-col items-center justify-center text-center cursor-pointer hover:border-gray-400 transition-colors">
-                                        <p className="text-body md:text-body-xl font-bold text-gray-800 mb-2">{t("multi.dropFiles")}</p>
-                                        <p className="text-micro md:text-caption text-gray-500 font-medium whitespace-pre-wrap">
-                                            {t("multi.allowedFiles")}
+                                    <p className="text-body-sm md:text-body text-black mb-2">{t("multi.paymentCommitment")}</p>
+                                    <label
+                                        className={`border-2 border-dashed border-gray-400 bg-white p-6 md:p-10 flex flex-col items-center justify-center text-center cursor-pointer hover:border-gray-500 transition-colors ${isUploadingPayment ? "opacity-60 pointer-events-none" : ""}`}
+                                        onDragOver={(e) => e.preventDefault()}
+                                        onDrop={(e) => { e.preventDefault(); handlePaymentFiles(Array.from(e.dataTransfer.files || [])); }}
+                                    >
+                                        <input
+                                            ref={paymentInputRef}
+                                            type="file"
+                                            multiple
+                                            accept={UPLOAD_ACCEPT}
+                                            className="hidden"
+                                            onChange={(e) => handlePaymentFiles(Array.from(e.target.files || []))}
+                                        />
+                                        <p className="text-body md:text-body-xl text-gray-800 mb-2">{t("multi.dropFiles")}</p>
+                                        <p className="text-caption md:text-body-sm text-gray-700 whitespace-pre-wrap">
+                                            {t("m.allowed-file-types")} : {UPLOAD_TYPES_TEXT}
                                         </p>
-                                    </div>
+                                    </label>
+                                    {paymentFiles.length > 0 && (
+                                        <div className="flex flex-wrap gap-2 mt-2">
+                                            {paymentFiles.map(({ name, url }) => (
+                                                <div
+                                                    key={name}
+                                                    role={url ? "link" : undefined}
+                                                    title={url ? name : undefined}
+                                                    onClick={() => { if (url) window.open(url, "_blank", "noopener,noreferrer"); }}
+                                                    className={`flex items-stretch border border-dashed border-gray-400 bg-white text-body-sm ${url ? "cursor-pointer hover:border-black" : ""}`}
+                                                >
+                                                    <span className={`px-2.5 py-2 break-all ${url ? "hover:underline" : ""}`}>{name}</span>
+                                                    <button
+                                                        type="button"
+                                                        disabled={isUploadingPayment}
+                                                        onClick={(e) => { e.stopPropagation(); handleRemovePaymentFile(name); }}
+                                                        className="px-2 bg-[#e02b27] text-white hover:opacity-90 disabled:opacity-50"
+                                                    >
+                                                        {t("m.remove")}
+                                                    </button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
                                 </div>
 
                                 <div>
-                                    <p className="text-label font-bold text-black uppercase tracking-widest mb-2">{t("multi.leaveComment")}</p>
+                                    <p className="text-body-sm md:text-body font-bold text-black mb-2">{t("multi.leaveComment")}</p>
                                     <textarea
                                         value={generalComment}
                                         onChange={(e) => setGeneralComment(e.target.value)}
@@ -313,7 +451,7 @@ const MultiShippingReviewPage: React.FC = () => {
                     </div>
                 </div>
 
-                <hr className="border-transparent my-8 md:my-16" />
+                <hr className="border-transparent my-2 md:my-4" />
 
                 {/* Shipping Information Header */}
                 <h3 className="text-h4 sm:text-subheading md:text-h3 font-bold text-black text-center mb-4 uppercase tracking-tighter">
@@ -323,8 +461,7 @@ const MultiShippingReviewPage: React.FC = () => {
                 {/* Groups iteration */}
                 {groups.map((group, index) => {
                     const itemTotal = group.items.reduce((sum, item) => sum + (item.price * item.qty), 0);
-                    const vat = itemTotal * 0.15;
-                    const groupTotal = itemTotal + vat;
+                    const shipping = shippingByAddress[group.address.id];
 
                     return (
                         <div key={group.address.id} className="mb-12 md:mb-24 last:mb-0">
@@ -339,14 +476,14 @@ const MultiShippingReviewPage: React.FC = () => {
                                         <h2 className="text-label font-[900] text-black uppercase tracking-widest">{t("multi.shippingTo")}</h2>
                                     </div>
                                     <div className="p-5 md:p-8 text-body md:text-body-lg text-black leading-[1.7] flex-grow">
-                                        <p className="font-bold uppercase mb-0.5" dir="ltr" style={{ unicodeBidi: "isolate" }}>{group.address.firstname} {group.address.lastname}</p>
+                                        <p className="mb-0.5" dir="ltr" style={{ unicodeBidi: "isolate" }}>{group.address.firstname} {group.address.lastname}</p>
                                         <p className="mb-0.5" dir="ltr" style={{ unicodeBidi: "isolate" }}>{group.address.company}</p>
                                         <p className="mb-0.5" dir="ltr" style={{ unicodeBidi: "isolate" }}>{group.address.street}</p>
                                         <p className="mb-0.5" dir="ltr" style={{ unicodeBidi: "isolate" }}>{group.address.city}, {group.address.postcode}</p>
-                                        <p className="mb-0.5">{t("multi.saudiArabia")}</p>
-                                        <p className="mt-3" dir="ltr" style={{ unicodeBidi: "isolate" }}>T: {group.address.telephone}</p>
+                                        <p className="mb-0.5">{countryName(group.address.country_id)}</p>
+                                        <p className="mt-3" dir="ltr" style={{ unicodeBidi: "isolate" }}>{t("multi.phonePrefix")} {group.address.telephone}</p>
                                         {group.address.custom_attributes?.find(a => a.attribute_code === 'vat_number')?.value && (
-                                            <p>VAT: {group.address.custom_attributes.find(a => a.attribute_code === 'vat_number')?.value}</p>
+                                            <p>{t("multi.vatNumber")} {group.address.custom_attributes.find(a => a.attribute_code === 'vat_number')?.value}</p>
                                         )}
                                     </div>
                                 </div>
@@ -371,7 +508,7 @@ const MultiShippingReviewPage: React.FC = () => {
                                             <div className="border-2 border-dashed border-gray-300 bg-white p-5 md:p-8 flex flex-col items-center justify-center text-center">
                                                 <p className="text-body md:text-body-lg font-bold text-gray-800 mb-2">{t("multi.dropFiles")}</p>
                                                 <p className="text-micro text-gray-400 font-medium uppercase tracking-tighter">
-                                                    {t("multi.allowedFiles")}
+                                                    {t("m.allowed-file-types")} : {UPLOAD_TYPES_TEXT}
                                                 </p>
                                             </div>
                                         </div>
@@ -395,7 +532,7 @@ const MultiShippingReviewPage: React.FC = () => {
                                                     <th className="py-3 md:py-4 px-2 md:px-4 text-caption md:text-body-sm font-bold text-black uppercase">{t("item")}</th>
                                                     <th className="py-3 md:py-4 px-2 md:px-3 text-caption md:text-body-sm font-bold text-black uppercase text-right">{t("price")}</th>
                                                     <th className="py-3 md:py-4 px-2 md:px-3 text-caption md:text-body-sm font-bold text-black uppercase text-center">{t("qty")}</th>
-                                                    <th className="py-3 md:py-4 px-2 md:px-4 text-caption md:text-body-sm font-bold text-black uppercase text-right">{t("total")}</th>
+                                                    <th className="py-3 md:py-4 px-2 md:px-4 text-caption md:text-body-sm font-bold text-black uppercase text-right">{t("multi.itemsTotal")}</th>
                                                 </tr>
                                             </thead>
                                             <tbody className="bg-transparent">
@@ -421,14 +558,12 @@ const MultiShippingReviewPage: React.FC = () => {
                                                     <td colSpan={3} className="py-2 px-2 md:px-4 text-right text-caption md:text-body-sm font-[900] text-black uppercase">{t("multi.itemsTotal")}</td>
                                                     <td className="py-2 px-2 md:px-4 text-right text-caption md:text-body-sm font-bold text-black whitespace-nowrap"><Price amount={itemTotal} /></td>
                                                 </tr>
-                                                <tr>
-                                                    <td colSpan={3} className="py-2 px-2 md:px-4 text-right text-caption md:text-body-sm font-[900] text-black uppercase">{t("multi.vat")}</td>
-                                                    <td className="py-2 px-2 md:px-4 text-right text-caption md:text-body-sm font-bold text-black whitespace-nowrap"><Price amount={vat} /></td>
-                                                </tr>
-                                                <tr>
-                                                    <td colSpan={3} className="py-4 md:py-6 px-2 md:px-4 text-right text-label md:text-body-lg font-[900] text-black uppercase">{t("multi.totalForAddress")}</td>
-                                                    <td className="py-4 md:py-6 px-2 md:px-4 text-right text-label md:text-body-lg font-bold text-black whitespace-nowrap"><Price amount={groupTotal} /></td>
-                                                </tr>
+                                                {shipping && (
+                                                    <tr>
+                                                        <td colSpan={3} className="py-2 px-2 md:px-4 text-right text-caption md:text-body-sm font-[900] text-black uppercase">{shipping.title}</td>
+                                                        <td className="py-2 px-2 md:px-4 text-right text-caption md:text-body-sm font-bold text-black whitespace-nowrap"><Price amount={shipping.amount} /></td>
+                                                    </tr>
+                                                )}
                                             </tfoot>
                                         </table>
                                     </div>
@@ -438,12 +573,32 @@ const MultiShippingReviewPage: React.FC = () => {
                     );
                 })}
 
-                {/* Grand Total Area */}
-                <div className="mt-8 md:mt-12 mb-6 md:mb-8 flex justify-center md:justify-end">
-                    <p className="text-h3-sm sm:text-subheading md:text-h3 font-bold text-black uppercase">
-                        {t("multi.grandTotal")} <span className="ml-2 md:ml-4"><Price amount={grandTotal} /></span>
-                    </p>
-                </div>
+                {/* Order totals — exactly Magento's cart totals (all addresses, incl. Magento's tax lines) */}
+                {totals && (
+                    <div className="mt-8 md:mt-12 mb-6 md:mb-8 flex justify-center md:justify-end">
+                        <div className="w-full max-w-md space-y-2">
+                            <div className="flex justify-between text-body md:text-body-lg font-bold text-black">
+                                <span className="uppercase">{t("multi.itemsTotal")}</span>
+                                <Price amount={totals.subtotal} />
+                            </div>
+                            {Object.keys(shippingByAddress).length > 0 && (
+                                <div className="flex justify-between text-body md:text-body-lg font-bold text-black">
+                                    <span className="uppercase">{t("multi.shippingTotal")}</span>
+                                    <Price amount={Object.values(shippingByAddress).reduce((sum, m) => sum + m.amount, 0)} />
+                                </div>
+                            )}
+                            {/* One tax row, titled as Magento's checkout titles it */}
+                            <div className="flex justify-between text-body md:text-body-lg font-bold text-black">
+                                <span>{taxTitle}</span>
+                                <Price amount={totals.tax_amount} />
+                            </div>
+                            <div className="flex justify-between text-h3-sm sm:text-subheading md:text-h3 font-bold text-black uppercase pt-2">
+                                <span>{t("multi.grandTotal")}</span>
+                                <Price amount={totals.grand_total} />
+                            </div>
+                        </div>
+                    </div>
+                )}
 
                 {/* Final Actions */}
                 <div className="bg-surface-muted p-4 sm:p-6 md:p-8 flex flex-col sm:flex-row justify-between items-center gap-3 sm:gap-4">

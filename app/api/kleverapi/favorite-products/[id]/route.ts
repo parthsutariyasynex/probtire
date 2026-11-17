@@ -1,5 +1,6 @@
+import { getLocaleFromRequest } from "@/lib/api/magento-url";
 import { NextResponse } from 'next/server';
-import { CUSTOMER_WISHLIST_QUERY } from '@/src/graphql/queries';
+import { getCustomerWishlist } from '@/src/lib/wishlist';
 import { REMOVE_PRODUCTS_FROM_WISHLIST_MUTATION } from '@/src/graphql/mutations';
 import { toStoreCode } from "@/lib/store/website";
 
@@ -15,22 +16,16 @@ export async function DELETE(
     try {
         const { id } = await params;
         const authHeader = request.headers.get('Authorization');
-        const locale = request.headers.get('x-locale') || 'en';
+        const locale = getLocaleFromRequest(request);
         if (!authHeader) {
             return NextResponse.json({ message: 'Authentication required' }, { status: 401 });
         }
 
-        // Resolve the wishlist id.
-        const wlRes = await fetch(MAGENTO_GRAPHQL, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', Store: toStoreCode(locale, request), Authorization: authHeader },
-            body: JSON.stringify({ query: CUSTOMER_WISHLIST_QUERY, variables: { currentPage: 1, pageSize: 1 } }),
-            cache: 'no-store',
-        });
-        const wlJson = await wlRes.json();
-        const wishlistId = wlJson?.data?.customer?.wishlists?.[0]?.id;
+        // The wishlist that holds this item (a customer can have more than one).
+        const wishlist = await getCustomerWishlist(toStoreCode(locale, request), authHeader);
+        const wishlistId = wishlist.items.find((it) => it.id === String(id))?.wishlistId;
         if (!wishlistId) {
-            return NextResponse.json({ message: 'No wishlist available for this customer.' }, { status: 400 });
+            return NextResponse.json({ message: 'This favourite is not in the wishlist of the selected website.' }, { status: 404 });
         }
 
         const res = await fetch(MAGENTO_GRAPHQL, {

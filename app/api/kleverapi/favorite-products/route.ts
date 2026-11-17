@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
-import { CUSTOMER_WISHLIST_QUERY, CUSTOMER_WISHLIST_LEGACY_ITEMS_QUERY, KLEVER_FAVORITE_PRODUCTS_ENRICH_QUERY } from '@/src/graphql/queries';
+import { CUSTOMER_WISHLIST_QUERY, KLEVER_FAVORITE_PRODUCTS_ENRICH_QUERY } from '@/src/graphql/queries';
+import { getCustomerWishlist, WishlistError } from '@/src/lib/wishlist';
 import { ADD_PRODUCTS_TO_WISHLIST_MUTATION } from '@/src/graphql/mutations';
 import { toStoreCode } from "@/lib/store/website";
 import { getStoreConfig } from "@/lib/store/store-config";
@@ -15,37 +16,19 @@ function fixImageUrl(url?: string | null): string | null {
     return url.replace(/\/cache\/[^/]+\//, '/');
 }
 
-// Step 1: fetch wishlist items from native Magento customer.wishlists
-async function fetchWishlist(authHeader: string, locale: string, currentPage: number, pageSize: number) {
-    const res = await fetch(MAGENTO_GRAPHQL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Store: locale, Authorization: authHeader },
-        body: JSON.stringify({ query: CUSTOMER_WISHLIST_QUERY, variables: { currentPage, pageSize } }),
-        cache: 'no-store',
-    });
-    return res.json();
-}
+// Step 1: wishlist items of the selected website — src/lib/wishlist.ts (all of them, merged
+// from Magento's items_v2 + items fields, so the list matches Magento's own count).
 
-// Fallback when items_v2 returns no items but items_count says there are some.
-// Normalises legacy items to the items_v2 shape ({ id, quantity, product }) and pages them locally.
-async function fetchLegacyWishlistItems(authHeader: string, locale: string, currentPage: number, pageSize: number) {
+// Resolve the customer's wishlist id (addProductsToWishlist requires it).
+async function fetchWishlistId(authHeader: string, store: string): Promise<string | null> {
     const res = await fetch(MAGENTO_GRAPHQL, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Store: locale, Authorization: authHeader },
-        body: JSON.stringify({ query: CUSTOMER_WISHLIST_LEGACY_ITEMS_QUERY }),
+        headers: { 'Content-Type': 'application/json', Store: store, Authorization: authHeader },
+        body: JSON.stringify({ query: CUSTOMER_WISHLIST_QUERY, variables: { currentPage: 1, pageSize: 1 } }),
         cache: 'no-store',
     });
     const json = await res.json();
-    if (Array.isArray(json?.errors) && json.errors.length > 0) {
-        console.warn('[favorite-products GET] legacy items GraphQL error:', JSON.stringify(json.errors).slice(0, 200));
-        return [];
-    }
-    const all = (json?.data?.customer?.wishlists ?? [])
-        .flatMap((w: any) => w?.items ?? [])
-        .filter((it: any) => it?.product)
-        .map((it: any) => ({ id: it.id, quantity: it.qty, product: it.product }));
-    const start = (currentPage - 1) * pageSize;
-    return all.slice(start, start + pageSize);
+    return json?.data?.customer?.wishlists?.[0]?.id ?? null;
 }
 
 // Step 2: fetch full klever product fields by item codes (comma-separated).
@@ -89,6 +72,7 @@ function mapWishlistItemWithKlever(it: any, kleverMap: Record<string, any>) {
 
     return {
         favorite_id: it?.id,
+        wishlist_id: it?.wishlistId,
         product_id: kp.product_id || p?.id,
         id: kp.product_id || p?.id,
         sku,
@@ -109,7 +93,7 @@ function mapWishlistItemWithKlever(it: any, kleverMap: Record<string, any>) {
         pattern: kp.pattern || '',
         origin: kp.origin || '',
         offer: kp.offer || '',
-        is_action: kp.is_action || 'Yes',
+        is_action: kp.is_action ?? '',
         stock_color: kp.stock_color || '',
     };
 }
@@ -119,7 +103,7 @@ function mapWishlistItemWithKlever(it: any, kleverMap: Record<string, any>) {
 export async function GET(request: Request) {
     try {
         const authHeader = request.headers.get('Authorization');
-        const locale = toStoreCode(request.headers.get('x-locale') || 'en', request);
+        const locale = toStoreCode(getLocaleFromRequest(request), request);
         if (!authHeader) {
             return NextResponse.json({ message: 'Authentication required' }, { status: 401 });
         }
@@ -128,27 +112,17 @@ export async function GET(request: Request) {
         const currentPage = parseInt(searchParams.get('currentPage') || '1', 10) || 1;
         const pageSize = parseInt(searchParams.get('pageSize') || '10', 10) || 10;
 
-        // Step 1: get wishlist item IDs and SKUs
-        const wlJson = await fetchWishlist(authHeader, locale, currentPage, pageSize);
-        if (Array.isArray(wlJson?.errors) && wlJson.errors.length > 0) {
-            console.warn('[favorite-products GET] wishlist GraphQL error:', JSON.stringify(wlJson.errors).slice(0, 200));
-            return NextResponse.json({ products: [], total_count: 0 });
+        // Step 1: every favourite Magento holds for this website, then this page of it.
+        const wishlist = await getCustomerWishlist(locale, authHeader);
+        const totalCount = wishlist.items.length;
+        if (wishlist.magentoItemsCount !== totalCount) {
+            console.warn(`[favorite-products GET] ${locale}: Magento items_count ${wishlist.magentoItemsCount}, items returned ${totalCount}`);
         }
-
-        // A customer can have more than one wishlist; the first one is not always the one holding
-        // the items, so merge items from all of them.
-        const wishlists: any[] = wlJson?.data?.customer?.wishlists ?? [];
-        let items: any[] = wishlists.flatMap((w: any) => w?.items_v2?.items ?? []);
-        const itemsCount = wishlists.reduce((sum: number, w: any) => sum + Number(w?.items_count ?? 0), 0);
-        console.log('[favorite-products GET] wishlists:', wishlists.map((w: any) => ({ id: w?.id, items_count: w?.items_count, returned: w?.items_v2?.items?.length ?? 0 })));
-
-        if (items.length === 0 && itemsCount > 0) {
-            items = await fetchLegacyWishlistItems(authHeader, locale, currentPage, pageSize);
-            console.log('[favorite-products GET] items_v2 empty, legacy items returned:', items.length);
-        }
+        const start = (currentPage - 1) * pageSize;
+        const items = wishlist.items.slice(start, start + pageSize);
 
         if (items.length === 0) {
-            return NextResponse.json({ products: [], total_count: 0 });
+            return NextResponse.json({ products: [], total_count: totalCount, magento_items_count: wishlist.magentoItemsCount });
         }
 
         // Step 2: enrich with klever product data using item codes
@@ -179,10 +153,14 @@ export async function GET(request: Request) {
 
         return NextResponse.json({
             products,
-            total_count: Math.max(itemsCount, items.length),
+            total_count: totalCount,
+            magento_items_count: wishlist.magentoItemsCount,
         });
     } catch (error: any) {
         console.error('[favorite-products GET] error:', error.message);
+        if (error instanceof WishlistError) {
+            return NextResponse.json({ message: error.message }, { status: 502 });
+        }
         return NextResponse.json({ message: error.message || 'Server-side error fetching favourites.' }, { status: 500 });
     }
 }
@@ -191,7 +169,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
     try {
         const authHeader = request.headers.get('Authorization');
-        const locale = toStoreCode(request.headers.get('x-locale') || 'en', request);
+        const locale = toStoreCode(getLocaleFromRequest(request), request);
         if (!authHeader) {
             return NextResponse.json({ message: 'Authorization required' }, { status: 401 });
         }
@@ -207,10 +185,9 @@ export async function POST(request: Request) {
         const quantity = Number(body?.qty ?? body?.quantity ?? 1) || 1;
 
         // Resolve the customer's wishlist id (addProductsToWishlist requires it).
-        const wlJson = await fetchWishlist(authHeader, locale, 1, 1);
-        const wishlistId = wlJson?.data?.customer?.wishlists?.[0]?.id;
+        const wishlistId = await fetchWishlistId(authHeader, locale);
         if (!wishlistId) {
-            console.error('[favorite-products POST] no wishlist id:', JSON.stringify(wlJson?.errors ?? null).slice(0, 300));
+            console.error('[favorite-products POST] no wishlist id for store', locale);
             return NextResponse.json({ message: 'No wishlist available for this customer.' }, { status: 400 });
         }
 

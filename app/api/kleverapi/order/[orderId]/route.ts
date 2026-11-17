@@ -1,3 +1,4 @@
+import { getLocaleFromRequest } from "@/lib/api/magento-url";
 import { NextResponse } from "next/server";
 import { KLEVER_PRINT_ORDER_QUERY } from "@/src/graphql/queries";
 import { toStoreCode } from "@/lib/store/website";
@@ -39,7 +40,7 @@ export async function GET(
         }
 
         const authHeader = request.headers.get("Authorization");
-        const locale = request.headers.get("x-locale") || "en";
+        const locale = getLocaleFromRequest(request);
         if (!authHeader || !authHeader.startsWith("Bearer ")) {
             return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
         }

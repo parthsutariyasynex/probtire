@@ -208,6 +208,7 @@ import { useTranslation } from "@/hooks/useTranslation";
 import { useLocalePath } from "@/hooks/useLocalePath";
 import { isValidLocale } from "@/lib/i18n/config";
 import { toStoreCode } from "@/lib/store/website";
+import { getClientStoreConfig } from "@/lib/store/client-config";
 import { setLocaleCookie } from "@/lib/i18n/client";
 
 interface NavLink {
@@ -234,6 +235,17 @@ export default function Navbar() {
   const searchParams = useSearchParams();
   const { t, isRtl, locale } = useTranslation();
   const lp = useLocalePath();
+
+  // Selected website's logo from Magento (kleverSiteLoginWebsites) — no logo when Magento has none.
+  const [websiteLogo, setWebsiteLogo] = useState<{ src: string; alt: string } | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    getClientStoreConfig(locale).then((cfg) => {
+      if (cancelled) return;
+      setWebsiteLogo(cfg?.website_logo ? { src: cfg.website_logo, alt: cfg.website_label || cfg.default_title || "" } : null);
+    });
+    return () => { cancelled = true; };
+  }, [locale]);
 
   // Store code lives in the URL path prefix (e.g. /V101_en/all-tyres) — not a query param.
   // Fall back to ?store= for any legacy URLs that still carry it.
@@ -439,7 +451,7 @@ export default function Navbar() {
 
     // Keyed by store view: each website has its own menu
     const store = typeof document !== "undefined" ? toStoreCode(locale, document.cookie) : locale;
-    const CACHE_KEY = `navmenu_v7_${isSalesPerson ? "sp_" : ""}${locale}_${store}`;
+    const CACHE_KEY = `navmenu_v9_${isSalesPerson ? "sp_" : ""}${locale}_${store}`;
     const CACHE_TTL = 5 * 60 * 1000; // 5 min max session cache
 
     const toLinks = (raw: any[]): NavLink[] =>
@@ -557,15 +569,17 @@ export default function Navbar() {
             />
           </Link>
 
-          {/* CENTER: Bridgestone logo — flex center on mobile, absolute center on md+ */}
+          {/* CENTER: selected website's logo (Magento kleverSiteLoginWebsites) — flex center on mobile, absolute center on md+ */}
           <div className="flex-1 flex items-center justify-center min-w-0 px-2 lg:px-0 lg:absolute lg:inset-0 lg:pointer-events-none">
-            <Link href={lp("/")} className="flex-shrink-0 lg:pointer-events-auto">
-              <img
-                src="/logo/atcl-bridgestone-logo-v1.jpg"
-                alt="AL TALAYI KSA"
-                className="h-[24px] sm:h-[32px] lg:h-[42px] xl:h-[50px] w-auto object-contain"
-              />
-            </Link>
+            {websiteLogo && (
+              <Link href={lp("/")} className="flex-shrink-0 lg:pointer-events-auto">
+                <img
+                  src={websiteLogo.src}
+                  alt={websiteLogo.alt}
+                  className="h-[24px] sm:h-[32px] lg:h-[42px] xl:h-[50px] w-auto object-contain"
+                />
+              </Link>
+            )}
           </div>
 
           {/* RIGHT: Actions */}

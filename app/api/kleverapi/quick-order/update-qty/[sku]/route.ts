@@ -21,7 +21,7 @@
 
 //         const res = await fetch(MAGENTO_GRAPHQL, {
 //             method: "POST",
-//             headers: { "Content-Type": "application/json", Store: getLocaleFromRequest(request), Authorization: `Bearer ${token}` },
+//             headers: { "Content-Type": "application/json", Store: toStoreCode(getLocaleFromRequest(request), request), Authorization: `Bearer ${token}` },
 //             body: JSON.stringify({
 //                 query: KLEVER_QUICK_ORDER_UPDATE_ITEM_QTY_MUTATION,
 //                 variables: { sku: decodeURIComponent(sku), qty: Number(qty) },

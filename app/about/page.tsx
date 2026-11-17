@@ -1,37 +1,46 @@
-"use client";
-import { useTranslation } from "@/hooks/useTranslation";
-
 import React from "react";
-import Image from "next/image";
+import { getCurrentStore } from "@/lib/store/store-config";
+import { getAboutPage } from "@/src/lib/cmsPages";
+import { serverT } from "@/src/lib/serverDict";
+import CmsBanner from "@/components/CmsBanner";
+import CmsUnavailable from "@/components/CmsUnavailable";
 
-export default function AboutPage() {
-    const { t, isRtl } = useTranslation();
+// About Us — banner, title and text come from the Magento CMS page "about-us" of the
+// selected website and language. No page in Magento → "content not available".
+export const dynamic = "force-dynamic";
+
+export default async function AboutPage() {
+    const { store, locale } = await getCurrentStore();
+    const t = serverT(locale);
+    const isRtl = locale === "ar";
+    const page = await getAboutPage(store);
+
+    if (!page) {
+        return <CmsUnavailable title={t("about.title")} message={t("cms.unavailable")} rtl={isRtl} />;
+    }
+
     return (
         <div className="min-h-screen bg-white">
-
-            {/* Banner Section — hero, above the fold, eager-loaded */}
-            <div className="relative w-full h-[300px] md:h-[400px] lg:h-[500px]">
-                <Image
-                    src="/images/about-tyresonline-uae.jpg"
-                    alt="Al-Talayi Warehouse"
-                    fill
-                    sizes="100vw"
-                    priority
-                    className="object-cover"
-                />
-            </div>
+            {/* Banner Section */}
+            {page.banner && (
+                <CmsBanner banner={page.banner} alt={page.title} className="relative w-full h-[300px] md:h-[400px] lg:h-[500px]" />
+            )}
 
             {/* Content Section */}
             <div className="max-w-[1200px] mx-auto px-6 mt-8 sm:mt-12 md:mt-20 pb-20" dir={isRtl ? "rtl" : "ltr"}>
                 <h1 className="text-[22px] sm:text-[26px] md:text-h1 font-bold text-center mb-16 tracking-wide text-black uppercase">
-                    {t("about.title")}
+                    {page.title}
                 </h1>
 
-                <div className={`flex flex-col gap-10 text-black font-normal text-body-lg sm:text-body-xl md:text-h3-sm leading-[1.8] max-w-[1000px] mx-auto ${isRtl ? 'text-right' : 'text-center md:text-left'}`}>
-                    <p>{t("about.description")}</p>
-                    <p>{t("about.paragraph2")}</p>
-                    <p>{t("about.paragraph3")}</p>
-                </div>
+                <div
+                    className={`text-black font-normal text-body-lg sm:text-body-xl md:text-h3-sm leading-[1.8] max-w-[1000px] mx-auto
+                        [&_p]:mb-10 [&_p:last-child]:mb-0 [&_h2]:font-bold [&_h3]:font-bold [&_h4]:font-bold [&_h3]:mb-3
+                        [&_ol]:list-decimal [&_ul]:list-disc [&_ol]:ps-6 [&_ul]:ps-6 [&_ol]:mb-10 [&_ul]:mb-10 [&_li]:mb-3
+                        [&_a]:underline [&_a]:decoration-brand-yellow
+                        ${isRtl ? "text-right" : "text-center md:text-left"}`}
+                    // Sanitized in src/lib/cmsPages.ts (formatting tags only).
+                    dangerouslySetInnerHTML={{ __html: page.bodyHtml }}
+                />
             </div>
         </div>
     );

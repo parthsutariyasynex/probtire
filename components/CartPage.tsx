@@ -207,6 +207,9 @@ const CartPage: React.FC = () => {
                             subtotal={cart.subtotal}
                             taxAmount={cart.tax_amount}
                             taxLabel={cart.tax_label}
+                            discountAmount={cart.discount_amount}
+                            discountLabel={cart.discount_label}
+                            appliedCoupon={cart.applied_coupon}
                             grandTotal={cart.grand_total}
                             currencyCode={cart.currency_code}
                         />

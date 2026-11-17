@@ -14,7 +14,7 @@ const MAGENTO_GRAPHQL = (process.env.NEXT_PUBLIC_MAGENTO_BASE_URL || "") + "/gra
 export async function GET(req: Request) {
     try {
         const token = await getRequestToken(req);
-        if (!token) return NextResponse.json([]);
+        if (!token) return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
 
         const locale = getLocaleFromRequest(req);
         const cartId = await getCustomerCartId(token, toStoreCode(locale, req));
@@ -30,7 +30,7 @@ export async function GET(req: Request) {
         const json = await res.json();
         if (Array.isArray(json?.errors) && json.errors.length > 0) {
             console.error("[shipping-methods] GraphQL error:", JSON.stringify(json.errors).slice(0, 300));
-            return NextResponse.json([]);
+            return NextResponse.json({ message: json.errors[0]?.message || "Shipping methods unavailable" }, { status: 502 });
         }
         const addresses = json?.data?.cart?.shipping_addresses ?? [];
         const raw = addresses[0]?.available_shipping_methods ?? [];
@@ -40,13 +40,13 @@ export async function GET(req: Request) {
             method_code: m.method_code,
             carrier_title: m.carrier_title,
             method_title: m.method_title,
-            amount: m.amount?.value ?? 0,
+            amount: m.amount?.value ?? null,
             currency: m.amount?.currency,
             available: m.available,
         }));
         return NextResponse.json(methods);
     } catch (error) {
         console.error("Shipping Methods Error:", error);
-        return NextResponse.json([]);
+        return NextResponse.json({ message: "Internal server error" }, { status: 500 });
     }
 }

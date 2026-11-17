@@ -9,7 +9,7 @@ import {
   ReactNode,
 } from "react";
 import { useSession } from "next-auth/react";
-import { getAuthToken } from "@/lib/api/api-client";
+import { getAuthToken, getClientLocale } from "@/lib/api/api-client";
 
 export interface CartItem {
   item_id: number;
@@ -29,6 +29,11 @@ export interface Cart {
   subtotal: number;
   tax_amount: number;
   tax_label: string;
+  /** Magento discount total (positive) and its label(s); 0 / "" when none. */
+  discount_amount: number;
+  discount_label: string;
+  /** Coupon code applied to this website's cart, or null. */
+  applied_coupon: string | null;
   grand_total: number;
   currency_code: string;
   items_count: number;
@@ -44,6 +49,8 @@ interface CartContextType {
   removeFromCart: (itemId: number) => Promise<void>;
   clearCart: () => Promise<void>;
   refetchCart: () => Promise<void>;
+  applyCoupon: (code: string) => Promise<void>;
+  removeCoupon: () => Promise<void>;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
@@ -122,7 +129,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         name: item.name,
         price: Number(item.price || 0),
         qty: Number(item.qty || 0),
-        image_url: item.image_url || "/images/tyre-sample.png",
+        image_url: item.image_url || "",
         product_url: item.product_url,
         size_display: item.size_display,
         pattern_display: item.pattern_display,
@@ -131,7 +138,10 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
       const subtotal = Number(data.subtotal ?? data.cart?.subtotal ?? 0);
       const tax_amount = Number(data.tax_amount ?? data.cart?.tax_amount ?? 0);
-      const tax_label = data.tax_label ?? data.cart?.tax_label ?? "Tax";
+      const tax_label = data.tax_label ?? data.cart?.tax_label ?? "";
+      const discount_amount = Number(data.discount_amount ?? 0);
+      const discount_label = String(data.discount_label ?? "");
+      const applied_coupon = data.applied_coupon ?? null;
       const grand_total = Number(data.grand_total ?? data.cart?.grand_total ?? subtotal);
       // Currency exactly as the cart API sends it (Magento cart / storeConfig) — no default.
       const currency_code = data.currency_code ?? data.cart?.currency_code;
@@ -140,7 +150,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       const items_count = items.reduce((sum: number, i: CartItem) => sum + i.qty, 0);
       const cart_id = data.cart_id ?? data.cart?.cart_id ?? null;
 
-      setCart({ items, subtotal, tax_amount, tax_label, grand_total, currency_code, items_count, cart_id });
+      setCart({ items, subtotal, tax_amount, tax_label, discount_amount, discount_label, applied_coupon, grand_total, currency_code, items_count, cart_id });
     } catch {
       // Network error or backend unreachable — fail silently
       setCart(null);
@@ -181,6 +191,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
+          "x-locale": getClientLocale(),
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ sku, qty }),
@@ -217,6 +228,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         method: "PUT",
         headers: {
           Authorization: `Bearer ${token}`,
+          "x-locale": getClientLocale(),
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ qty }),
@@ -247,6 +259,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         method: "DELETE",
         headers: {
           Authorization: `Bearer ${token}`,
+          "x-locale": getClientLocale(),
         },
       });
 
@@ -274,6 +287,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
+          "x-locale": getClientLocale(),
         },
       });
 
@@ -291,6 +305,30 @@ export function CartProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  // Coupon code on this website's Magento cart; Magento's message is thrown on failure.
+  const couponRequest = async (method: "POST" | "DELETE", code?: string) => {
+    const token = await getAuthToken();
+    if (!token) throw new Error("Not authenticated");
+    const res = await fetch("/api/kleverapi/cart/coupon", {
+      method,
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+        "x-locale": getClientLocale(),
+      },
+      body: method === "POST" ? JSON.stringify({ code }) : undefined,
+    });
+    if (!res.ok) {
+      if (isAuthError(res.status)) { handleAuthError(); return; }
+      const data = await res.json().catch(() => null);
+      throw new Error(data?.message || "Coupon request failed");
+    }
+    await fetchCart();
+    window.dispatchEvent(new Event("cart-updated"));
+  };
+  const applyCoupon = (code: string) => couponRequest("POST", code);
+  const removeCoupon = () => couponRequest("DELETE");
+
   return (
     <CartContext.Provider
       value={{
@@ -302,6 +340,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
         removeFromCart,
         clearCart,
         refetchCart: fetchCart,
+        applyCoupon,
+        removeCoupon,
       }}
     >
       {children}

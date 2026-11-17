@@ -12,7 +12,9 @@ export async function GET(request: NextRequest) {
     const locale = getLocaleFromRequest(request);
 
     const now = Date.now();
-    const cached = cache.get(locale);
+    // Keyed by store view (each website has its own tyre sizes) and customer token.
+    const cacheKey = `${toStoreCode(locale, request)}|${token || "guest"}`;
+    const cached = cache.get(cacheKey);
     if (cached && cached.expires > now) {
         return NextResponse.json(cached.body, { headers: { "X-Cache": "HIT" } });
     }
@@ -33,13 +35,15 @@ export async function GET(request: NextRequest) {
 
         const json = await res.json();
         if (Array.isArray(json?.errors) && json.errors.length > 0) {
-            console.error("[tyre-size/width] GraphQL error:", JSON.stringify(json.errors).slice(0, 300));
-            return NextResponse.json({ status: "error", options: [] }, { status: 502 });
+            // Magento only answers logged-in customers: report that as 401, not a server error.
+            const unauthorized = json.errors.some((e: any) => e?.extensions?.category === "graphql-authorization");
+            if (!unauthorized) console.error("[tyre-size/width] GraphQL error:", JSON.stringify(json.errors).slice(0, 300));
+            return NextResponse.json({ status: "error", options: [] }, { status: unauthorized ? 401 : 502 });
         }
 
         const raw = json?.data?.kleverTyreSizeWidth;
         const body = { status: raw?.status ?? "success", options: raw?.options ?? [] };
-        cache.set(locale, { body, expires: now + CACHE_TTL_MS });
+        cache.set(cacheKey, { body, expires: now + CACHE_TTL_MS });
         return NextResponse.json(body, { headers: { "X-Cache": "MISS" } });
     } catch (err: any) {
         console.error("[tyre-size/width] Fetch exception:", err?.message);

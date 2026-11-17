@@ -1,7 +1,7 @@
 import { getToken } from "next-auth/jwt";
 import { NextRequest } from "next/server";
 import { getLocaleFromRequest } from "@/lib/api/magento-url";
-import { KLEVER_CATEGORY_PRODUCTS_WITH_FILTERS_QUERY } from "@/src/graphql/queries";
+import { KLEVER_CATEGORY_PRODUCTS_WITH_FILTERS_QUERY, STANDARD_FILTERS_QUERY } from "@/src/graphql/queries";
 import { toStoreCode } from "@/lib/store/website";
 
 // Maps frontend filter param codes → kleverCategoryProducts named arg keys.
@@ -52,6 +52,67 @@ function parseFiltersForKlever(searchParams: URLSearchParams): Record<string, st
         vars[kleverKey] = values.join(",");
     }
     return vars;
+}
+
+// ── Sidebar groups = Magento layered navigation ─────────────────────────────
+// kleverCategoryProducts builds its own filter list, which can include groups the
+// Magento storefront does not show for a website (e.g. Origin on Roya, whose products
+// have no origin value). The storefront's layered navigation is Magento's standard
+// `products.aggregations` for the store view + category, so only Klever groups that
+// Magento's layered navigation also shows are kept, in Magento's order.
+// Groups are matched by attribute code or by store label — nothing is hardcoded.
+const LAYERED_NAV_TTL_MS = 2 * 60 * 1000;
+const layeredNavCache = new Map<string, { keys: Map<string, number>; expires: number }>();
+
+const norm = (v: unknown) => String(v ?? "").toLowerCase().replace(/[^a-z0-9\u0600-\u06ff]+/g, "");
+
+async function getLayeredNavKeys(
+    domain: string | undefined, store: string, token: string | null, categoryId: string,
+): Promise<Map<string, number> | null> {
+    const key = `${store}|${token || "guest"}|${categoryId}`;
+    const hit = layeredNavCache.get(key);
+    if (hit && hit.expires > Date.now()) return hit.keys;
+    try {
+        const res = await fetch(`${domain}/graphql`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                Store: store,
+                ...(token && { Authorization: `Bearer ${token}` }),
+            },
+            body: JSON.stringify({ query: STANDARD_FILTERS_QUERY, variables: { categoryId } }),
+            cache: "no-store",
+        });
+        const json = await res.json();
+        const aggregations = json?.data?.products?.aggregations;
+        if (!Array.isArray(aggregations)) {
+            console.error("[category-products] layered navigation unavailable:", JSON.stringify(json?.errors || json).slice(0, 300));
+            return null;
+        }
+        // attribute code + store label → position in Magento's layered navigation
+        const keys = new Map<string, number>();
+        aggregations.forEach((a: any, index: number) => {
+            if (!a?.options?.length) return;
+            for (const k of [a.attribute_code, a.label]) {
+                const n = norm(k);
+                if (n && !keys.has(n)) keys.set(n, index);
+            }
+        });
+        layeredNavCache.set(key, { keys, expires: Date.now() + LAYERED_NAV_TTL_MS });
+        return keys;
+    } catch (err: any) {
+        console.error("[category-products] layered navigation fetch failed:", err?.message);
+        return null;
+    }
+}
+
+/** Position of a Klever filter group in Magento's layered navigation, or -1 if Magento does not show it. */
+function layeredNavPosition(filter: { code: string; label: string }, keys: Map<string, number>): number {
+    for (const k of [filter.code, FILTER_CODE_TO_KLEVER[filter.code], filter.label]) {
+        const pos = keys.get(norm(k));
+        if (pos !== undefined) return pos;
+    }
+    return -1;
 }
 
 // ── Short-lived response cache ───────────────────────────────────────────────
@@ -123,7 +184,7 @@ export async function GET(request: NextRequest) {
         // ── Cache lookup ─────────────────────────────────────────────────
         const now = Date.now();
         // Keyed by store view — the same category has different products per website.
-        const cacheKey = `v3|${toStoreCode(resolvedLocale, request)}|${token || "guest"}|${categoryId}|${page}|${pageSize}|${filterKey}|${sortByParam || ""}`;
+        const cacheKey = `v4|${toStoreCode(resolvedLocale, request)}|${token || "guest"}|${categoryId}|${page}|${pageSize}|${filterKey}|${sortByParam || ""}`;
         const cached = responseCache.get(cacheKey);
         if (cached && cached.expires > now) {
             console.log("[category-products] cache HIT", cacheKey);
@@ -148,11 +209,15 @@ export async function GET(request: NextRequest) {
 
         console.log("[category-products] GraphQL variables:", JSON.stringify(variables));
 
+        const store = toStoreCode(resolvedLocale, request);
+        // Layered navigation (which filter groups Magento shows) is fetched in parallel.
+        const layeredNavPromise = getLayeredNavKeys(domain, store, token, String(parseInt(categoryId, 10)));
+
         const res = await fetch(`${domain}/graphql`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
-                Store: toStoreCode(resolvedLocale, request),
+                Store: store,
                 ...(token && { Authorization: `Bearer ${token}` }),
             },
             body: JSON.stringify({ query: KLEVER_CATEGORY_PRODUCTS_WITH_FILTERS_QUERY, variables }),
@@ -188,7 +253,7 @@ export async function GET(request: NextRequest) {
         const actionCount = products.filter((p: any) => p.is_action === "Yes").length;
         console.log(`[category-products] is_action normalization: ${actionCount}/${products.length} products have is_action=Yes`);
 
-        const filters = ((result.filters || []) as any[])
+        const kleverGroups = ((result.filters || []) as any[])
             .map((f: any) => ({
                 code: f.code || "",
                 label: f.label || "",
@@ -199,6 +264,20 @@ export async function GET(request: NextRequest) {
                     count: o.count,
                 })),
             }));
+
+        // Keep only the groups Magento's layered navigation shows for this website, in its order.
+        // If Magento's layered navigation cannot be read, no groups are shown (no guessing).
+        const layeredNav = await layeredNavPromise;
+        const filters = layeredNav
+            ? kleverGroups
+                .map((f) => ({ f, pos: layeredNavPosition(f, layeredNav) }))
+                .filter(({ f, pos }) => {
+                    if (pos < 0) console.log(`[category-products] ${store}: hiding "${f.label}" (${f.code}) — not in Magento layered navigation`);
+                    return pos >= 0;
+                })
+                .sort((a, b) => a.pos - b.pos)
+                .map(({ f }) => f)
+            : [];
 
         const responseBody = JSON.stringify({
             products,

@@ -1,33 +1,27 @@
 import { NextResponse } from "next/server";
-import { getLocaleFromRequest } from "@/lib/api/magento-url";
+import { getBaseUrl } from "@/lib/api/magento-url";
 import { getRequestToken } from "@/lib/api/auth-helper";
-import { KLEVER_PICKUP_STORES_QUERY } from "@/src/graphql/queries";
-import { toStoreCode } from "@/lib/store/website";
 
-const MAGENTO_GRAPHQL = (process.env.NEXT_PUBLIC_MAGENTO_BASE_URL || "") + "/graphql";
-
-// GET — pickup stores (GraphQL: kleverPickupStores). Returns the store array; the
-// useCheckout consumer maps store_id→id, name, address.
-// DEVIATION: kleverPickupStores does not expose `email` (REST did) — Store.email
-// will be empty. gps_location was already absent under REST (it had lat/long).
+// GET — pickup warehouses of the selected website + language, from Magento's Klever REST
+// endpoint /rest/<store>/V1/kleverapi/checkout/pickup-stores (store_id, name, address, city,
+// email, phone, latitude, longitude, opening hours …). Passed through unchanged; Magento's
+// errors keep their status.
 export async function GET(req: Request) {
     try {
         const token = await getRequestToken(req);
         if (!token) return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
 
-        const res = await fetch(MAGENTO_GRAPHQL, {
-            method: "POST",
-            headers: { "Content-Type": "application/json", Store: toStoreCode(getLocaleFromRequest(req), req), Authorization: `Bearer ${token}` },
-            body: JSON.stringify({ query: KLEVER_PICKUP_STORES_QUERY }),
+        const res = await fetch(`${getBaseUrl(req)}/checkout/pickup-stores`, {
+            headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
             cache: "no-store",
         });
 
-        const json = await res.json();
-        if (Array.isArray(json?.errors) && json.errors.length > 0) {
-            console.error("[pickup-stores] GraphQL error:", JSON.stringify(json.errors).slice(0, 300));
-            return NextResponse.json({ message: "Magento GraphQL error", details: json.errors }, { status: 502 });
+        const data = await res.json().catch(() => null);
+        if (!res.ok) {
+            console.error("[pickup-stores] Magento REST error:", res.status, JSON.stringify(data).slice(0, 300));
+            return NextResponse.json(data ?? { message: "Pickup warehouses unavailable" }, { status: res.status });
         }
-        return NextResponse.json(Array.isArray(json?.data?.kleverPickupStores) ? json.data.kleverPickupStores : []);
+        return NextResponse.json(Array.isArray(data) ? data : Array.isArray(data?.stores) ? data.stores : []);
     } catch (error) {
         console.error("Pickup Stores Error:", error);
         return NextResponse.json({ message: "Internal server error" }, { status: 500 });

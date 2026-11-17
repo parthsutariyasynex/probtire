@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { useCheckout, Address } from "@/modules/checkout/hooks/useCheckout";
+import { useCheckout, MultiShippingMethodChoice } from "@/modules/checkout/hooks/useCheckout";
+import { useCountryNames } from "@/hooks/useCountryNames";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import { useTranslation } from "@/hooks/useTranslation";
@@ -10,51 +11,51 @@ import { MultiLocationBillingSkeleton } from "@/components/skeletons";
 
 const MultiShippingBillingPage: React.FC = () => {
     const router = useRouter();
-    const { t, locale } = useTranslation();
+    const { t } = useTranslation();
+    const countryName = useCountryNames();
     const lp = useLocalePath();
     const {
         addresses,
-        paymentMethods,
+        // Magento's multi-address billing payment methods (kleverMultishippingPaymentMethods) —
+        // the same list as Magento's /multishipping/checkout/billing page for this store view.
+        multiShippingPaymentMethods: paymentMethods,
+        multiShippingPaymentMethodsLoaded: paymentMethodsLoaded,
+        multiShippingPaymentMethodsError: paymentMethodsError,
         isLoading: isCheckoutLoading,
         setMultiShippingBillingAddress,
         startMultiShipping,
         assignMultiShipping,
         fetchMultiShippingMethods,
         setMultiShippingMethods,
-        refetchPaymentMethods
+        fetchMultiShippingPaymentMethods: refetchPaymentMethods
     } = useCheckout();
 
     const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
     const [selectedPaymentCode, setSelectedPaymentCode] = useState<string | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
+    // Billing address: the customer's Magento default billing address. Nothing is
+    // pre-selected without a default.
     useEffect(() => {
-        // Find default shipping or just first address to start with
         if (addresses.length > 0 && !selectedAddressId) {
-            const defaultAddr = addresses.find(a => a.isDefault) || addresses[0];
-            setSelectedAddressId(defaultAddr.id);
+            const saved = localStorage.getItem('multi_shipping_billing_address_id');
+            const preferred = addresses.find(a => a.id === saved) || addresses.find(a => a.isDefaultBilling);
+            if (preferred) setSelectedAddressId(preferred.id);
         }
+    }, [addresses, selectedAddressId]);
 
-        // Fetch payment methods when billing address changes if needed
-        // but here we just fetch them once on mount
-        // Debug line
-        console.log(`[MultiShippingBilling] Mounted. Current Locale: ${locale}`);
-        refetchPaymentMethods();
-    }, [addresses, selectedAddressId, refetchPaymentMethods, locale]);
-
+    // Magento's multi-address payment methods (after the multi-address checkout is started).
     useEffect(() => {
-        if (paymentMethods.length > 0) {
-            console.log(`[MultiShippingBilling] API Response (Payment Methods):`, paymentMethods);
-        }
-    }, [paymentMethods]);
+        refetchPaymentMethods({ startIfNeeded: true });
+    }, [refetchPaymentMethods]);
 
+    // Payment methods are exactly Magento's list for this cart and store view. The earlier
+    // choice is kept while Magento still offers it; a single method is the only choice.
     useEffect(() => {
-        if (paymentMethods.length > 0 && !selectedPaymentCode) {
-            // Check if "Credit Account" is available (user screenshot shows it)
-            // or just select first one
-            const creditMethod = paymentMethods.find(m => m.code === 'credit_account' || m.code === 'creditaccount');
-            setSelectedPaymentCode(creditMethod ? creditMethod.code : paymentMethods[0].code);
-        }
+        if (paymentMethods.length === 0 || selectedPaymentCode) return;
+        const saved = localStorage.getItem('multi_shipping_payment_method');
+        if (saved && paymentMethods.some(m => m.code === saved)) setSelectedPaymentCode(saved);
+        else if (paymentMethods.length === 1) setSelectedPaymentCode(paymentMethods[0].code);
     }, [paymentMethods, selectedPaymentCode]);
 
     const handleGoToReview = async () => {
@@ -84,35 +85,30 @@ const MultiShippingBillingPage: React.FC = () => {
                 if (apiAssignments.length > 0) await assignMultiShipping(apiAssignments);
             }
 
-            // Set shipping methods — try to extract quote_address_ids from response
-            try {
-                const methodsData = await fetchMultiShippingMethods();
-                const methodsToSet: Record<string, string> = {};
-                const findAndSet = (obj: any) => {
-                    if (!obj) return;
-                    if (Array.isArray(obj)) { obj.forEach((item: any) => findAndSet(item)); return; }
-                    if (typeof obj === 'object') {
-                        const qid = obj.quote_address_id ?? obj.quoteAddressId ?? obj.address_id ?? obj.id;
-                        if (qid && typeof qid === 'number') {
-                            const methods = obj.methods || obj.available_shipping_methods || obj.shipping_methods || obj.rates || [];
-                            if (Array.isArray(methods) && methods.length > 0) {
-                                const m = methods[0];
-                                methodsToSet[String(qid)] = m.code || `${m.carrier_code || m.carrierCode || "flatrate"}_${m.method_code || m.methodCode || "flatrate"}`;
-                            }
-                        }
-                        Object.entries(obj).forEach(([key, val]) => {
-                            if (!isNaN(Number(key)) && Number(key) > 0 && Array.isArray(val) && (val as any[]).length > 0) {
-                                const m = (val as any[])[0];
-                                methodsToSet[key] = m.code || `${m.carrier_code || m.carrierCode || "flatrate"}_${m.method_code || m.methodCode || "flatrate"}`;
-                            } else if (typeof val === 'object') { findAndSet(val); }
-                        });
-                    }
-                };
-                findAndSet(methodsData);
-                if (Object.keys(methodsToSet).length > 0) await setMultiShippingMethods(methodsToSet);
-            } catch (shippingErr) {
-                console.warn("Setting shipping methods failed, proceeding:", shippingErr);
+            // Re-apply the delivery method the customer chose on the shipping step for each
+            // address (saved by customer address id). The session above was re-started, so the
+            // quote address ids are new: map them from Magento's shipping-methods response.
+            // Only a method Magento offers for that address is sent — nothing is invented.
+            const chosenMethods: Record<string, MultiShippingMethodChoice> = JSON.parse(localStorage.getItem('multi_shipping_methods') || '{}');
+            const methodsData = await fetchMultiShippingMethods();
+            const methodsToSet: Record<string, MultiShippingMethodChoice> = {};
+            for (const a of (Array.isArray(methodsData?.addresses) ? methodsData.addresses : [])) {
+                const chosen = chosenMethods[String(a?.customer_address_id)];
+                const offered = (Array.isArray(a?.methods) ? a.methods : []).some((m: any) =>
+                    m.available !== false && chosen && m.carrier_code === chosen.carrier_code && m.method_code === chosen.method_code);
+                if (!offered || a?.quote_address_id == null) {
+                    toast.error(t("multi.selectShippingMethod"));
+                    router.push(lp('/multi-location-delivery/shipping'));
+                    return;
+                }
+                methodsToSet[String(a.quote_address_id)] = chosen;
             }
+            if (Object.keys(methodsToSet).length === 0) {
+                toast.error(t("multi.noShippingMethods"));
+                router.push(lp('/multi-location-delivery/shipping'));
+                return;
+            }
+            await setMultiShippingMethods(methodsToSet);
 
             // Set billing address and payment method on the backend
             await setMultiShippingBillingAddress(selectedAddressId, selectedPaymentCode);
@@ -160,8 +156,8 @@ const MultiShippingBillingPage: React.FC = () => {
                                     <p dir="ltr" style={{ unicodeBidi: "isolate" }}>{currentAddress.company}</p>
                                     <p dir="ltr" style={{ unicodeBidi: "isolate" }}>{currentAddress.street}</p>
                                     <p dir="ltr" style={{ unicodeBidi: "isolate" }}>{currentAddress.city}, {currentAddress.postcode}</p>
-                                    <p>{t("multi.saudiArabia")}</p>
-                                    <p className="mt-4" dir="ltr" style={{ unicodeBidi: "isolate" }}>T: {currentAddress.telephone}</p>
+                                    <p>{countryName(currentAddress.country_id)}</p>
+                                    <p className="mt-4" dir="ltr" style={{ unicodeBidi: "isolate" }}>{t("multi.phonePrefix")} {currentAddress.telephone}</p>
 
                                 </div>
                             ) : (
@@ -181,7 +177,6 @@ const MultiShippingBillingPage: React.FC = () => {
                             <div className="space-y-4">
                                 {paymentMethods.length > 0 ? (
                                     paymentMethods
-                                        .filter(m => m.title !== "No Payment Information Required" && m.code !== "free")
                                         .map((method) => (
                                             <label
                                                 key={method.code}
@@ -201,22 +196,16 @@ const MultiShippingBillingPage: React.FC = () => {
                                                     )}
                                                 </div>
                                                 <span className="text-body md:text-body-lg font-black text-black uppercase tracking-tight group-hover:text-brand-yellow transition-colors mt-0.5">
-                                                    {t(`payment_method.${method.code}`) !== `payment_method.${method.code}`
-                                                        ? t(`payment_method.${method.code}`)
-                                                        : method.title}
+                                                    {method.title}
                                                 </span>
                                             </label>
                                         ))
                                 ) : (
-                                    <div className="flex items-center gap-3">
-                                        <div className="relative flex items-center justify-center">
-                                            <div className="w-4 h-4 border-2 border-brand-yellow rounded-full" />
-                                            <div className="absolute w-2 h-2 bg-brand-yellow rounded-full" />
-                                        </div>
-                                        <span className="text-body md:text-body-lg font-black text-black uppercase tracking-tight mt-0.5">
-                                            {t("multi.creditAccount")}
-                                        </span>
-                                    </div>
+                                    paymentMethodsLoaded && (
+                                        <p className="text-body md:text-body-lg font-bold text-[#ff0000]">
+                                            {paymentMethodsError || t("multi.noPaymentMethods")}
+                                        </p>
+                                    )
                                 )}
                             </div>
                         </div>

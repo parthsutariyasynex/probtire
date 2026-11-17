@@ -4,7 +4,7 @@ import { useLocalePath } from "@/hooks/useLocalePath";
 
 import React, { useEffect, useState, useMemo } from "react";
 import { useCart } from "@/modules/cart/hooks/useCart";
-import { useCheckout, Address } from "@/modules/checkout/hooks/useCheckout";
+import { useCheckout } from "@/modules/checkout/hooks/useCheckout";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ShoppingCart } from "lucide-react";
@@ -16,6 +16,11 @@ import { MultiLocationDeliverySkeleton } from "@/components/skeletons";
  * assignments[itemId][addressId] = quantity
  */
 type Assignments = Record<number, Record<string, number>>;
+
+// Items and addresses exactly as Magento's multi-address checkout returns them
+// (kleverMultishippingStart, Store header = selected website + language).
+interface MultiItem { item_id: number; name: string; sku: string; qty: number }
+interface MultiAddress { id: string; street: string; city: string; region: string; postcode: string; country_id: string }
 
 const MultiLocationDeliveryPage: React.FC = () => {
     const router = useRouter();
@@ -35,42 +40,57 @@ const MultiLocationDeliveryPage: React.FC = () => {
     const [assignments, setAssignments] = useState<Assignments>({});
 
     const [isInitialized, setIsInitialized] = useState(false);
-
-    useEffect(() => {
-        // Initialize backend multishipping session only once when cart has items
-        if (isInitialized || isCartLoading || !cart?.items || cart.items.length === 0) return;
-        setIsInitialized(true);
-        startMultiShipping().catch(err => {
-            // Magento may reject with "at least two units" for single-item carts
-            // This is not critical — the assign step will still work
-            console.warn("Multi-shipping start warning (non-blocking):", err.message);
-        });
-    }, [startMultiShipping, cart, isCartLoading, isInitialized]);
+    const [startRequested, setStartRequested] = useState(false);
+    const [isStarting, setIsStarting] = useState(true);
+    const [startError, setStartError] = useState<string | null>(null);
+    const [items, setItems] = useState<MultiItem[]>([]);
+    const [msAddresses, setMsAddresses] = useState<MultiAddress[]>([]);
 
     useEffect(() => {
         refetchCart();
         refetchAddresses();
     }, [refetchCart, refetchAddresses]);
 
+    // Start Magento's multi-address checkout once the cart has items. Magento decides
+    // whether the cart can be shipped to multiple addresses and which items/addresses
+    // take part; its error (e.g. quantity limits) is shown as-is.
     useEffect(() => {
-        if (cart?.items && addresses.length > 0 && !isInitialized) {
-            const initial: Assignments = {};
-            cart.items.forEach(item => {
-                initial[item.item_id] = {};
-                addresses.forEach(addr => {
-                    // Default to 1 for the default shipping address, 0 for others
-                    initial[item.item_id][addr.id] = addr.isDefault ? 1 : 0;
-                });
-
-                // If no default address is found, set the first one to 1 just in case
-                if (Object.values(initial[item.item_id]).every(v => v === 0) && addresses.length > 0) {
-                    initial[item.item_id][addresses[0].id] = 1;
+        if (startRequested || isCartLoading) return;
+        if (!cart?.items || cart.items.length === 0) { setIsStarting(false); return; }
+        setStartRequested(true);
+        startMultiShipping()
+            .then((data: any) => {
+                if (!Array.isArray(data?.items) || data.items.length === 0) throw new Error(t("multi.startFailed"));
+                setItems((data.items || []).map((i: any) => ({
+                    item_id: Number(i.quote_item_id), name: i.name || "", sku: i.sku || "", qty: Number(i.qty) || 0,
+                })));
+                setMsAddresses((data.addresses || []).map((a: any) => ({
+                    id: String(a.customer_address_id), street: a.street || "", city: a.city || "",
+                    region: a.region || "", postcode: a.postcode || "", country_id: a.country_id || "",
+                })));
+                if (!Array.isArray(data.addresses) || data.addresses.length === 0) {
+                    setStartError(t("multi.noAddresses"));
                 }
+            })
+            .catch((err: Error) => setStartError(err.message || t("multi.startFailed")))
+            .finally(() => setIsStarting(false));
+    }, [startMultiShipping, cart, isCartLoading, startRequested, t]);
+
+    // Like Magento: every unit starts on the customer's default shipping address. Without
+    // a default address nothing is pre-assigned — the customer assigns the quantities.
+    useEffect(() => {
+        if (isInitialized || items.length === 0 || msAddresses.length === 0 || isCheckoutLoading) return;
+        const defaultId = addresses.find(a => a.isDefault)?.id;
+        const initial: Assignments = {};
+        items.forEach(item => {
+            initial[item.item_id] = {};
+            msAddresses.forEach(addr => {
+                initial[item.item_id][addr.id] = addr.id === defaultId ? item.qty : 0;
             });
-            setAssignments(initial);
-            setIsInitialized(true);
-        }
-    }, [cart, addresses, isInitialized]);
+        });
+        setAssignments(initial);
+        setIsInitialized(true);
+    }, [items, msAddresses, addresses, isCheckoutLoading, isInitialized]);
 
     const handleQtyChange = (itemId: number, addressId: string, value: string) => {
         const prevVal = assignments[itemId]?.[addressId] ?? 0;
@@ -102,16 +122,15 @@ const MultiLocationDeliveryPage: React.FC = () => {
 
     const handleAddressSelect = (itemId: number, addressId: string) => {
         setAssignments(prev => {
-            const currentItemAssignments = prev[itemId] || {};
             const newAssignments: Record<string, number> = {};
 
             // Set all to 0 first
-            addresses.forEach(addr => {
+            msAddresses.forEach(addr => {
                 newAssignments[addr.id] = 0;
             });
 
-            // Set selected one to 1
-            newAssignments[addressId] = 1;
+            // The whole quantity of the item goes to the clicked address
+            newAssignments[addressId] = items.find(i => i.item_id === itemId)?.qty ?? 0;
 
             return {
                 ...prev,
@@ -121,12 +140,12 @@ const MultiLocationDeliveryPage: React.FC = () => {
     };
 
     const validation = useMemo(() => {
-        if (!cart?.items || addresses.length === 0) return { isValid: false, perItem: {} };
+        if (items.length === 0 || msAddresses.length === 0) return { isValid: false, perItem: {} };
 
         let allValid = true;
         const perItem: Record<number, boolean> = {};
 
-        cart.items.forEach(item => {
+        items.forEach(item => {
             const itemAssignments = assignments[item.item_id] || {};
             const totalAssigned = Object.values(itemAssignments).reduce((sum, q) => sum + q, 0);
             const isItemValid = totalAssigned === item.qty;
@@ -137,10 +156,10 @@ const MultiLocationDeliveryPage: React.FC = () => {
         });
 
         return { isValid: allValid, perItem };
-    }, [cart, addresses, assignments]);
+    }, [items, msAddresses, assignments]);
 
     const handleProceed = async () => {
-        if (!validation.isValid || !cart?.items) return;
+        if (!validation.isValid || items.length === 0) return;
 
         try {
             setIsAssigning(true);
@@ -148,7 +167,7 @@ const MultiLocationDeliveryPage: React.FC = () => {
             // Format assignments for API
             const apiAssignments: Array<{ quote_item_id: number, customer_address_id: number | string, qty: number }> = [];
 
-            cart.items.forEach(item => {
+            items.forEach(item => {
                 const itemAssignments = assignments[item.item_id] || {};
                 Object.entries(itemAssignments).forEach(([addressId, qty]) => {
                     if (qty > 0) {
@@ -166,11 +185,12 @@ const MultiLocationDeliveryPage: React.FC = () => {
                 return;
             }
 
-            console.log("Submitting Multi-shipping Assignments:", apiAssignments);
             await assignMultiShipping(apiAssignments);
 
-            // On success
+            // On success — keep what Magento accepted for the next steps
             localStorage.setItem('multi_shipping_assignments', JSON.stringify(assignments));
+            localStorage.setItem('multi_shipping_items', JSON.stringify(items));
+            localStorage.removeItem('multi_shipping_methods');
             toast.success(t("multi.assignSuccess"));
             router.push(lp('/multi-location-delivery/shipping'));
         } catch (err: any) {
@@ -182,8 +202,10 @@ const MultiLocationDeliveryPage: React.FC = () => {
     };
 
     const isReadyToProceed = validation.isValid && !isAssigning;
+    // The error column exists only while at least one row's assigned qty is wrong (as Magento).
+    const hasQtyError = items.some(item => validation.perItem[item.item_id] === false);
 
-    if (isCartLoading || isCheckoutLoading && !isAssigning) {
+    if (isCartLoading || isStarting || (isCheckoutLoading && !isAssigning)) {
         return <MultiLocationDeliverySkeleton />;
     }
 
@@ -222,9 +244,28 @@ const MultiLocationDeliveryPage: React.FC = () => {
         );
     }
 
-    const getAddressLocation = (addr: Address) => {
-        return addr.city || "Location";
-    };
+    // Location label of the address column, as Magento's multi-address page shows it (the
+    // address city from Magento's start response) — no placeholder text.
+    const getAddressLocation = (addr: MultiAddress) => addr.city;
+
+    if (startError) {
+        return (
+            <div className="bg-white min-h-screen font-sans">
+                <div className="max-w-[1440px] mx-auto py-12 md:py-24 px-3 sm:px-4 flex flex-col items-center text-center">
+                    <h1 className="text-subheading sm:text-[22px] md:text-[26px] font-black text-black uppercase tracking-normal mb-6">
+                        {t("multi.shipToMultiple")}
+                    </h1>
+                    <p className="text-body md:text-body-lg font-bold text-[#ff0000] mb-8 max-w-2xl">{startError}</p>
+                    <Link
+                        href={lp("/checkout/cart")}
+                        className="bg-black text-white px-6 md:px-10 py-3.5 md:py-4 text-label font-black uppercase tracking-[0.1em] hover:bg-zinc-900 transition-colors"
+                    >
+                        {t("multi.backToCart")}
+                    </Link>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="bg-white min-h-screen font-sans pb-16 md:pb-32">
@@ -236,9 +277,9 @@ const MultiLocationDeliveryPage: React.FC = () => {
                     <h1 className="text-subheading sm:text-[22px] md:text-[26px] font-black text-black uppercase tracking-normal mb-1">
                         {t("multi.shipToMultiple")}
                     </h1>
-                    {/* <p className="text-body-sm sm:text-body md:text-body-lg text-gray-800 font-medium italic">
-                        Please assign Qty against shipping address for applicable items.
-                    </p> */}
+                    <p className="text-body-sm sm:text-body md:text-body-lg text-black font-medium">
+                        {t("multi.assignNote")}
+                    </p>
                 </div>
 
                 {/* Main Table Structure */}
@@ -249,7 +290,6 @@ const MultiLocationDeliveryPage: React.FC = () => {
                                 {/* Top Header Row */}
                                 <tr>
                                     <th
-                                        rowSpan={2}
                                         className="py-3 md:py-4 px-3 md:px-5 text-left text-label sm:text-body-sm md:text-body font-black uppercase text-black border-r border-b border-gray-300 w-[160px] md:w-[220px] bg-white align-middle"
                                     >
                                         {t("multi.product")}
@@ -259,41 +299,26 @@ const MultiLocationDeliveryPage: React.FC = () => {
                                     </th>
                                     <th
                                         className="py-3 md:py-4 px-2 md:px-4 text-center text-label sm:text-body-sm md:text-body font-black uppercase text-black border-b border-gray-300 bg-white"
-                                        colSpan={addresses.length + 1}
+                                        colSpan={msAddresses.length + (hasQtyError ? 1 : 0)}
                                     >
                                         {t("multi.assignQty")}
                                     </th>
                                 </tr>
-                                {/* Sub Header Row */}
-                                <tr>
-                                    <th className="py-3 md:py-4 text-center text-caption md:text-body-sm font-bold text-black border-r border-b border-gray-300 uppercase bg-white">
-                                        Qty
-                                    </th>
-                                    {addresses.map((addr) => (
-                                        <th
-                                            key={addr.id}
-                                            className="py-3 md:py-4 px-2 md:px-4 text-center text-caption md:text-body-sm font-bold text-black border-r border-b border-gray-300 uppercase bg-white min-w-[100px] md:min-w-[150px]"
-                                        >
-                                            {getAddressLocation(addr)}
-                                        </th>
-                                    ))}
-                                    <th className="border-b border-gray-300 bg-white min-w-[90px] md:min-w-[140px]"></th>
-                                </tr>
                             </thead>
                             <tbody>
-                                {cart?.items.map((item) => {
+                                {items.map((item) => {
                                     const isItemValid = validation.perItem[item.item_id];
                                     return (
-                                        <tr key={item.item_id} className="border-b border-gray-300 last:border-b-0">
+                                        <tr key={item.item_id} className="group">
                                             {/* Column 1: Product Information */}
-                                            <td className="py-3 md:py-6 px-3 md:px-5 border-r border-gray-300 align-middle">
+                                            <td className="py-3 md:py-6 px-3 md:px-5 border-r border-b group-last:border-b-0 border-gray-300 align-middle">
                                                 <span className="text-body-sm md:text-body-lg font-bold text-black leading-tight max-w-[200px] uppercase block">
                                                     {item.name}
                                                 </span>
                                             </td>
 
                                             {/* Column 2: Cart Qty Box */}
-                                            <td className="py-3 md:py-6 px-2 md:px-4 border-r border-gray-300 align-middle">
+                                            <td className="py-3 md:py-6 px-2 md:px-4 border-r border-b group-last:border-b-0 border-gray-300 align-middle">
                                                 <div className="flex flex-col items-center">
                                                     <span className="text-caption md:text-label font-bold text-black mb-1.5 md:mb-2 uppercase tracking-tighter">{t("multi.qty")}</span>
                                                     <div className="w-[40px] md:w-[50px] h-[34px] md:h-[38px] flex items-center justify-center border border-gray-300 text-gray-400 font-bold bg-white text-body md:text-body-lg">
@@ -303,13 +328,13 @@ const MultiLocationDeliveryPage: React.FC = () => {
                                             </td>
 
                                             {/* Dynamic Address Columns */}
-                                            {addresses.map((addr) => {
+                                            {msAddresses.map((addr, addrIndex) => {
                                                 const currentVal = assignments[item.item_id]?.[addr.id] ?? 0;
                                                 const cityLabel = getAddressLocation(addr);
                                                 return (
                                                     <td
                                                         key={addr.id}
-                                                        className={`py-3 md:py-6 px-2 md:px-4 border-r border-gray-300 align-middle cursor-pointer transition-colors ${currentVal > 0 ? 'bg-brand-yellow/5' : 'hover:bg-gray-50'}`}
+                                                        className={`py-3 md:py-6 px-2 md:px-4 border-b group-last:border-b-0 border-gray-300 ${addrIndex < msAddresses.length - 1 ? 'border-r' : ''} align-middle cursor-pointer transition-colors ${currentVal > 0 ? 'bg-brand-yellow/5' : 'hover:bg-gray-50'}`}
                                                         onClick={() => handleAddressSelect(item.item_id, addr.id)}
                                                     >
                                                         <div className="flex flex-col items-center">
@@ -340,13 +365,17 @@ const MultiLocationDeliveryPage: React.FC = () => {
                                             })}
 
                                             {/* Validation Row Message */}
-                                            <td className="py-3 md:py-6 px-2 md:px-4 align-middle bg-white">
-                                                {!isItemValid && (
-                                                    <div className="text-[#ff0000] text-label font-bold leading-[1.3] text-center whitespace-pre-line uppercase tracking-tight">
-                                                        {t("multi.qtyMismatch")}
-                                                    </div>
-                                                )}
-                                            </td>
+                                            {/* Error box only on a row whose assigned qty differs from the cart qty (as Magento);
+                                                without any wrong row the column is not rendered, so no empty space remains. */}
+                                            {hasQtyError && (
+                                                <td className={`py-3 md:py-6 px-2 md:px-4 align-middle bg-white w-[140px] md:w-[300px] ${!isItemValid ? 'border-l border-b group-last:border-b-0 border-gray-300' : ''}`}>
+                                                    {!isItemValid && (
+                                                        <div className="text-[#ff0000] text-label font-bold leading-[1.3] text-center whitespace-pre-line uppercase tracking-tight">
+                                                            {t("multi.qtyMismatch")}
+                                                        </div>
+                                                    )}
+                                                </td>
+                                            )}
                                         </tr>
                                     );
                                 })}

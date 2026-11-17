@@ -687,13 +687,31 @@ export const CUSTOMER_CART_QUERY = /* GraphQL */ `
         }
         quantity
         prices {
+          price {
+            value
+          }
           row_total {
             value
             currency
           }
         }
       }
+      applied_coupons {
+        code
+      }
       prices {
+        applied_taxes {
+          label
+          amount {
+            value
+          }
+        }
+        discounts {
+          label
+          amount {
+            value
+          }
+        }
         grand_total {
           value
           currency
@@ -768,8 +786,8 @@ export const CART_TOTALS_QUERY = /* GraphQL */ `
         grand_total { value currency }
         subtotal_excluding_tax { value }
         subtotal_including_tax { value }
-        applied_taxes { amount { value } }
-        discounts { amount { value } }
+        applied_taxes { label amount { value } }
+        discounts { label amount { value } }
       }
       shipping_addresses {
         selected_shipping_method { amount { value } }
@@ -1474,5 +1492,19 @@ export const STORE_CONFIG_QUERY = /* GraphQL */ `
 export const URL_RESOLVER_QUERY = /* GraphQL */ `
   query UrlResolver($url: String!) {
     urlResolver(url: $url) { type id }
+  }
+`;
+
+
+// Payment methods of Magento's multi-address checkout billing step, for the store view in the
+// Store header (logged-in customer, after kleverMultishippingStart). Same list Magento's own
+// /multishipping/checkout/billing page shows. Returns [{ code, title, is_available }].
+export const KLEVER_MULTISHIPPING_PAYMENT_METHODS_QUERY = /* GraphQL */ `
+  query KleverMultishippingPaymentMethods {
+    kleverMultishippingPaymentMethods {
+      code
+      title
+      is_available
+    }
   }
 `;

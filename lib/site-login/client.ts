@@ -34,8 +34,8 @@ export async function rememberWebsite(
 
 /**
  * Drop browser caches that belong to the previously selected website: the Navbar
- * menu (navmenu_*) and the menu-derived default category. They are rebuilt for
- * the new website on the next page load.
+ * menu (navmenu_*), the menu-derived default category and the checkout state of
+ * that website's cart. They are rebuilt for the new website on the next page load.
  */
 export function forgetWebsiteCaches(): void {
     try {
@@ -46,5 +46,18 @@ export function forgetWebsiteCaches(): void {
     } catch { /* storage unavailable */ }
     try {
         sessionStorage.removeItem("defaultCategoryId");
+    } catch { /* storage unavailable */ }
+    // Checkout state of the previous website's cart (multi-address steps, chosen methods,
+    // which uploaded files are PO / payment) — each website has its own Magento cart.
+    try {
+        for (const key of [
+            "multi_shipping_assignments",
+            "multi_shipping_items",
+            "multi_shipping_methods",
+            "multi_shipping_billing_address_id",
+            "multi_shipping_payment_method",
+            "payment_commitment_file_names",
+            "po_file_names",
+        ]) localStorage.removeItem(key);
     } catch { /* storage unavailable */ }
 }

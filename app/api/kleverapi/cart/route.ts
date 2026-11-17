@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
 import { getLocaleFromRequest } from "@/lib/api/magento-url";
 import { getRequestToken } from "@/lib/api/auth-helper";
-import { CUSTOMER_CART_QUERY } from "@/src/graphql/queries";
+import { CUSTOMER_CART_QUERY, KLEVER_FAVORITE_PRODUCTS_ENRICH_QUERY } from "@/src/graphql/queries";
 import { clearCustomerCartId } from "@/lib/api/customer-cart";
 import { toStoreCode } from "@/lib/store/website";
-import { getRequestStoreConfig } from "@/lib/store/store-config";
+import { getRequestStoreConfig, getStoreConfig } from "@/lib/store/store-config";
 
 const MAGENTO_GRAPHQL = (process.env.NEXT_PUBLIC_MAGENTO_BASE_URL || "") + "/graphql";
 
@@ -15,7 +15,7 @@ const EMPTY_CART = {
     items_count: 0,
     subtotal: 0,
     tax_amount: 0,
-    tax_label: "Tax",
+    tax_label: "",
     grand_total: 0,
     cart_id: null,
 };
@@ -38,28 +38,39 @@ function itemUid(id: number | string): string {
 // was never generated. Strip the cache segment to the direct media path (the URL
 // REST returned), which resolves correctly.
 function directImageUrl(url: string | undefined): string {
-    if (!url) return "/images/tyre-sample.png";
+    if (!url) return "";
     return url.replace(/\/media\/catalog\/product\/cache\/[^/]+\//, "/media/catalog/product/");
 }
 
-// size_display / pattern_display have NO GraphQL field anywhere in the schema, so we
-// reconstruct them (best-effort) from the product name to keep the cart 100% GraphQL.
-// e.g. "Bridgestone T 215/70 R15C R624Z 109S TL 2025" → size "215/70 R15C 2025", pattern "R624Z TL".
-function parseDisplays(name: string): { size_display: string; pattern_display: string } {
-    const sizeMatch = name.match(/(\d{2,3}\/\d{2,3}\s*R?\s*\d{2,3}[A-Z]?)/i);
-    const yearMatch = name.match(/\b(20\d{2})\b/);
-    const size = sizeMatch ? sizeMatch[1].replace(/\s+/g, " ").trim() : "";
-    const year = yearMatch ? yearMatch[1] : "";
-    const size_display = [size, year].filter(Boolean).join(" ");
-    let pattern_display = "";
-    if (sizeMatch) {
-        // Pattern lives between the size token and the load-index/year; keep "TL"/"TT" if present.
-        let rest = name.slice((sizeMatch.index ?? 0) + sizeMatch[0].length).trim();
-        if (year) rest = rest.replace(year, "").trim();
-        rest = rest.replace(/\b\d{2,3}[A-Z]\b/g, " ").replace(/\s+/g, " ").trim(); // strip load index e.g. 109S
-        pattern_display = rest;
+// Size / pattern / year of the cart items, from Magento's Klever product data
+// (kleverCategoryProducts — tyre_size, pattern, year — with the selected website's default
+// category and the customer's token; the same source the favourites page uses). The native
+// product type has no tyre_size and returns pattern as an option id. Nothing is parsed from
+// the product name: without Magento data the lines are left empty.
+async function kleverProductData(skus: string[], token: string, store: string, locale: string): Promise<Record<string, any>> {
+    const itemCodes = [...new Set(skus.map((sku) => sku.replace(/-\d{4}$/, "") || sku).filter(Boolean))];
+    if (itemCodes.length === 0) return {};
+    const categoryId = (await getStoreConfig(store, locale))?.default_category_id;
+    if (!categoryId) return {};
+    const res = await fetch(MAGENTO_GRAPHQL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Store: store, Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+            query: KLEVER_FAVORITE_PRODUCTS_ENRICH_QUERY,
+            variables: { categoryId, itemCode: itemCodes.join(","), pageSize: Math.max(10, itemCodes.length * 5) },
+        }),
+        cache: "no-store",
+    });
+    const json = await res.json().catch(() => null);
+    if (!json || Array.isArray(json.errors)) {
+        console.warn("[cart] Klever product data unavailable:", JSON.stringify(json?.errors ?? null).slice(0, 200));
+        return {};
     }
-    return { size_display, pattern_display };
+    const bySku: Record<string, any> = {};
+    for (const p of json?.data?.kleverCategoryProducts?.products ?? []) {
+        if (p?.sku) bySku[p.sku] = p;
+    }
+    return bySku;
 }
 
 // GET — customer cart (GraphQL: customerCart). Mapped to the CartContext shape.
@@ -94,9 +105,16 @@ export async function GET(req: Request) {
         const cart = json?.data?.customerCart;
         if (!cart) return NextResponse.json(await emptyCart(req));
 
-        const items = (Array.isArray(cart.items) ? cart.items : []).map((it: any) => {
+        const store = toStoreCode(getLocaleFromRequest(req), req);
+        const rawItems: any[] = Array.isArray(cart.items) ? cart.items : [];
+        const klever = await kleverProductData(rawItems.map((it) => it?.product?.sku ?? ""), token, store, getLocaleFromRequest(req))
+            .catch(() => ({} as Record<string, any>));
+
+        const items = rawItems.map((it: any) => {
             const name = it.product?.name ?? "";
-            const { size_display, pattern_display } = parseDisplays(name);
+            const kp = klever[it.product?.sku ?? ""];
+            const size_display = kp ? [kp.tyre_size, kp.year].filter(Boolean).join(" ") : "";
+            const pattern_display = kp?.pattern ? String(kp.pattern) : "";
             const item_id = Number(it.id) || 0;          // numeric quote item id (what CartContext + UI use)
             const qty = Number(it.quantity ?? 0);
             const row_total = Number(it.prices?.row_total?.value ?? 0);
@@ -105,8 +123,8 @@ export async function GET(req: Request) {
                 cart_item_uid: itemUid(it.id),           // base64 form (additive)
                 sku: it.product?.sku ?? "",
                 name,
-                // This query returns only row_total (no per-unit price) → derive unit price.
-                price: qty > 0 ? row_total / qty : row_total,
+                // Magento's unit price.
+                price: Number(it.prices?.price?.value ?? (qty > 0 ? row_total / qty : row_total)),
                 qty,
                 image_url: directImageUrl(it.product?.small_image?.url),
                 size_display,
@@ -115,15 +133,21 @@ export async function GET(req: Request) {
             };
         });
 
+        const taxes: any[] = Array.isArray(cart.prices?.applied_taxes) ? cart.prices.applied_taxes : [];
+        const discounts: any[] = Array.isArray(cart.prices?.discounts) ? cart.prices.discounts : [];
         const grand_total = Number(cart.prices?.grand_total?.value ?? 0);
         const subtotal = Number(cart.prices?.subtotal_excluding_tax?.value ?? 0);
         return NextResponse.json({
             items,
             items_count: Number(cart.total_quantity ?? items.reduce((s: number, i: any) => s + i.qty, 0)),
             subtotal,
-            // No tax breakdown in this query → derive from grand_total - subtotal.
-            tax_amount: Math.max(0, grand_total - subtotal),
-            tax_label: "Tax",
+            // Magento's applied tax lines (amount + the label set in Magento, per store view).
+            tax_amount: taxes.reduce((sum: number, t: any) => sum + Number(t?.amount?.value ?? 0), 0),
+            tax_label: taxes.map((t: any) => String(t?.label ?? "").trim()).filter(Boolean).join(", "),
+            // Magento's discount lines and the coupon applied to this website's cart.
+            discount_amount: discounts.reduce((sum: number, d: any) => sum + Math.abs(Number(d?.amount?.value ?? 0)), 0),
+            discount_label: discounts.map((d: any) => String(d?.label ?? "").trim()).filter(Boolean).join(", "),
+            applied_coupon: Array.isArray(cart.applied_coupons) && cart.applied_coupons[0]?.code ? String(cart.applied_coupons[0].code) : null,
             grand_total,
             currency_code: cart.prices?.grand_total?.currency,
             cart_id: cart.id ?? null,

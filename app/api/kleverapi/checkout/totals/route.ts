@@ -46,16 +46,26 @@ export async function GET(req: Request) {
         const incl = prices.subtotal_including_tax?.value;
         const excl = prices.subtotal_excluding_tax?.value;
         const tax_amount = taxFromApplied || (typeof incl === "number" && typeof excl === "number" ? incl - excl : 0);
-        const shipping_amount = json?.data?.cart?.shipping_addresses?.[0]?.selected_shipping_method?.amount?.value ?? 0;
+        // null when Magento has no shipping method on the cart yet (then no shipping line is shown).
+        const shipping_amount = json?.data?.cart?.shipping_addresses?.[0]?.selected_shipping_method?.amount?.value ?? null;
         const discount_amount = Array.isArray(prices.discounts)
             ? prices.discounts.reduce((sum: number, d: any) => sum + (d?.amount?.value ?? 0), 0)
             : 0;
 
+        // Magento's own tax lines (label per store view, e.g. the VAT rule title).
+        const taxes = Array.isArray(prices.applied_taxes)
+            ? prices.applied_taxes.map((t: any) => ({ label: t?.label ?? "", amount: t?.amount?.value ?? 0 }))
+            : [];
         return NextResponse.json({
             subtotal,
             tax_amount,
+            taxes,
             shipping_amount,
             discount_amount,
+            // Magento's discount label(s) for this cart (e.g. the coupon rule name).
+            discount_label: Array.isArray(prices.discounts)
+                ? prices.discounts.map((d: any) => String(d?.label ?? "").trim()).filter(Boolean).join(", ")
+                : "",
             grand_total: grand,
             currency_code: prices.grand_total?.currency,
         });

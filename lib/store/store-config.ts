@@ -7,6 +7,7 @@ import {
     URL_RESOLVER_QUERY,
     KLEVER_MENU_ITEMS_QUERY,
 } from "@/src/graphql/queries";
+import { KLEVER_SITE_LOGIN_WEBSITES_QUERY } from "@/src/graphql/mutations";
 import { magentoUrlToAppPath, toStoreCode } from "@/lib/store/website";
 import { isValidLocale, defaultLocale, type Locale } from "@/lib/i18n/config";
 
@@ -27,6 +28,9 @@ export type StoreConfig = {
     default_display_currency_code: string | null;
     /** Category the storefront menu lands on (null if Magento has no menu category). */
     default_category_id: number | null;
+    /** Website logo + label from Magento (kleverSiteLoginWebsites), null if Magento has none. */
+    website_logo: string | null;
+    website_label: string | null;
 };
 
 const TTL_MS = 10 * 60 * 1000;
@@ -58,14 +62,37 @@ async function resolveDefaultCategory(store: string, locale: Locale): Promise<nu
     return null;
 }
 
+/** Logo + label of this website, as Magento lists it in kleverSiteLoginWebsites (matched by website_id). */
+async function resolveWebsiteBranding(websiteId: number | null, locale: Locale, store: string): Promise<{ logo: string | null; label: string | null } | null> {
+    if (websiteId == null) return null;
+    try {
+        const data = await graphqlFetch<{ kleverSiteLoginWebsites: { website_id: number; label: string | null; logo: string | null }[] | null }>({
+            query: KLEVER_SITE_LOGIN_WEBSITES_QUERY, variables: { lang: locale }, store,
+        });
+        return (data?.kleverSiteLoginWebsites || []).find((w) => Number(w.website_id) === Number(websiteId)) ?? null;
+    } catch (err: any) {
+        console.warn(`[store-config] website branding lookup failed for website ${websiteId}:`, err?.message || err);
+        return null;
+    }
+}
+
 async function load(store: string, locale: Locale): Promise<StoreConfig | null> {
     try {
-        const data = await graphqlFetch<{ storeConfig: Omit<StoreConfig, "default_category_id"> }>({
+        const data = await graphqlFetch<{ storeConfig: Omit<StoreConfig, "default_category_id" | "website_logo" | "website_label"> }>({
             query: STORE_CONFIG_QUERY, store,
         });
         const sc = data?.storeConfig;
         if (!sc) return null;
-        return { ...sc, default_category_id: await resolveDefaultCategory(store, locale) };
+        const [defaultCategoryId, website] = await Promise.all([
+            resolveDefaultCategory(store, locale),
+            resolveWebsiteBranding(sc.website_id, locale, store),
+        ]);
+        return {
+            ...sc,
+            default_category_id: defaultCategoryId,
+            website_logo: website?.logo || null,
+            website_label: website?.label || null,
+        };
     } catch (err: any) {
         console.warn(`[store-config] storeConfig failed for ${store}:`, err?.message || err);
         return null;
@@ -92,13 +119,19 @@ export async function getRequestStoreConfig(request: Request, locale: string): P
     return getStoreConfig(toStoreCode(locale, request), locale);
 }
 
-/** Store config for the current server-component render (reads cookies/headers). */
-export async function getCurrentStoreConfig(): Promise<StoreConfig | null> {
+/** Store view code + UI language of the current server-component render (reads cookies/headers). */
+export async function getCurrentStore(): Promise<{ store: string; locale: Locale }> {
     const { cookies, headers } = await import("next/headers");
     const [cookieStore, headerList] = await Promise.all([cookies(), headers()]);
     const fromHeader = headerList.get("x-locale");
     const fromCookie = cookieStore.get("NEXT_LOCALE")?.value;
     const locale = [fromHeader, fromCookie].find((v): v is Locale => !!v && isValidLocale(v)) ?? defaultLocale;
     const cookieHeader = cookieStore.getAll().map((c) => `${c.name}=${encodeURIComponent(c.value)}`).join("; ");
-    return getStoreConfig(toStoreCode(locale, cookieHeader), locale);
+    return { store: toStoreCode(locale, cookieHeader), locale };
+}
+
+/** Store config for the current server-component render (reads cookies/headers). */
+export async function getCurrentStoreConfig(): Promise<StoreConfig | null> {
+    const { store, locale } = await getCurrentStore();
+    return getStoreConfig(store, locale);
 }

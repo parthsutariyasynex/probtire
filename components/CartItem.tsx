@@ -60,7 +60,7 @@ const CartItem: React.FC<CartItemProps> = ({ item, currencyCode, onUpdateQty, on
             <div className="lg:hidden">
                 <div className="flex gap-4">
                     <div className="w-20 h-20 bg-white border border-[#ddd] p-2 flex items-center justify-center rounded-lg shadow-sm">
-                        <img src={item.image_url || "/images/tyre-sample.png"} alt={item.name} className="max-w-full max-h-full object-contain" />
+                        {item.image_url && <img src={item.image_url} alt={item.name} className="max-w-full max-h-full object-contain" />}
                     </div>
                     <div className="flex-1 min-w-0 pt-1">
                         <span className="text-caption font-bold text-brand-yellow-dark uppercase tracking-widest mb-1 block">{t("quickOrder.title")}</span>
@@ -112,11 +112,13 @@ const CartItem: React.FC<CartItemProps> = ({ item, currencyCode, onUpdateQty, on
                 {/* Product: Image + Name (45%) */}
                 <div className="w-[45%] flex items-center gap-4">
                     <div className="w-12 h-12 bg-white flex items-center justify-center flex-shrink-0">
-                        <img
-                            src={item.image_url || "/images/tyre-sample.png"}
-                            alt={item.name}
-                            className="max-w-full max-h-full object-contain"
-                        />
+                        {item.image_url && (
+                            <img
+                                src={item.image_url}
+                                alt={item.name}
+                                className="max-w-full max-h-full object-contain"
+                            />
+                        )}
                     </div>
                     <div className="min-w-0">
                         <h3 className="text-xs xl:text-sm font-bold text-black uppercase tracking-wide overflow-hidden text-ellipsis whitespace-nowrap" dir="ltr" style={{ unicodeBidi: "isolate" }}>{item.name}</h3>

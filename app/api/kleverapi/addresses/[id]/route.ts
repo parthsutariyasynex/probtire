@@ -1,3 +1,4 @@
+import { getLocaleFromRequest } from "@/lib/api/magento-url";
 import { NextResponse } from 'next/server';
 import { CUSTOMER_ADDRESSES_QUERY } from '@/src/graphql/queries';
 import { UPDATE_CUSTOMER_ADDRESS_MUTATION, DELETE_CUSTOMER_ADDRESS_MUTATION } from '@/src/graphql/mutations';
@@ -55,7 +56,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     try {
         const { id } = await params;
         const authHeader = request.headers.get('Authorization');
-        const locale = request.headers.get('x-locale') || 'en';
+        const locale = getLocaleFromRequest(request);
         if (!authHeader) {
             return NextResponse.json({ message: 'Authorization required' }, { status: 401 });
         }
@@ -95,7 +96,7 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
             return NextResponse.json({ message: 'Invalid address id' }, { status: 400 });
         }
         const authHeader = request.headers.get('Authorization');
-        const locale = request.headers.get('x-locale') || 'en';
+        const locale = getLocaleFromRequest(request);
         if (!authHeader) {
             return NextResponse.json({ message: 'Authorization required' }, { status: 401 });
         }
@@ -131,7 +132,7 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
             return NextResponse.json({ message: 'Invalid address id' }, { status: 400 });
         }
         const authHeader = request.headers.get('Authorization');
-        const locale = request.headers.get('x-locale') || 'en';
+        const locale = getLocaleFromRequest(request);
         if (!authHeader) {
             return NextResponse.json({ message: 'Authorization required' }, { status: 401 });
         }

@@ -4,6 +4,7 @@ import React from "react";
 import { Check } from "lucide-react";
 import { Address } from "@/modules/checkout/hooks/useCheckout";
 import { useTranslation } from "@/hooks/useTranslation";
+import { useCountryNames } from "@/hooks/useCountryNames";
 
 interface SelectedAddressCardProps {
     address: Address;
@@ -12,6 +13,7 @@ interface SelectedAddressCardProps {
 
 const SelectedAddressCard: React.FC<SelectedAddressCardProps> = ({ address, onEdit }) => {
     const { t } = useTranslation();
+    const countryName = useCountryNames();
     return (
         <div className="relative flex items-center justify-between w-full p-4 bg-white border-2 border-[#00A651] rounded-sm transition-all duration-300">
             {/* Green Square Box with Check Icon at Top-Right */}
@@ -24,7 +26,7 @@ const SelectedAddressCard: React.FC<SelectedAddressCardProps> = ({ address, onEd
                 <p className="text-[13px] md:text-[14px] font-[800] text-black leading-relaxed" dir="ltr" style={{ unicodeBidi: "isolate" }}>
                     <span className="font-[800] text-black">{address.firstname} {address.lastname}</span>,{" "}
                     {address.street} {address.city} {address.postcode}{" "}
-                    {address.country_id === 'SA' ? t("data.Saudi Arabia") : address.country_id} {address.telephone}
+                    {countryName(address.country_id)} {address.telephone}
                     {[
                         address.custom_attributes?.find(ca => ca.attribute_code === 'store_view')?.value,
                         address.custom_attributes?.find(ca => ca.attribute_code === 'region_ship_to_party')?.value

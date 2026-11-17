@@ -155,8 +155,19 @@ function SidebarFilter({
 }) {
     const [filterGroups, setFilterGroups] = useState<FilterGroupData[]>([]);
     const lp = useLocalePath();
-    const { t, isRtl } = useTranslation();
+    const { t, isRtl, locale } = useTranslation();
     const [loading, setLoading] = useState<boolean>(true);
+
+    // "User Guides" button only for websites that have the Magento CMS page "user-guides".
+    const [hasUserGuides, setHasUserGuides] = useState(false);
+    useEffect(() => {
+        let cancelled = false;
+        fetch(`/api/kleverapi/cms-page-exists?identifier=user-guides&lang=${locale}`, { headers: { "x-locale": locale } })
+            .then((r) => (r.ok ? r.json() : null))
+            .then((d) => { if (!cancelled) setHasUserGuides(d?.exists === true); })
+            .catch(() => { if (!cancelled) setHasUserGuides(false); });
+        return () => { cancelled = true; };
+    }, [locale]);
     const [error, setError] = useState<string | null>(null);
     const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
 
@@ -298,6 +309,7 @@ function SidebarFilter({
                         )}
                     </div>
 
+                    {hasUserGuides && (
                     <div className="p-4 border-t border-gray-100 bg-white">
                         <Link href={lp("/guides")}>
                             <div className="bg-brand-yellow rounded-sm p-4 flex items-center gap-4 cursor-pointer hover:bg-black group transition-all">
@@ -306,6 +318,7 @@ function SidebarFilter({
                             </div>
                         </Link>
                     </div>
+                    )}
                 </div>
             </div>
         </aside>

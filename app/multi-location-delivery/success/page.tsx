@@ -32,12 +32,12 @@ const MultiShippingSuccessContent = () => {
     const [orders, setOrders] = useState<OrderRow[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [hasFetched, setHasFetched] = useState(false);
+    const [message, setMessage] = useState("");
 
     useEffect(() => {
         if (hasFetched) return;
-        if (!orderId || orderId === "placed") {
-            if (!orderId) router.push(lp("/"));
-            setIsLoading(false);
+        if (!orderId) {
+            router.push(lp("/"));
             return;
         }
 
@@ -47,38 +47,19 @@ const MultiShippingSuccessContent = () => {
             try {
                 // Call success API with comma-separated entity_ids
                 // e.g. /api/kleverapi/multishipping/success/28675,28676,28677
+                // Magento: { message, orders[{ order_id, order_increment_id, shipping_address }] }
                 const data = await fetchMultiShippingSuccess(orderId);
-                console.log(">>> Multi-Shipping Success Data:", data);
-
-                // Magento returns: { message: "...", orders: [...], continue_shopping_url: "..." }
-                const apiOrders = Array.isArray(data?.orders) ? data.orders
-                    : Array.isArray(data) ? data
-                        : [];
-
-                const parsed: OrderRow[] = apiOrders.map((o: any) => ({
-                    order_id: String(o.order_id || ""),
-                    order_increment_id: o.order_increment_id || o.increment_id || String(o.order_id || ""),
-                    shipping_address: o.shipping_address || o.shipping_address_display || o.ship_to || "",
-                }));
-
-                if (parsed.length > 0) {
-                    setOrders(parsed);
-                } else {
-                    // Fallback: show the order IDs from URL
-                    setOrders(orderId.split(",").map(id => ({
-                        order_id: id,
-                        order_increment_id: id,
-                        shipping_address: "",
+                setMessage(data?.message || "");
+                setOrders((Array.isArray(data?.orders) ? data.orders : [])
+                    .filter((o: any) => o?.order_id && o?.order_increment_id)
+                    .map((o: any) => ({
+                        order_id: String(o.order_id),
+                        order_increment_id: String(o.order_increment_id),
+                        shipping_address: o.shipping_address || "",
                     })));
-                }
             } catch (error) {
+                // Nothing is made up: the page says the details could not be loaded.
                 console.error("Multi-Shipping Success API Error:", error);
-                // Fallback: show order IDs from URL
-                setOrders(orderId.split(",").map(id => ({
-                    order_id: id,
-                    order_increment_id: id,
-                    shipping_address: "",
-                })));
             }
             setIsLoading(false);
         };
@@ -99,9 +80,11 @@ const MultiShippingSuccessContent = () => {
                     <h1 className="text-h2 md:text-h1 font-black text-black uppercase tracking-tight mb-4">
                         {t("multi.thankYou")}
                     </h1>
-                    <p className="text-body md:text-body-lg text-black font-medium max-w-4xl mx-auto leading-relaxed">
-                        {t("multi.confirmationEmail")}
-                    </p>
+                    {message && (
+                        <p className="text-body md:text-body-lg text-black font-medium max-w-4xl mx-auto leading-relaxed">
+                            {message}
+                        </p>
+                    )}
                 </div>
 
                 {/* Successfully ordered */}
@@ -120,19 +103,19 @@ const MultiShippingSuccessContent = () => {
 
                     {/* Table Body */}
                     <div className="bg-white">
-                        {orders.length > 0 ? orders.map((order, index) => (
+                        {orders.length > 0 ? orders.map((order) => (
                             <div
-                                key={index}
+                                key={order.order_id}
                                 className="flex border-b border-gray-100 last:border-b-0 border-l-4 border-l-brand-yellow py-5 px-6 items-start bg-[#fafafa]"
                             >
                                 <div className="w-[180px] md:w-[220px] flex-shrink-0">
-                                    <span className="text-body md:text-body-lg font-black text-black">
+                                    <Link href={lp(`/my-orders/${order.order_id}`)} className="text-body md:text-body-lg font-black text-black underline hover:text-brand-yellow">
                                         {order.order_increment_id}
-                                    </span>
+                                    </Link>
                                 </div>
                                 <div className="flex-1">
                                     <p className="text-body md:text-body-lg text-gray-700 font-medium">
-                                        {order.shipping_address || t("m.address")}
+                                        {order.shipping_address}
                                     </p>
                                 </div>
                             </div>
