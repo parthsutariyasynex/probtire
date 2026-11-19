@@ -13,6 +13,8 @@ interface PortalDropdownProps {
     buttonClassName?: string;
     minWidth?: number;
     ltrLabels?: boolean;
+    /** Show a search box above the options that filters them as you type (like Magento's select2). */
+    searchable?: boolean;
 }
 
 export default function PortalDropdown({
@@ -24,8 +26,10 @@ export default function PortalDropdown({
     buttonClassName = "",
     minWidth = 70,
     ltrLabels = false,
+    searchable = false,
 }: PortalDropdownProps) {
     const [isOpen, setIsOpen] = useState(false);
+    const [query, setQuery] = useState("");
     const [mounted, setMounted] = useState(false);
     const triggerRef = useRef<HTMLButtonElement>(null);
     const dropdownRef = useRef<HTMLDivElement>(null);
@@ -56,14 +60,18 @@ export default function PortalDropdown({
         if (isOpen) {
             window.addEventListener("keydown", handleKeyDown);
             window.addEventListener('scroll', handleClose, { passive: true });
-            window.addEventListener('resize', handleClose);
+            // a search box opens the phone keyboard, which resizes the window — keep the list open then
+            if (!searchable) window.addEventListener('resize', handleClose);
             return () => {
                 window.removeEventListener("keydown", handleKeyDown);
                 window.removeEventListener('scroll', handleClose);
                 window.removeEventListener('resize', handleClose);
             };
         }
-    }, [isOpen]);
+    }, [isOpen, searchable]);
+
+    // a fresh search each time the list opens
+    useEffect(() => { if (!isOpen) setQuery(""); }, [isOpen]);
 
     const handleToggle = useCallback(() => {
         if (!isOpen) updatePos();
@@ -71,6 +79,8 @@ export default function PortalDropdown({
     }, [isOpen, updatePos]);
 
     const selected = options.find(o => String(o.value) === String(value));
+    const q = query.trim().toLowerCase();
+    const shown = searchable && q ? options.filter(o => o.label.toLowerCase().includes(q)) : options;
 
     return (
         <div className={`relative ${className}`}>
@@ -101,7 +111,19 @@ export default function PortalDropdown({
                         }}
                         className="bg-white border border-gray-200 rounded-md shadow-xl overflow-hidden max-h-[250px] overflow-y-auto"
                     >
-                        {options.map((opt) => (
+                        {searchable && (
+                            <div className="sticky top-0 bg-white p-2 border-b border-gray-100">
+                                <input
+                                    type="text"
+                                    autoFocus
+                                    value={query}
+                                    onChange={(e) => setQuery(e.target.value)}
+                                    className="w-full h-9 border border-gray-300 rounded-sm px-2 text-body text-black outline-none focus:border-brand-yellow"
+                                    {...(ltrLabels ? { dir: "ltr" } : {})}
+                                />
+                            </div>
+                        )}
+                        {shown.map((opt) => (
                             <button
                                 key={opt.value}
                                 type="button"

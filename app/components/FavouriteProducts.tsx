@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useLayoutEffect, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { ShoppingCart, X, Info, Star, Trash2, ChevronsUpDown, ChevronUp, ChevronDown, Image as ImageIcon } from "lucide-react";
 import { formatPrice, redirectToLogin } from "@/utils/helpers";
@@ -11,7 +11,9 @@ import Drawer from "./Drawer";
 import Modal from "./Modal";
 import Price from "./Price";
 import AddToCartPopup from "./AddToCartPopup";
-import { FavouriteProductsSkeleton } from "@/components/skeletons";
+import { FavouriteProductsSkeleton, FavouriteProductsEmptySkeleton } from "@/components/skeletons";
+import { getClientLocale } from "@/lib/api/api-client";
+import { toStoreCode } from "@/lib/store/website";
 
 import { api } from "@/lib/api/api-client";
 import { useTranslation } from "@/hooks/useTranslation";
@@ -72,6 +74,23 @@ const ACTION_HEADER_KEY = 'm.action';
 const BASE_COL_WIDTHS = ['8%', '13%', '13%', '6%', '7%', '7%', '9%', '9%', '10%'] as const;
 const ACTION_COL_WIDTH = '110px';
 
+// Magento's empty-list warning, remembered for this tab per store view + login, so a list that was
+// empty last time shows the warning-shaped skeleton (not the table one) and its text at once.
+const EMPTY_CACHE_PREFIX = "fav_empty_msg_v1";
+function emptyCacheKey(token: string | null): string | null {
+    if (!token || typeof document === "undefined") return null;
+    return `${EMPTY_CACHE_PREFIX}|${toStoreCode(getClientLocale(), document.cookie)}|${token.slice(-24)}`;
+}
+function readEmptyCache(token: string | null): string | null {
+    const key = emptyCacheKey(token);
+    try { return key ? sessionStorage.getItem(key) : null; } catch { return null; }
+}
+function writeEmptyCache(token: string | null, message: string | null) {
+    const key = emptyCacheKey(token);
+    if (!key) return;
+    try { if (message) sessionStorage.setItem(key, message); else sessionStorage.removeItem(key); } catch { /* storage unavailable */ }
+}
+
 export default function FavouriteProducts({ title }: { title?: React.ReactNode }) {
     const router = useRouter();
     const { t } = useTranslation();
@@ -81,6 +100,19 @@ export default function FavouriteProducts({ title }: { title?: React.ReactNode }
 
     const [favProducts, setFavProducts] = useState<Product[]>([]);
     const [totalCount, setTotalCount] = useState(0);
+    // true once Magento's list has loaded without error (an empty list then is really empty)
+    const [listLoaded, setListLoaded] = useState(false);
+    // Magento's own empty-list warning ("You have no items in your favourite products.")
+    const [emptyMessage, setEmptyMessage] = useState<string | null>(null);
+    const [emptyMessageError, setEmptyMessageError] = useState(false);
+    const [emptyMessageAttempt, setEmptyMessageAttempt] = useState(0);
+    // The list was empty last time (this tab, store view, login) → empty-shaped skeleton while loading.
+    const [expectEmpty, setExpectEmpty] = useState(false);
+    useLayoutEffect(() => {
+        const cached = readEmptyCache(authToken);
+        setExpectEmpty(!!cached);
+        if (cached) setEmptyMessage(cached);
+    }, [authToken]);
     const [loading, setLoading] = useState(true);
     const [addingToCart, setAddingToCart] = useState<string | null>(null);
     const [quantities, setQuantities] = useState<Record<number, number>>({});
@@ -232,6 +264,7 @@ export default function FavouriteProducts({ title }: { title?: React.ReactNode }
 
             setFavProducts(items);
             setTotalCount(total);
+            setListLoaded(true);
 
             const initialQtys: Record<number, number> = {};
             items.forEach((p: Product) => {
@@ -253,6 +286,31 @@ export default function FavouriteProducts({ title }: { title?: React.ReactNode }
         // Trigger load even if session is loading/null (it will check localStorage fallback)
         loadFavourites();
     }, [loadFavourites]);
+
+    // The list has items now → forget the remembered empty state.
+    useEffect(() => {
+        if (listLoaded && (favProducts.length > 0 || totalCount > 0)) {
+            writeEmptyCache(authToken, null);
+            setExpectEmpty(false);
+        }
+    }, [listLoaded, favProducts.length, totalCount, authToken]);
+
+    // Empty list → Magento's own warning text for this website + language.
+    const isEmptyList = listLoaded && !loading && totalCount === 0 && favProducts.length === 0;
+    useEffect(() => {
+        if (!isEmptyList || emptyMessage || !authToken) return;
+        let cancelled = false;
+        setEmptyMessageError(false);
+        fetch("/api/kleverapi/favorite-products/empty-message", { headers: { Authorization: `Bearer ${authToken}` }, cache: "no-store" })
+            .then((r) => (r.ok ? r.json() : Promise.reject(r.status)))
+            .then((d) => {
+                if (cancelled) return;
+                if (d?.message) { setEmptyMessage(d.message); writeEmptyCache(authToken, d.message); }
+                else setEmptyMessageError(true);
+            })
+            .catch(() => { if (!cancelled) setEmptyMessageError(true); });
+        return () => { cancelled = true; };
+    }, [isEmptyList, emptyMessage, authToken, emptyMessageAttempt]);
 
     // Scroll and Layout shift is now managed internally by the Modal/Drawer component
 
@@ -352,10 +410,45 @@ export default function FavouriteProducts({ title }: { title?: React.ReactNode }
     const endItem = Math.min(currentPage * pageSize, totalCount);
 
     if (loading && favProducts.length === 0) {
-        return <FavouriteProductsSkeleton count={10} />;
+        return expectEmpty ? <FavouriteProductsEmptySkeleton /> : <FavouriteProductsSkeleton count={10} />;
     }
 
     const totalPages = Math.ceil(totalCount / pageSize);
+
+    // Empty list: only Magento's warning, as Magento shows it (no table, no sort bar).
+    if (isEmptyList) {
+        return (
+            <div className="flex-1 w-full px-4 md:px-6 lg:px-8 py-4 md:py-6 lg:py-5 bg-white min-w-0">
+                <div className="mb-5">
+                    {typeof title === 'string' ? (
+                        <h1 className="text-h3 md:text-h1-sm font-semibold text-black uppercase tracking-tight">{title}</h1>
+                    ) : title || (
+                        <h1 className="text-h3 md:text-h1-sm font-semibold text-black uppercase tracking-tight">{t("nav.favouriteProducts")}</h1>
+                    )}
+                </div>
+                {emptyMessage ? (
+                    <div role="alert" className="flex items-center gap-3 bg-[#fdf0d5] text-[#6f4400] px-4 py-3 rounded-sm text-body">
+                        <svg viewBox="0 0 24 24" className="w-5 h-5 shrink-0 fill-[#c07600]" aria-hidden="true">
+                            <path d="M12 2 1 21h22L12 2zm1 15h-2v-2h2v2zm0-4h-2V9h2v4z" />
+                        </svg>
+                        <span>{emptyMessage}</span>
+                    </div>
+                ) : emptyMessageError ? (
+                    <div className="bg-red-50 border border-red-100 text-red-700 p-4 rounded-md flex flex-col sm:flex-row sm:items-center gap-3">
+                        <span className="text-body-lg font-medium flex-1">{t("favorites.errorLoading")}</span>
+                        <button
+                            onClick={() => setEmptyMessageAttempt((n) => n + 1)}
+                            className="px-4 py-1.5 bg-white border border-red-200 text-body text-red-700 hover:bg-red-100 transition-colors rounded-xs cursor-pointer"
+                        >
+                            {t("common.tryAgain")}
+                        </button>
+                    </div>
+                ) : (
+                    <FavouriteProductsEmptySkeleton withTitle={false} />
+                )}
+            </div>
+        );
+    }
 
     return (
         <div className="flex-1 w-full px-4 md:px-6 lg:px-8 py-4 md:py-6 lg:py-5 bg-white min-w-0">

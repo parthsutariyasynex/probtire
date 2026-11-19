@@ -344,7 +344,7 @@ export default function Navbar() {
   }, [(session as any)?.accessToken]);
 
   const showSearchIcon = Boolean(
-    isAuthenticated && !shouldHideCartActions && pathname !== "/login" && !isProductsListingPage
+    isAuthenticated && !shouldHideCartActions && pathname !== "/login"
   );
 
   const [isProfileOpen, setIsProfileOpen] = useState(false);

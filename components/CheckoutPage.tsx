@@ -850,7 +850,7 @@ const CheckoutPageUI: React.FC = () => {
             <div className="min-h-screen bg-white">
                 <div className="max-w-7xl mx-auto py-24 px-6 text-center">
                     <ShoppingBag size={64} className="mx-auto text-gray-200 mb-6" />
-                    <h1 className="text-2xl font-black text-black uppercase tracking-widest mb-4">{t("cart.empty")}</h1>
+                    <h1 className="text-2xl font-bold text-black uppercase tracking-widest mb-4">{t("cart.empty")}</h1>
                     <p className="text-gray-500 mb-8 max-w-md mx-auto">{t("common.loading")}</p>
                     <Link href={lp("/products")} className="inline-flex items-center gap-2 bg-brand-yellow text-black font-black px-8 py-4 text-body-sm uppercase tracking-widest hover:bg-black hover:text-white transition-all">
                         {t("m.products")}

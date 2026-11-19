@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getLocaleFromRequest } from "@/lib/api/magento-url";
 import { getRequestToken } from "@/lib/api/auth-helper";
-import { KLEVER_MENU_ITEMS_QUERY } from "@/src/graphql/queries";
+import { KLEVER_MENU_ITEMS_QUERY, MENU_URL_RESOLVER_QUERY, CMS_PAGE_EXISTS_QUERY } from "@/src/graphql/queries";
 import { graphqlFetch, isGraphQLRequestError } from "@/src/lib/graphqlFetch";
 import { toStoreCode, magentoUrlToAppPath } from "@/lib/store/website";
 import { isValidLocale, defaultLocale } from "@/lib/i18n/config";
@@ -20,17 +20,7 @@ import { isValidLocale, defaultLocale } from "@/lib/i18n/config";
 // If Magento cannot be reached the route returns 502 (the Navbar keeps its last menu);
 // nothing is guessed.
 
-const MENU_URL_RESOLVER_QUERY = /* GraphQL */ `
-  query MenuUrlResolver($url: String!) {
-    urlResolver(url: $url) { type id relative_url }
-  }
-`;
 
-const CMS_PAGE_EXISTS_QUERY = /* GraphQL */ `
-  query MenuCmsPageExists($identifier: String!) {
-    cmsPage(identifier: $identifier) { identifier }
-  }
-`;
 
 interface MagentoMenuItem {
     code: string | null;

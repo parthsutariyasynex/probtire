@@ -11,6 +11,8 @@ import Sidebar from "@/components/Sidebar";
 import { toast } from "react-hot-toast";
 import { useCart } from "@/modules/cart/context/CartContext";
 import { OrderDetailSkeleton } from "@/components/skeletons";
+import { useMagentoLabel } from "@/hooks/useMagentoLabel";
+import { useCountryNames } from "@/hooks/useCountryNames";
 
 export default function OrderDetailsPage() {
     const { data: session, status: authStatus } = useSession();
@@ -20,6 +22,11 @@ export default function OrderDetailsPage() {
     const lp = useLocalePath();
     const { orderId } = useParams();
     const { refetchCart } = useCart();
+    // Labels Magento itself translates for this store view ("" until loaded / when Magento has none).
+    const magentoSubtotalLabel = useMagentoLabel("Subtotal", "");
+    const magentoTaxLabel = useMagentoLabel("Tax", "");
+    const countryName = useCountryNames();
+    const [activeTab, setActiveTab] = useState<"items" | "invoices">("items");
 
     const [order, setOrder] = useState<any>(null);
     const [isLoading, setIsLoading] = useState(true);
@@ -31,7 +38,8 @@ export default function OrderDetailsPage() {
     const [openingAttachmentId, setOpeningAttachmentId] = useState<string | null>(null);
     const [isCancelling, setIsCancelling] = useState(false);
     const [confirmComment, setConfirmComment] = useState("");
-    const [selectedFile, setSelectedFile] = useState<File | null>(null);
+    // Files picked in Magento's "Order Check" form (Magento's input takes several: attachment[]).
+    const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
     const [isConfirming, setIsConfirming] = useState(false);
     const [isConfirmed, setIsConfirmed] = useState(false);
     const permissionDeniedRef = React.useRef(false);
@@ -296,41 +304,45 @@ export default function OrderDetailsPage() {
     };
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (e.target.files && e.target.files.length > 0) {
-            const file = e.target.files[0];
+        const picked = Array.from(e.target.files ?? []);
+        e.target.value = "";
+        if (picked.length === 0) return;
+        // The file types Magento's form lists ("Allowed file types: …").
+        const allowedExts: string[] = order?.extra_info?.order_check?.allowedExtensions ?? [];
+        const accepted: File[] = [];
+        for (const file of picked) {
             const ext = file.name.split('.').pop()?.toLowerCase();
-            const allowedExts = ["jpg", "jpeg", "png", "zip", "rar", "docx", "doc", "pdf", "xls", "xlsx", "csv", "msg", "eml"];
-
-            if (ext && !allowedExts.includes(ext)) {
+            if (allowedExts.length > 0 && (!ext || !allowedExts.includes(ext))) {
                 toast.error(t("orderDetails.invalidFileType") || "Invalid file type");
-                return;
+                continue;
             }
-
             if (file.size > 10 * 1024 * 1024) {
                 toast.error(t("orderDetails.fileTooLarge") || "File size must be less than 10MB");
-                return;
+                continue;
             }
-
-            setSelectedFile(file);
+            accepted.push(file);
         }
+        if (accepted.length === 0) return;
+        const multiple = order?.extra_info?.order_check?.multiple !== false;
+        setSelectedFiles((prev) => (multiple ? [...prev, ...accepted] : accepted.slice(0, 1)));
     };
 
     const handleConfirmOrder = async (e: React.FormEvent) => {
         e.preventDefault();
         const token = (session as any)?.accessToken;
         if (!token) {
-            toast.error(t("orders.mustLoggedIn") || "Please log in");
+            toast.error(t("orders.mustLoggedIn"));
             return;
         }
 
         setIsConfirming(true);
-        const toastId = toast.loading(t("orderDetails.confirming") || "Confirming order...");
+        const toastId = toast.loading(t("orderDetails.confirming"));
         try {
             const attachmentsPayload: any[] = [];
-            if (selectedFile) {
+            for (const file of selectedFiles) {
                 const base64Data = await new Promise<string>((resolve, reject) => {
                     const reader = new FileReader();
-                    reader.readAsDataURL(selectedFile);
+                    reader.readAsDataURL(file);
                     reader.onload = () => {
                         const base64 = (reader.result as string).split(",")[1];
                         resolve(base64);
@@ -339,7 +351,7 @@ export default function OrderDetailsPage() {
                 });
 
                 attachmentsPayload.push({
-                    file_name: selectedFile.name,
+                    file_name: file.name,
                     file_content: base64Data
                 });
             }
@@ -348,7 +360,8 @@ export default function OrderDetailsPage() {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
-                    Authorization: `Bearer ${token}`
+                    Authorization: `Bearer ${token}`,
+                    "x-locale": locale,
                 },
                 body: JSON.stringify({
                     comment: confirmComment,
@@ -356,14 +369,15 @@ export default function OrderDetailsPage() {
                 })
             });
 
-            const data = await res.json();
-            if (!res.ok || data.success === false) {
-                throw new Error(data.message || "Failed to confirm order");
+            const data = await res.json().catch(() => null);
+            if (!res.ok || data?.success !== true) {
+                // Magento's own message when it refuses.
+                throw new Error(data?.message || t("orderDetails.confirmFailed"));
             }
 
-            toast.success(t("orderDetails.confirmSuccess") || "Order confirmed successfully", { id: toastId });
+            toast.success(data?.message || t("orderDetails.confirmSuccess"), { id: toastId });
             setIsConfirmed(true);
-            setSelectedFile(null);
+            setSelectedFiles([]);
             setConfirmComment("");
 
             // Refresh order info and attachments list
@@ -371,7 +385,7 @@ export default function OrderDetailsPage() {
             fetchAttachments();
         } catch (err: any) {
             console.error("Order confirmation error:", err);
-            toast.error(err.message || t("orderDetails.confirmFailed") || "Error confirming order", { id: toastId });
+            toast.error(err.message || t("orderDetails.confirmFailed"), { id: toastId });
         } finally {
             setIsConfirming(false);
         }
@@ -509,7 +523,26 @@ export default function OrderDetailsPage() {
     const paymentMethod = order.payment?.additional_information?.[0] || order.payment?.method || "N/A";
     const statusLower = order.status?.toLowerCase() || "";
     const isCancelable = statusLower.includes("pending") || statusLower.includes("holded");
-    const isCheckPending = statusLower === "approval_pending" || statusLower === "check_pending" || statusLower.includes("pending");
+    // Reorder: Magento's own available_actions for this order (plus the account-type rule).
+    const canReorder = !shouldHideCartActions
+        && (!Array.isArray(order.available_actions) || order.available_actions.includes("REORDER"));
+    const invoices: any[] = Array.isArray(order.invoices) ? order.invoices : [];
+    const comments: any[] = Array.isArray(order.comments) ? order.comments : [];
+    // Tax row title: Magento's storefront translation of "Tax", else the order's own tax title.
+    const taxLabel = magentoTaxLabel
+        || (order.totals?.tax_label ? String(order.totals.tax_label).replace(/(\d+)\.0+%/, "$1%") : "")
+        || t("orderDetails.vat");
+    const subtotalLabel = magentoSubtotalLabel || t("orderDetails.itemsTotal");
+    const shippingAmount = Number(order.shipping_amount) || 0;
+    const discountAmount = Number(order.discount_amount) || 0;
+    // Magento's address line: "City, Region, Postcode"
+    const cityLine = (a: any) => [a?.city, a?.region, a?.postcode].filter((v) => v != null && String(v).trim() !== "").join(", ");
+    // "Order Check" — shown exactly when Magento's own order page shows its Order Check form to
+    // this login (e.g. a Sales Person on an order waiting for the check); texts are Magento's.
+    const orderCheck = order.extra_info?.order_check ?? null;
+    const isCheckPending = !!orderCheck;
+    // Magento's "Order Comment" box (Order Information).
+    const orderComment = order.extra_info?.order_comment ?? null;
 
     return (
         <div className="min-h-screen flex flex-col w-full bg-surface font-rubik">
@@ -523,7 +556,7 @@ export default function OrderDetailsPage() {
                     <div className="flex flex-col mb-10">
                         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 md:mb-10 border-b-2 border-brand-yellow pb-2 gap-2 sm:gap-0">
                             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-4">
-                                <h1 className="text-h3 md:text-[26px] font-black text-black uppercase tracking-tight">
+                                <h1 className="text-h3 md:text-[26px] font-bold text-black uppercase tracking-tight">
                                     {t("orderDetails.orderHash")} {order.increment_id}
                                 </h1>
 
@@ -532,16 +565,16 @@ export default function OrderDetailsPage() {
                                         order.status?.toLowerCase().includes('cancel') ? 'bg-red-100 text-red-700' :
                                             'bg-gray-100 text-gray-700'
                                     }`}>
-                                    {formatStatus(order.status)}
+                                    {order.status_label || formatStatus(order.status)}
                                 </span>
                             </div>
                             <div className="text-gray-500 font-bold uppercase tracking-widest text-label">
-                                {formatDate(order.created_at)}
+                                {t("orderDetails.orderDate")} {order.order_date_label || formatDate(order.created_at)}
                             </div>
                         </div>
 
                         <div className="flex flex-col sm:flex-row justify-start items-stretch sm:items-center gap-3 w-full">
-                            {!shouldHideCartActions && (
+                            {canReorder && (
                                 <button
                                     onClick={handleReorder}
                                     className="bg-brand-yellow hover:bg-brand-yellow-dark text-black font-black py-2.5 px-6 md:px-8 rounded-sm text-label uppercase tracking-widest transition-all shadow-sm active:scale-95 border border-brand-yellow-dark w-full sm:w-auto"
@@ -579,104 +612,170 @@ export default function OrderDetailsPage() {
                         </div>
                     </div>
 
-                    {/* Order Check Section */}
+                    {/* Order Check Section — Magento's own form (#confirm-order-form) and texts */}
                     {isCheckPending && !isConfirmed && (
-                        <div className="bg-white rounded-md border border-subtle overflow-hidden mb-10 shadow-sm no-print">
-                            <div className="border-b border-subtle px-3 md:px-6 py-3 md:py-4 bg-gray-50">
-                                <h2 className="text-xs font-black text-black uppercase tracking-widest">
-                                    {t("orderDetails.orderCheck")}
-                                </h2>
-                            </div>
-                            <form onSubmit={handleConfirmOrder} className="p-4 md:p-6 space-y-6">
+                        <div className="mb-10 no-print">
+                            {orderCheck.title && (
+                                <div className="border-b border-[#ccc] pb-2 mb-6">
+                                    <h2 className="text-h3-sm md:text-subheading font-black text-black uppercase tracking-tight">
+                                        {orderCheck.title}
+                                    </h2>
+                                </div>
+                            )}
+                            <form onSubmit={handleConfirmOrder} className="space-y-6">
                                 <div className="space-y-2">
-                                    <label className="block text-xs font-black text-black uppercase tracking-wider">
-                                        {t("orderDetails.attachment")}
+                                    {orderCheck.attachmentLabel && (
+                                        <span className="block text-body font-bold text-black">{orderCheck.attachmentLabel}</span>
+                                    )}
+                                    <label className="flex flex-col items-center justify-center gap-1 px-4 py-6 border-2 border-dashed border-[#888] bg-[#ebebeb] text-center cursor-pointer hover:bg-[#e2e2e2] transition-colors">
+                                        {orderCheck.fileTitle && <span className="text-body-lg text-black">{orderCheck.fileTitle}</span>}
+                                        {orderCheck.allowedText && <span className="text-body text-black">{orderCheck.allowedText}</span>}
+                                        <input
+                                            type="file"
+                                            className="hidden"
+                                            multiple={orderCheck.multiple}
+                                            onChange={handleFileChange}
+                                            accept={orderCheck.allowedExtensions.length > 0 ? orderCheck.allowedExtensions.map((e: string) => `.${e}`).join(",") : undefined}
+                                        />
                                     </label>
-                                    <div className="flex flex-col md:flex-row md:items-center gap-4">
-                                        <label className="flex items-center justify-center px-4 py-2 border border-dashed border-gray-300 rounded-md shadow-sm text-xs font-medium text-gray-700 bg-white hover:bg-gray-50 cursor-pointer transition-colors w-full md:w-auto">
-                                            <svg className="w-5 h-5 mr-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
-                                            </svg>
-                                            <span>{t("orderDetails.selectFiles")}</span>
-                                            <input
-                                                type="file"
-                                                className="hidden"
-                                                onChange={handleFileChange}
-                                                accept=".jpg,.jpeg,.png,.zip,.rar,.docx,.doc,.pdf,.xls,.xlsx,.csv,.msg,.eml"
-                                            />
-                                        </label>
-                                        <div className="flex-1 min-w-0">
-                                            {selectedFile ? (
-                                                <div className="flex items-center gap-2 text-xs text-gray-900 bg-gray-50 px-3 py-2 rounded border border-subtle">
-                                                    <svg className="w-4 h-4 text-green-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
-                                                    </svg>
-                                                    <span className="truncate font-medium text-black">{selectedFile.name}</span>
-                                                    <span className="text-gray-500 font-normal">({(selectedFile.size / 1024 / 1024).toFixed(2)} MB)</span>
+                                    {selectedFiles.length > 0 && (
+                                        <ul className="space-y-1">
+                                            {selectedFiles.map((file, i) => (
+                                                <li key={`${file.name}-${i}`} className="flex items-center gap-2 text-body text-black bg-gray-50 px-3 py-2 border border-subtle">
+                                                    <span className="truncate font-medium"><bdi>{file.name}</bdi></span>
+                                                    <span className="text-gray-500" dir="ltr">({(file.size / 1024 / 1024).toFixed(2)} MB)</span>
                                                     <button
                                                         type="button"
-                                                        onClick={() => setSelectedFile(null)}
-                                                        className="ml-auto text-gray-400 hover:text-red-500 p-1"
+                                                        onClick={() => setSelectedFiles((prev) => prev.filter((_, j) => j !== i))}
+                                                        className="ms-auto text-gray-400 hover:text-red-500 p-1 cursor-pointer"
+                                                        aria-label="×"
                                                     >
                                                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
                                                         </svg>
                                                     </button>
-                                                </div>
-                                            ) : (
-                                                <span className="text-gray-500 text-xs italic">{t("orderDetails.noAttachments")}</span>
-                                            )}
-                                        </div>
-                                    </div>
-                                    <p className="text-[10px] text-gray-500">
-                                        {t("orderDetails.allowedFiles")}
-                                    </p>
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    )}
                                 </div>
 
                                 <div className="space-y-2">
-                                    <label className="block text-xs font-black text-black uppercase tracking-wider">
-                                        {t("orderDetails.comment")}
-                                    </label>
+                                    {orderCheck.commentLabel && (
+                                        <label htmlFor="order-check-comment" className="block text-body font-bold text-black">
+                                            {orderCheck.commentLabel}
+                                        </label>
+                                    )}
                                     <textarea
-                                        rows={3}
+                                        id="order-check-comment"
+                                        rows={orderCheck.commentRows ?? undefined}
                                         value={confirmComment}
                                         onChange={(e) => setConfirmComment(e.target.value)}
-                                        placeholder={t("orderDetails.commentPlaceholder")}
-                                        className="w-full border border-subtle rounded-md p-3 text-xs focus:ring-1 focus:ring-brand-yellow focus:border-brand-yellow outline-none transition-all placeholder:text-gray-400 text-black"
+                                        className="w-full border border-[#ccc] p-3 text-body focus:ring-1 focus:ring-brand-yellow focus:border-brand-yellow outline-none transition-all text-black"
                                     />
                                 </div>
 
-                                <div className="flex justify-end pt-2">
-                                    <button
-                                        type="submit"
-                                        disabled={isConfirming}
-                                        className={`bg-brand-yellow hover:bg-brand-yellow-dark text-black font-black py-2.5 px-6 md:px-8 rounded-md text-label uppercase tracking-widest transition-all border border-brand-yellow-dark shadow-sm flex items-center justify-center gap-2 active:scale-95 ${isConfirming ? 'opacity-70 cursor-not-allowed' : ''}`}
-                                    >
-                                        {isConfirming ? (
-                                            <>
-                                                <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-black" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                {orderCheck.button && (
+                                    <div>
+                                        <button
+                                            type="submit"
+                                            disabled={isConfirming}
+                                            className={`bg-brand-yellow hover:bg-brand-yellow-dark text-black font-black py-2.5 px-6 md:px-8 rounded-sm text-label uppercase tracking-widest transition-all border border-brand-yellow-dark shadow-sm inline-flex items-center justify-center gap-2 active:scale-95 cursor-pointer ${isConfirming ? 'opacity-70 cursor-not-allowed' : ''}`}
+                                        >
+                                            {isConfirming && (
+                                                <svg className="animate-spin h-4 w-4 text-black" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                                                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                                                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                                                 </svg>
-                                                <span>{t("orderDetails.confirming")}</span>
-                                            </>
-                                        ) : (
-                                            t("orderDetails.confirmOrder")
-                                        )}
-                                    </button>
-                                </div>
+                                            )}
+                                            {orderCheck.button}
+                                        </button>
+                                    </div>
+                                )}
                             </form>
                         </div>
                     )}
 
+                    {/* About Your Order — Magento's order comments (shown only when Magento has any) */}
+                    {comments.length > 0 && (
+                        <div className="mb-10">
+                            <div className="border-b-2 border-brand-yellow inline-block pb-1 mb-6">
+                                <h2 className="text-h3-sm md:text-subheading font-black text-black uppercase tracking-tight">
+                                    {t("orderDetails.aboutYourOrder")}
+                                </h2>
+                            </div>
+                            <div className="space-y-3 text-xs">
+                                {comments.map((c: any, i: number) => (
+                                    <div key={i} className="border border-subtle rounded-md p-4">
+                                        {c.timestamp && <p className="text-gray-500 font-bold mb-1">{c.timestamp}</p>}
+                                        <p className="text-black">{c.message}</p>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                
+                    
                     {/* Items Ordered Table */}
                     <div className="bg-white rounded-md border border-subtle overflow-hidden mb-10 shadow-sm">
-                        <div className="border-b border-subtle px-3 md:px-6 py-3 md:py-4 bg-gray-50">
-                            <h2 className="text-xs font-black text-black uppercase tracking-widest">
-                                {t("orderDetails.itemsOrdered")}
-
-                            </h2>
+                        <div className="border-b border-subtle px-3 md:px-6 bg-gray-50 flex gap-6">
+                            {(["items", ...(invoices.length > 0 ? ["invoices"] : [])] as ("items" | "invoices")[]).map((tab) => (
+                                <button
+                                    key={tab}
+                                    type="button"
+                                    onClick={() => setActiveTab(tab)}
+                                    className={`py-3 md:py-4 text-xs font-black uppercase tracking-widest border-b-2 -mb-px cursor-pointer ${activeTab === tab ? "border-brand-yellow text-black" : "border-transparent text-gray-500 hover:text-black"}`}
+                                >
+                                    {tab === "items" ? t("orderDetails.itemsOrdered") : t("orderDetails.invoices")}
+                                </button>
+                            ))}
                         </div>
+                        {activeTab === "invoices" && invoices.length > 0 ? (
+                            <div className="divide-y divide-subtle">
+                                {invoices.map((inv: any) => (
+                                    <div key={inv.id || inv.number} className="p-3 md:p-6">
+                                        <h3 className="text-xs font-black text-black uppercase tracking-widest mb-4">
+                                            {t("orderDetails.invoiceHash")} {inv.number}
+                                        </h3>
+                                        <div className="overflow-x-auto">
+                                            <table className="w-full text-left min-w-[500px]">
+                                                <thead className="bg-gray-50/50 text-label font-black text-black uppercase border-b border-subtle">
+                                                    <tr>
+                                                        <th className="px-3 md:px-6 py-3 tracking-widest">{t("orderDetails.productName")}</th>
+                                                        <th className="px-3 md:px-6 py-3 tracking-widest text-center">{t("orderDetails.sku")}</th>
+                                                        <th className="px-3 md:px-6 py-3 tracking-widest text-center">{t("orderDetails.price")}</th>
+                                                        <th className="px-3 md:px-6 py-3 tracking-widest text-center">{t("orderDetails.qtyInvoiced")}</th>
+                                                        <th className="px-3 md:px-6 py-3 tracking-widest text-end">{subtotalLabel}</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody className="divide-y divide-subtle">
+                                                    {(inv.items || []).map((it: any) => (
+                                                        <tr key={it.id} className="text-xs">
+                                                            <td className="px-3 md:px-6 py-3 text-black font-bold">{it.product_name}</td>
+                                                            <td className="px-3 md:px-6 py-3 text-center font-bold">{it.product_sku}</td>
+                                                            <td className="px-3 md:px-6 py-3 text-center font-bold">{formatCurrency(it.product_sale_price?.value)}</td>
+                                                            <td className="px-3 md:px-6 py-3 text-center font-bold">{Math.round(Number(it.quantity_invoiced) || 0)}</td>
+                                                            <td className="px-3 md:px-6 py-3 text-end font-black text-black">{formatCurrency((Number(it.product_sale_price?.value) || 0) * (Number(it.quantity_invoiced) || 0))}</td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                        <div className="flex justify-end pt-4">
+                                            <div className="w-full max-w-[340px] space-y-3 text-xs">
+                                                <div className="flex justify-between"><span className="font-bold uppercase tracking-widest flex-1 text-end me-10">{subtotalLabel}</span><span className="font-black w-[110px] text-end">{formatCurrency(inv.total?.subtotal?.value)}</span></div>
+                                                <div className="flex justify-between"><span className="font-bold uppercase tracking-widest flex-1 text-end me-10">{t("orderDetails.shippingHandling")}</span><span className="font-black w-[110px] text-end">{formatCurrency(inv.total?.total_shipping?.value)}</span></div>
+                                                {(inv.total?.discounts || []).map((d: any, i: number) => (
+                                                    <div key={i} className="flex justify-between"><span className="font-bold uppercase tracking-widest flex-1 text-end me-10">{d.label || t("orderDetails.discount")}</span><span className="font-black w-[110px] text-end">-{formatCurrency(Math.abs(Number(d.amount?.value) || 0))}</span></div>
+                                                ))}
+                                                <div className="flex justify-between"><span className="font-bold uppercase tracking-widest flex-1 text-end me-10">{taxLabel}</span><span className="font-black w-[110px] text-end">{formatCurrency(inv.total?.total_tax?.value)}</span></div>
+                                                <div className="flex justify-between pt-3 border-t border-gray-200 text-body-xl"><span className="font-black uppercase flex-1 text-end me-10">{t("orderDetails.grandTotal")}</span><span className="font-black w-[110px] text-end">{formatCurrency(inv.total?.grand_total?.value)}</span></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (<>
                         {/* Desktop Table */}
                         <div className="hidden md:block overflow-x-auto">
                             <table className="w-full text-left min-w-[500px]">
@@ -686,7 +785,7 @@ export default function OrderDetailsPage() {
                                         <th className="px-3 md:px-6 py-3 md:py-4 tracking-widest text-center">{t("orderDetails.sku")}</th>
                                         <th className="px-3 md:px-6 py-3 md:py-4 tracking-widest text-center">{t("orderDetails.price")}</th>
                                         <th className="px-3 md:px-6 py-3 md:py-4 tracking-widest text-center">{t("orderDetails.qty")}</th>
-                                        <th className="px-3 md:px-6 py-3 md:py-4 tracking-widest text-right">{t("orderDetails.subtotal")}</th>
+                                        <th className="px-3 md:px-6 py-3 md:py-4 tracking-widest text-end">{subtotalLabel}</th>
 
                                     </tr>
                                 </thead>
@@ -702,8 +801,8 @@ export default function OrderDetailsPage() {
                                             <td className="px-3 md:px-6 py-3 md:py-5 text-black font-bold text-center">
                                                 {formatCurrency(item.price)}
                                             </td>
-                                            <td className="px-3 md:px-6 py-3 md:py-5 text-center text-black-500 font-bold uppercase">
-                                                {Math.round(item.qty_ordered)}
+                                            <td className="px-3 md:px-6 py-3 md:py-5 text-center text-black-500 font-bold">
+                                                {t("orderDetails.ordered")} {Math.round(item.qty_ordered)}
                                             </td>
                                             <td className="px-3 md:px-6 py-3 md:py-5 text-end font-black text-black">
 
@@ -730,10 +829,10 @@ export default function OrderDetailsPage() {
                                     <div className="flex justify-between items-center mb-1">
                                         <span className="text-gray-500 font-bold uppercase tracking-widest">{t("orderDetails.qty")}</span>
 
-                                        <span className="text-gray-500 font-bold">{Math.round(item.qty_ordered)}</span>
+                                        <span className="text-gray-500 font-bold">{t("orderDetails.ordered")} {Math.round(item.qty_ordered)}</span>
                                     </div>
                                     <div className="flex justify-between items-center pt-2 border-t border-gray-100">
-                                        <span className="text-black font-black uppercase tracking-widest">{t("orderDetails.subtotal")}</span>
+                                        <span className="text-black font-black uppercase tracking-widest">{subtotalLabel}</span>
 
                                         <span className="text-black font-black">{formatCurrency(item.row_total)}</span>
                                     </div>
@@ -745,7 +844,7 @@ export default function OrderDetailsPage() {
                         <div className="flex justify-end p-4 md:p-8 bg-gray-50/30 border-t border-subtle">
                             <div className="w-full max-w-[340px] space-y-3">
                                 <div className="flex justify-between items-center text-xs">
-                                    <span className="text-black-400 font-bold uppercase tracking-widest flex-1 text-end me-10">{t("orderDetails.itemsTotal")}</span>
+                                    <span className="text-black-400 font-bold uppercase tracking-widest flex-1 text-end me-10">{subtotalLabel}</span>
 
 
                                     <span className="font-black text-black w-[110px] text-end">
@@ -755,7 +854,23 @@ export default function OrderDetailsPage() {
                                 </div>
 
                                 <div className="flex justify-between items-center text-xs">
-                                    <span className="text-black-400 font-bold uppercase tracking-widest flex-1 text-end me-10">{t("orderDetails.vat")}</span>
+                                    <span className="text-black-400 font-bold uppercase tracking-widest flex-1 text-end me-10">{t("orderDetails.shippingHandling")}</span>
+                                    <span className="font-black text-black w-[110px] text-end">
+                                        {formatCurrency(shippingAmount)}
+                                    </span>
+                                </div>
+
+                                {discountAmount !== 0 && (
+                                    <div className="flex justify-between items-center text-xs">
+                                        <span className="text-black-400 font-bold uppercase tracking-widest flex-1 text-end me-10">{t("orderDetails.discount")}</span>
+                                        <span className="font-black text-black w-[110px] text-end">
+                                            -{formatCurrency(Math.abs(discountAmount))}
+                                        </span>
+                                    </div>
+                                )}
+
+                                <div className="flex justify-between items-center text-xs">
+                                    <span className="text-black-400 font-bold uppercase tracking-widest flex-1 text-end me-10">{taxLabel}</span>
 
 
                                     <span className="font-black text-black w-[110px] text-end">
@@ -782,6 +897,7 @@ export default function OrderDetailsPage() {
                                 </div>
                             </div>
                         </div>
+                        </>)}
                     </div>
 
                     {/* Order Information Section */}
@@ -806,8 +922,8 @@ export default function OrderDetailsPage() {
                                             <p className="font-black text-black uppercase mb-2" dir="ltr" style={{ unicodeBidi: "isolate" }}>{shippingAddress.firstname} {shippingAddress.lastname}</p>
                                             {shippingAddress.company && <p className="font-medium" dir="ltr" style={{ unicodeBidi: "isolate" }}>{shippingAddress.company}</p>}
                                             <p className="font-medium" dir="ltr" style={{ unicodeBidi: "isolate" }}>{shippingAddress.street?.join(", ")}</p>
-                                            <p className="font-medium" dir="ltr" style={{ unicodeBidi: "isolate" }}>{shippingAddress.city}, {shippingAddress.postcode}</p>
-                                            <p className="font-medium">{shippingAddress.country_id === "SA" ? t("data.Saudi Arabia") : shippingAddress.country_id}</p>
+                                            <p className="font-medium" dir="ltr" style={{ unicodeBidi: "isolate" }}>{cityLine(shippingAddress)}</p>
+                                            <p className="font-medium">{countryName(shippingAddress.country_id)}</p>
 
                                             <p className="pt-2 text-black font-black" dir="ltr" style={{ unicodeBidi: "isolate" }}>T: <span className="text-gray-600 font-medium">{shippingAddress.telephone}</span></p>
                                         </div>
@@ -825,13 +941,7 @@ export default function OrderDetailsPage() {
 
                                 </div>
                                 <div className="p-4 md:p-6 text-xs text-gray-600 leading-relaxed min-h-[140px]">
-                                    <p className="font-black text-black uppercase mb-2">{translateDynamic(order.shipping_description || "Pickup from Warehouse")}</p>
-
-                                    <div className="mt-4 pt-4 border-t border-gray-100">
-                                        <p className="text-caption font-black text-gray-400 uppercase tracking-widest mb-1">{t("orderDetails.expectedDelivery")}</p>
-
-                                        <p className="font-bold text-black">N/A</p>
-                                    </div>
+                                    <p className="font-black text-black uppercase mb-2">{order.shipping_description ? translateDynamic(order.shipping_description) : ""}</p>
                                 </div>
                             </div>
 
@@ -847,8 +957,8 @@ export default function OrderDetailsPage() {
                                             <p className="font-black text-black uppercase mb-2" dir="ltr" style={{ unicodeBidi: "isolate" }}>{billingAddress.firstname} {billingAddress.lastname}</p>
                                             {billingAddress.company && <p className="font-medium" dir="ltr" style={{ unicodeBidi: "isolate" }}>{billingAddress.company}</p>}
                                             <p className="font-medium" dir="ltr" style={{ unicodeBidi: "isolate" }}>{billingAddress.street?.join(", ")}</p>
-                                            <p className="font-medium" dir="ltr" style={{ unicodeBidi: "isolate" }}>{billingAddress.city}, {billingAddress.postcode}</p>
-                                            <p className="font-medium">{billingAddress.country_id === "SA" ? t("data.Saudi Arabia") : billingAddress.country_id}</p>
+                                            <p className="font-medium" dir="ltr" style={{ unicodeBidi: "isolate" }}>{cityLine(billingAddress)}</p>
+                                            <p className="font-medium">{countryName(billingAddress.country_id)}</p>
 
                                             <p className="pt-2 text-black font-black" dir="ltr" style={{ unicodeBidi: "isolate" }}>T: <span className="text-gray-600 font-medium">{billingAddress.telephone}</span></p>
                                         </div>
@@ -867,16 +977,24 @@ export default function OrderDetailsPage() {
                                 </div>
                                 <div className="p-4 md:p-6 text-xs text-gray-600 leading-relaxed min-h-[140px]">
                                     <p className="font-black text-black uppercase mb-1">{translateDynamic(order.payment?.method_title || paymentMethod)}</p>
-
-                                    <div className="mt-4 pt-4 border-t border-gray-100 flex items-center gap-2">
-                                        <div className="w-2 h-2 rounded-full bg-green-500"></div>
-                                        <span className="text-caption font-black text-gray-400 uppercase tracking-widest">{t("orderDetails.paymentConfirmed")}</span>
-
-                                    </div>
                                 </div>
                             </div>
+
+                            {/* Order Comment — Magento's own box (shown only when Magento shows it) */}
+                            {orderComment && (
+                                <div className="bg-white border border-subtle rounded-md shadow-sm overflow-hidden">
+                                    <div className="bg-gray-50 px-5 py-3 border-b border-subtle">
+                                        <h3 className="text-xs font-black text-black uppercase tracking-widest">{orderComment.label}</h3>
+                                    </div>
+                                    <div className="p-4 md:p-6 text-xs text-black leading-relaxed min-h-[140px] whitespace-pre-line">
+                                        <bdi>{orderComment.value}</bdi>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     </div>
+
+                  
 
                     {/* Order Attachments Section */}
                     <div className="mb-12">
@@ -909,9 +1027,9 @@ export default function OrderDetailsPage() {
                                         <thead className="bg-gray-50 border-b border-subtle">
                                             <tr className="h-[50px]">
                                                 <th className="px-3 md:px-6 py-3 md:py-4 font-black text-black text-left tracking-widest uppercase">{t("orderDetails.fileName")}</th>
-                                                <th className="px-3 md:px-6 py-3 md:py-4 font-black text-black text-center tracking-widest uppercase">{t("orderDetails.type")}</th>
+                                                <th className="px-3 md:px-6 py-3 md:py-4 font-black text-black text-center tracking-widest uppercase">{t("orderDetails.documentType")}</th>
                                                 <th className="px-3 md:px-6 py-3 md:py-4 font-black text-black text-center tracking-widest uppercase">{t("orderDetails.createdOn")}</th>
-                                                <th className="px-3 md:px-6 py-3 md:py-4 font-black text-black text-center tracking-widest uppercase">{t("orderDetails.dueDate")}</th>
+                                                <th className="px-3 md:px-6 py-3 md:py-4 font-black text-black text-center tracking-widest uppercase">{t("orderDetails.invoiceDue")}</th>
                                                 <th className="px-3 md:px-6 py-3 md:py-4 font-black text-black text-center tracking-widest uppercase">{t("orderDetails.payment")}</th>
 
                                             </tr>
@@ -941,7 +1059,7 @@ export default function OrderDetailsPage() {
                                                             <button
                                                                 onClick={() => handleOpenAttachment(attachment)}
                                                                 disabled={isOpening}
-                                                                className="text-brand-yellow-dark hover:text-black font-black break-all text-left cursor-pointer inline-flex items-center gap-2 disabled:opacity-60 disabled:cursor-wait underline underline-offset-4"
+                                                                className="text-black hover:text-brand-yellow hover:underline underline-offset-4 font-black break-all text-left cursor-pointer inline-flex items-center gap-2 disabled:opacity-60 disabled:cursor-wait"
                                                             >
                                                                 {attachment.file_name || "-"}
                                                             </button>

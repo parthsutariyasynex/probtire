@@ -1,4 +1,5 @@
 "use client";
+import { AlertTriangle } from "lucide-react";
 import { useTranslation } from "@/hooks/useTranslation";
 import { useLocalePath } from "@/hooks/useLocalePath";
 
@@ -222,9 +223,12 @@ export default function ManageSubAccountsPage() {
                 <Sidebar />
 
                 <main className="flex-1 w-full px-4 md:px-6 lg:px-8 py-4 md:py-6 lg:py-5 bg-white">
-                    <h1 className="text-h3 md:text-[26px] font-bold text-black mb-5 uppercase tracking-wide">
-                        {isSalesPerson ? "Sales Person Customers" : "Manage Company Sub Accounts"}
-                    </h1>
+                    {/* As Magento: no heading when there are no accounts, only the notice below */}
+                    {!(filteredAccounts.length === 0 && !error && !searchQuery) && (
+                        <h1 className="text-h3 md:text-[26px] font-bold text-black mb-5 uppercase tracking-wide">
+                            {isSalesPerson ? t("subaccounts.salesPersonTitle") : t("subaccounts.manageTitle")}
+                        </h1>
+                    )}
 
                     {/* Search — Sales Person only */}
                     {isSalesPerson && (
@@ -276,8 +280,10 @@ export default function ManageSubAccountsPage() {
                     )}
 
                     {filteredAccounts.length === 0 && !error ? (
-                        <div className="text-gray-500 text-xs py-8 italic">
-                            {t("subaccounts.noSubaccounts")}
+                        // Magento's notice: yellow warning box with a warning icon
+                        <div role="status" className="flex items-center gap-3 bg-[#fdf0d5] text-[#6f4400] px-4 py-3.5 rounded-sm text-body">
+                            <AlertTriangle className="h-5 w-5 flex-shrink-0 text-[#c07600]" aria-hidden="true" />
+                            <span>{t("subaccounts.noSubaccounts")}</span>
                         </div>
                     ) : (
                         <>

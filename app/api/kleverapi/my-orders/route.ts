@@ -3,6 +3,7 @@ import { getRequestToken } from "@/lib/api/auth-helper";
 import { getLocaleFromRequest } from "@/lib/api/magento-url";
 import { KLEVER_MY_ORDERS_QUERY, KLEVER_ORDER_FILTER_OPTIONS_QUERY } from "@/src/graphql/queries";
 import { toStoreCode } from "@/lib/store/website";
+import { getStoreConfig } from "@/lib/store/store-config";
 
 const MAGENTO_GRAPHQL = (process.env.NEXT_PUBLIC_MAGENTO_BASE_URL || "") + "/graphql";
 
@@ -107,11 +108,21 @@ export async function GET(request: NextRequest) {
         const start = (currentPage - 1) * pageSize;
         const pageItems = filtered.slice(start, start + pageSize);
 
+        // Magento's My Orders date ("10/10/26"): created_at is UTC; shown in Magento's store timezone.
+        const tz = (await getStoreConfig(store, getLocaleFromRequest(request)))?.timezone ?? null;
+        const dateLabel = (utc: string | null | undefined): string | null => {
+            if (!utc || !tz) return null;
+            const d = new Date(/\dT\d|Z$/.test(utc) ? utc : `${utc.replace(" ", "T")}Z`);
+            if (Number.isNaN(d.getTime())) return null;
+            return new Intl.DateTimeFormat("en-US", { year: "2-digit", month: "numeric", day: "numeric", timeZone: tz }).format(d);
+        };
+
         const items = pageItems.map((o: any) => ({
             entity_id: o.order_id,
             increment_id: o.increment_id,
             created_at: o.created_at,
             order_date: o.created_at,
+            date_label: dateLabel(o.created_at),
             status: o.status_label ?? o.status,
             status_code: statusToCode(o.status, statusMap),
             grand_total: o.grand_total ?? 0,

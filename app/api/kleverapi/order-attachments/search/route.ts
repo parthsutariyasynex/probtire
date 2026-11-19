@@ -3,6 +3,7 @@ import { getLocaleFromRequest } from "@/lib/api/magento-url";
 import { getRequestToken } from "@/lib/api/auth-helper";
 import { KLEVER_ORDER_UPLOAD_SEARCH_QUERY } from "@/src/graphql/queries";
 import { toStoreCode } from "@/lib/store/website";
+import { getStoreConfig } from "@/lib/store/store-config";
 
 const MAGENTO_GRAPHQL = (process.env.NEXT_PUBLIC_MAGENTO_BASE_URL || "") + "/graphql";
 
@@ -50,6 +51,7 @@ export async function GET(request: NextRequest) {
         let items: any[] = Array.isArray(r?.items) ? r.items : [];
 
         // Client-side filtering for company/company_code (GraphQL query has no these variables)
+        const filteredLocally = (company && company !== "All") || !!companyCode;
         if (company && company !== "All") {
             const companyLower = company.toLowerCase();
             items = items.filter((item: any) => {
@@ -65,9 +67,31 @@ export async function GET(request: NextRequest) {
             );
         }
 
+        // Magento's "Created On" ("10-10-2026"): created_at is UTC, shown in Magento's store timezone.
+        const store = toStoreCode(getLocaleFromRequest(request), request);
+        const tz = (await getStoreConfig(store, getLocaleFromRequest(request)))?.timezone ?? null;
+        // Magento shows Created On and Invoice Due as "dd-mm-yyyy" in its store timezone.
+        const createdOn = (utc: string | null | undefined): string | null => {
+            if (!utc || !tz) return null;
+            const d = new Date(/\dT\d|Z$/.test(utc) ? utc : `${utc.replace(" ", "T")}Z`);
+            if (Number.isNaN(d.getTime())) return null;
+            const parts = Object.fromEntries(
+                new Intl.DateTimeFormat("en-US", { year: "numeric", month: "2-digit", day: "2-digit", timeZone: tz })
+                    .formatToParts(d).map((p) => [p.type, p.value]),
+            );
+            return `${parts.day}-${parts.month}-${parts.year}`;
+        };
+        items = items.map((item: any) => ({
+            ...item,
+            created_on_label: createdOn(item.created_at),
+            invoice_due_label: createdOn(item.invoice_due),
+        }));
+
         return NextResponse.json({
             items,
-            total_count: items.length,
+            // Magento's total across all pages (the page's own length only when company filters
+            // were applied here, since Magento cannot filter by company itself).
+            total_count: filteredLocally ? items.length : (r?.total_count ?? items.length),
             page_size: r?.page_size ?? pageSize,
             current_page: r?.current_page ?? currentPage,
             total_pages: r?.total_pages ?? 0,

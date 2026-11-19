@@ -2,14 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { getLocaleFromRequest } from "@/lib/api/magento-url";
 import { toStoreCode } from "@/lib/store/website";
 import { graphqlFetch } from "@/src/lib/graphqlFetch";
+import { COUNTRIES_QUERY } from "@/src/graphql/queries";
 
 // Country names of the selected website + language, from Magento (`countries`,
 // Store header) — e.g. SA → "Saudi Arabia" / "المملكة العربية السعودية".
 // Returns { store, countries: { [id]: name } }; 502 if Magento cannot be reached.
 
-const COUNTRIES_QUERY = /* GraphQL */ `
-  query StoreCountries { countries { id full_name_locale } }
-`;
 
 const CACHE_TTL_MS = 60 * 60 * 1000;
 const cache = new Map<string, { countries: Record<string, string>; expires: number }>();

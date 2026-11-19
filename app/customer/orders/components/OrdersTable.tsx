@@ -70,7 +70,7 @@ const OrdersTable: React.FC<OrdersTableProps> = ({ orders }) => {
                                         </span>
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap text-center">
-                                        <div className="flex items-center justify-center gap-4 text-label font-black uppercase tracking-wider">
+                                        <div className="flex items-center justify-center gap-4 text-label font-bold uppercase tracking-wider">
                                             <button className="text-gray-800 hover:text-brand-yellow-dark transition-colors flex items-center gap-1">
                                                 View
                                             </button>

@@ -90,7 +90,7 @@ const CheckoutSuccessContent = () => {
 
             <main className="flex-grow flex flex-col items-center justify-center px-4 py-8 sm:py-12 md:py-20 text-center">
                 <div className="max-w-2xl mx-auto space-y-4 sm:space-y-5 md:space-y-6">
-                    <h1 className="text-h2 sm:text-h1-sm md:text-h1 lg:text-h1-lg font-black text-black uppercase tracking-tight leading-tight">
+                    <h1 className="text-h2 sm:text-h1-sm md:text-h1 lg:text-h1-lg font-bold text-black uppercase tracking-tight leading-tight">
                         {t("checkoutSuccess.thankYou")}
                     </h1>
 

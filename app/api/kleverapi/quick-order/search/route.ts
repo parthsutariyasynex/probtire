@@ -3,6 +3,7 @@ import { getLocaleFromRequest } from "@/lib/api/magento-url";
 import { getRequestToken } from "@/lib/api/auth-helper";
 import { KLEVER_QUICK_ORDER_SEARCH_QUERY, PRODUCTS_SEARCH_QUERY } from "@/src/graphql/queries";
 import { toStoreCode } from "@/lib/store/website";
+import { getMagentoTyreSizeSearch } from "@/src/lib/magentoOrderView";
 
 const MAGENTO_GRAPHQL = (process.env.NEXT_PUBLIC_MAGENTO_BASE_URL || "") + "/graphql";
 
@@ -11,6 +12,17 @@ const MAGENTO_GRAPHQL = (process.env.NEXT_PUBLIC_MAGENTO_BASE_URL || "") + "/gra
 export async function GET(request: NextRequest) {
     try {
         const { searchParams } = new URL(request.url);
+
+        // ?view=tyre-sizes — Magento's own header tyre-size search for the selected website + language:
+        // its size list (each with the lookup text Magento matches typed input against) and its texts.
+        if (searchParams.get("view") === "tyre-sizes") {
+            const token = await getRequestToken(request);
+            if (!token) return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+            const data = await getMagentoTyreSizeSearch(toStoreCode(getLocaleFromRequest(request), request), `Bearer ${token}`);
+            if (!data) return NextResponse.json({ message: "Magento's tyre-size search could not be read." }, { status: 502 });
+            return NextResponse.json(data);
+        }
+
         const query = searchParams.get("query") || "";
         const pageSize = parseInt(searchParams.get("pageSize") || "20", 10) || 20;
 

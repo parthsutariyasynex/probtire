@@ -4,6 +4,7 @@
 // (the page then shows "content not available" — never another website's content).
 
 import { graphqlFetch } from "@/src/lib/graphqlFetch";
+import { CMS_PAGE_CONTENT_QUERY } from "@/src/graphql/queries";
 
 export interface CmsBanner {
     desktop: string;
@@ -46,15 +47,6 @@ export interface CataloguePage {
 
 // ── Magento fetch ─────────────────────────────────────────────────────────────
 
-const CMS_PAGE_CONTENT_QUERY = /* GraphQL */ `
-  query GetCmsPageContent($identifier: String!) {
-    cmsPage(identifier: $identifier) {
-      title
-      content_heading
-      content
-    }
-  }
-`;
 
 interface RawCmsPage {
     title: string | null;

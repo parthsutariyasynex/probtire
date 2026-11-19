@@ -26,6 +26,8 @@ export type StoreConfig = {
     default_keywords: string | null;
     base_currency_code: string | null;
     default_display_currency_code: string | null;
+    /** Magento store timezone (e.g. "Asia/Riyadh"). */
+    timezone: string | null;
     /** Category the storefront menu lands on (null if Magento has no menu category). */
     default_category_id: number | null;
     /** Website logo + label from Magento (kleverSiteLoginWebsites), null if Magento has none. */

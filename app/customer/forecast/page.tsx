@@ -78,6 +78,22 @@ export default function MyForecastPage() {
 
     const [downloadingId, setDownloadingId] = useState<string | number | null>(null);
 
+    // No file uploaded: only Magento's own text ("No records found"), as on Magento — no table, no paging.
+    const isEmptyList = !loadingForecasts && forecasts.length === 0 && totalItems === 0;
+    const [emptyMessage, setEmptyMessage] = useState<string | null>(null);
+    const [emptyMessageError, setEmptyMessageError] = useState(false);
+    const [emptyMessageAttempt, setEmptyMessageAttempt] = useState(0);
+    useEffect(() => {
+        if (!isEmptyList || emptyMessage || !token) return;
+        let cancelled = false;
+        setEmptyMessageError(false);
+        fetch("/api/kleverapi/forecast?view=empty-message", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" })
+            .then((r) => (r.ok ? r.json() : Promise.reject(r.status)))
+            .then((d) => { if (!cancelled) { if (d?.message) setEmptyMessage(d.message); else setEmptyMessageError(true); } })
+            .catch(() => { if (!cancelled) setEmptyMessageError(true); });
+        return () => { cancelled = true; };
+    }, [isEmptyList, emptyMessage, token, emptyMessageAttempt]);
+
     const pullForecasts = async (page: number, size: number) => {
         try {
             setLoadingForecasts(true);
@@ -286,6 +302,20 @@ export default function MyForecastPage() {
                     </div>
                 </div>
 
+                {isEmptyList ? (
+                    emptyMessage ? (
+                        <div className="text-body text-black ltr:text-left rtl:text-right">{emptyMessage}</div>
+                    ) : emptyMessageError ? (
+                        <div className="bg-red-50 border border-red-100 text-red-700 p-4 rounded-md flex flex-col sm:flex-row sm:items-center gap-3">
+                            <span className="text-body-lg font-medium flex-1">{t("m.sorry-there-has-been-an-error-processing-your-request-please-try-again-later")}</span>
+                            <button onClick={() => setEmptyMessageAttempt((n) => n + 1)} className="px-4 py-1.5 bg-white border border-red-200 text-body text-red-700 hover:bg-red-100 transition-colors rounded-xs cursor-pointer">
+                                {t("common.tryAgain")}
+                            </button>
+                        </div>
+                    ) : (
+                        <div className="h-5 w-40 bg-gray-200 rounded animate-pulse" />
+                    )
+                ) : (<>
                 {/* Desktop and Mobile Table Header & List */}
                 <div className="overflow-x-auto border border-[#ddd] rounded-sm">
                     <table className="w-full text-body text-left border-collapse">
@@ -361,6 +391,7 @@ export default function MyForecastPage() {
                         </button>
                     </div>
                 </div>
+                </>)}
             </main>
         </div>
     );

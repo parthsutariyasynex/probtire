@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { graphqlFetch } from "@/src/lib/graphqlFetch";
+import { CMS_META_QUERY } from "@/src/graphql/queries";
 import { getCurrentStoreConfig, type StoreConfig } from "@/lib/store/store-config";
 import { isValidLocale, defaultLocale, type Locale } from "@/lib/i18n/config";
 import enDict from "@/public/locales/en.json";
@@ -21,19 +22,6 @@ interface CmsPageMetaData {
     meta_keywords: string | null;
   } | null;
 }
-
-// ── GraphQL query — meta fields only, no CMS content ─────────────────────────
-
-const CMS_META_QUERY = /* GraphQL */ `
-  query GetCmsPageMeta($identifier: String!) {
-    cmsPage(identifier: $identifier) {
-      title
-      meta_title
-      meta_description
-      meta_keywords
-    }
-  }
-`;
 
 // ── Custom pages not backed by a Magento CMS page ─────────────────────────────
 // Page names are translated via public/locales/{lang}.json ("meta.<key>"); the site

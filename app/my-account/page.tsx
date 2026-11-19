@@ -15,8 +15,11 @@ import { redirectToLogin } from "@/utils/helpers";
 import PortalDropdown from "@/components/PortalDropdown";
 import { Hourglass } from "lucide-react";
 import CreditLimit from "@/app/components/CreditLimit";
+import useSWR from "swr";
+import type { MagentoAccountBox, MagentoAccountLink, MagentoAccountPage } from "@/src/lib/magentoOrderView";
 import { AccountSkeleton, SidebarSkeleton } from "@/components/skeletons";
 import { getClientStoreConfig } from "@/lib/store/client-config";
+import { getClientLocale } from "@/lib/api/api-client";
 
 
 type CustomAttribute = {
@@ -113,6 +116,7 @@ export default function MyAccountPage() {
     }, [isCompanySubAccount]);
 
     const [businessOverview, setBusinessOverview] = useState<any>(null);
+    const [overviewError, setOverviewError] = useState<string | null>(null);
     const [targets, setTargets] = useState<any>(null);
     const [availableYears, setAvailableYears] = useState<number[]>([]);
     const [selectedYear, setSelectedYear] = useState<string>(new Date().getFullYear().toString());
@@ -139,11 +143,21 @@ export default function MyAccountPage() {
 
     const fetchOverview = async () => {
         try {
-            const response = await fetch("/api/kleverapi/business-overview");
-            const data = await response.json();
+            const response = await fetch("/api/kleverapi/business-overview", {
+                headers: { "x-locale": getClientLocale() },
+            });
+            const data = await response.json().catch(() => null);
+            if (!response.ok) {
+                // Magento refused: show its message instead of filling the card with "N/A".
+                setBusinessOverview(null);
+                setOverviewError(data?.details?.[0]?.message || data?.error || t("common.failed"));
+                return;
+            }
+            setOverviewError(null);
             setBusinessOverview(Array.isArray(data) ? data[0] : data);
         } catch (err) {
             console.error("Overview Fetch Error:", err);
+            setOverviewError(t("common.failed"));
         }
     };
 
@@ -169,8 +183,10 @@ export default function MyAccountPage() {
         fetchTargets(selectedYear);
     };
 
-    const getOverviewAttr = (key: string, fallback: string = "N/A") => {
-        return businessOverview?.[key] || fallback;
+    // Magento's value as is (a real "0" stays "0"); the translated "N/A" only when Magento has no value.
+    const getOverviewAttr = (key: string) => {
+        const value = businessOverview?.[key];
+        return value === null || value === undefined || String(value).trim() === "" ? t("m.n-a") : String(value);
     };
 
     // Full-page skeleton while the session is still resolving, OR while we're authenticated
@@ -199,7 +215,7 @@ export default function MyAccountPage() {
                 <div className="flex flex-col lg:flex-row flex-1 w-full">
                     <Sidebar />
                     <main className="flex-1 w-full px-4 md:px-6 lg:px-8 py-4 md:py-6 lg:py-5">
-                        <h1 className="text-h3 sm:text-[22px] md:text-[26px] font-black text-black mb-6 md:mb-10 uppercase tracking-wide">
+                        <h1 className="text-h3 sm:text-[22px] md:text-[26px] font-bold text-black mb-6 md:mb-10 uppercase tracking-wide">
                             {t("account.title")}
                         </h1>
                         <div className="border border-gray-300 bg-white shadow-sm rounded-none p-8 md:p-12 text-center max-w-xl">
@@ -291,7 +307,11 @@ export default function MyAccountPage() {
                             </div>
                         )}
 
-                        <h1 className="text-h3 sm:text-[22px] md:text-[26px] font-black text-black mb-6 md:mb-10 uppercase tracking-wide">
+                        {/* Sales Person: Magento's own My Account page for this login and website. */}
+                        {isSalesPerson && (session as any)?.accessToken ? (
+                            <SalesPersonAccountView token={(session as any).accessToken} onEditBusinessOverview={() => setIsEditModalOpen(true)} />
+                        ) : (<>
+                        <h1 className="text-h3 sm:text-[22px] md:text-[26px] font-bold text-black mb-6 md:mb-10 uppercase tracking-wide">
                             {t("account.title")}
                         </h1>
 
@@ -341,9 +361,15 @@ export default function MyAccountPage() {
                                                 </button>
                                             </div>
                                             <div className="p-3 md:p-5 text-body text-gray-700 space-y-2.5 font-medium leading-relaxed">
-                                                <p>{t("m.company-size")}: {getOverviewAttr("total_employees")} {t("account.employees")}, {getOverviewAttr("trucks")} {t("account.trucks")}, {getOverviewAttr("annual_revenue")} {t("account.annualRevenue")}</p>
-                                                <p>{t("m.business-model")}: {getOverviewAttr("business_model")}</p>
-                                                <p>{t("m.products-services-offered")}: {getOverviewAttr("products_offered")}</p>
+                                                {overviewError ? (
+                                                    <p className="text-[#e02b27]">{overviewError}</p>
+                                                ) : (
+                                                    <>
+                                                        <p>{t("m.company-size")}: {getOverviewAttr("total_employees")} {t("account.employees")}, {getOverviewAttr("trucks")} {t("account.trucks")}, {getOverviewAttr("annual_revenue")} {t("account.annualRevenue")}</p>
+                                                        <p>{t("m.business-model")}: {getOverviewAttr("business_model")}</p>
+                                                        <p>{t("m.products-services-offered")}: {getOverviewAttr("products_offered")}</p>
+                                                    </>
+                                                )}
                                             </div>
                                         </div>
                                     )}
@@ -467,6 +493,7 @@ export default function MyAccountPage() {
                                 </div>
                             </div>}
                         </div>
+                        </>)}
                     </main>
                 </div>
             </div>
@@ -478,5 +505,137 @@ export default function MyAccountPage() {
                 onSuccess={fetchOverview}
             />
         </>
+    );
+}
+
+// ─── Sales Person: My Account exactly as Magento's own page shows it ───────────────────────────
+// Magento's blocks, box titles, lines, year switch, credit tiles and links for this login and
+// store view (GET /api/kleverapi/my-account?view=magento). Used only for the Sales Person account.
+
+const salesFetcher = async ([url, token]: [string, string]) => {
+    const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return res.json();
+};
+
+const SP_CARD = "border border-gray-300 bg-white shadow-sm rounded-none";
+const SP_HEADER = "bg-[#f5f5f5] px-4 py-3 border-b border-gray-300 text-black font-bold uppercase text-body";
+const SP_BUTTON = "w-full md:w-auto text-center bg-brand-yellow hover:bg-brand-yellow-dark text-black text-body-sm font-bold px-6 py-2 uppercase transition-all rounded-sm whitespace-nowrap cursor-pointer";
+// Magento's three credit tiles, in Magento's order: total, used, available.
+const SP_CREDIT_COLORS = [
+    { icon: "bg-[#2980b9]", body: "bg-[#3498db]" },
+    { icon: "bg-[#c0392b]", body: "bg-[#e74c3c]" },
+    { icon: "bg-[#16a085]", body: "bg-[#1abc9c]" },
+];
+
+function SalesPersonLines({ lines }: { lines: MagentoAccountBox["lines"] }) {
+    return (
+        <>
+            {lines.map((l, i) => (
+                <p key={i}>
+                    {l.href ? <a href={l.href} className="hover:text-brand-yellow"><bdi>{l.text}</bdi></a> : <bdi>{l.text}</bdi>}
+                </p>
+            ))}
+        </>
+    );
+}
+
+function SalesPersonAccountView({ token, onEditBusinessOverview }: { token: string; onEditBusinessOverview: () => void }) {
+    const { t, isRtl } = useTranslation();
+    const lp = useLocalePath();
+    const [years, setYears] = useState<Record<string, string>>({});
+    const { data, error, isLoading, mutate } = useSWR<MagentoAccountPage>(
+        ["/api/kleverapi/my-account?view=magento", token],
+        salesFetcher,
+        { revalidateOnFocus: false }
+    );
+
+    if (error) {
+        return (
+            <div className="bg-red-50 border border-red-100 text-red-700 p-4 md:p-8 rounded-md flex flex-col sm:flex-row sm:items-center gap-3">
+                <span className="text-body-lg font-medium flex-1">{t("m.sorry-there-has-been-an-error-processing-your-request-please-try-again-later")}</span>
+                <button onClick={() => mutate()} className="px-4 py-1.5 bg-white border border-red-200 text-body text-red-700 hover:bg-red-100 transition-colors rounded-xs cursor-pointer">
+                    {t("common.tryAgain")}
+                </button>
+            </div>
+        );
+    }
+    if (isLoading || !data) return <AccountSkeleton />;
+
+    const action = (a: MagentoAccountLink, key: string, small = false) =>
+        a.kind === "business-overview" ? (
+            <button key={key} type="button" onClick={onEditBusinessOverview}
+                className={small ? "bg-brand-yellow hover:bg-black hover:text-white text-black text-caption font-bold px-4 py-1.5 uppercase transition-all rounded-sm shadow-sm cursor-pointer" : SP_BUTTON}>
+                {a.label}
+            </button>
+        ) : (
+            <Link key={key} href={lp(a.href)} className={SP_BUTTON}>{a.label}</Link>
+        );
+
+    const box = (b: MagentoAccountBox, key: string) => {
+        const selected = years[key] ?? b.years?.find((y) => y.selected)?.year ?? b.years?.[0]?.year;
+        return (
+            <div key={key} className={SP_CARD}>
+                <div className={`${SP_HEADER} flex justify-between items-center gap-3`}>
+                    <span>{b.title}</span>
+                    {b.titleAction && action(b.titleAction, "title", true)}
+                    {b.years && b.years.length > 0 && (
+                        <select
+                            className="border border-gray-300 rounded-sm text-[12px] px-2 py-1 bg-white outline-none normal-case font-normal"
+                            value={selected}
+                            onChange={(e) => setYears((prev) => ({ ...prev, [key]: e.target.value }))}
+                        >
+                            {b.years.map((y) => <option key={y.year} value={y.year}>{y.label}</option>)}
+                        </select>
+                    )}
+                </div>
+                <div className="p-3 md:p-5 text-body text-gray-700 space-y-2.5 font-medium leading-relaxed">
+                    <SalesPersonLines lines={b.years ? b.years.find((y) => y.year === selected)?.lines ?? [] : b.lines} />
+                    {b.actions.length > 0 && (
+                        <div className="flex flex-col md:flex-row gap-3 pt-4 md:pt-6">
+                            {b.actions.map((a, i) => action(a, String(i)))}
+                        </div>
+                    )}
+                </div>
+            </div>
+        );
+    };
+
+    return (
+        <div dir={isRtl ? "rtl" : "ltr"}>
+            {data.title && (
+                <h1 className="text-h3 sm:text-[22px] md:text-[26px] font-bold text-black mb-6 md:mb-10 uppercase tracking-wide">{data.title}</h1>
+            )}
+            <div className="space-y-8">
+                {data.sections.map((s, si) => (
+                    <section key={si}>
+                        {s.title && <h2 className="text-body-lg md:text-h3-sm font-bold text-black uppercase mb-3">{s.title}</h2>}
+                        <hr className="border-gray-200 mb-6" />
+                        {s.kind === "credit" ? (
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
+                                {s.credit.map((c, i) => {
+                                    const color = SP_CREDIT_COLORS[i % SP_CREDIT_COLORS.length];
+                                    return (
+                                        <div key={i} className="flex shadow-sm rounded-sm overflow-hidden">
+                                            <div className={`w-16 md:w-20 flex items-center justify-center p-3 ${color.icon}`}>
+                                                <Hourglass className="text-white w-6 h-6 md:w-8 md:h-8" />
+                                            </div>
+                                            <div className={`flex-1 p-3 md:p-4 flex flex-col justify-center items-end text-white ${color.body}`}>
+                                                <span className="text-micro md:text-caption font-bold uppercase tracking-tight opacity-90">{c.title}</span>
+                                                <bdi className="text-base md:text-xl font-bold mt-1 md:mt-1.5">{c.amount}</bdi>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        ) : (
+                            <div className={`grid grid-cols-1 md:grid-cols-2 ${s.boxes.length > 2 ? "lg:grid-cols-3" : ""} gap-4 md:gap-6`}>
+                                {s.boxes.map((b, bi) => box(b, `${si}-${bi}`))}
+                            </div>
+                        )}
+                    </section>
+                ))}
+            </div>
+        </div>
     );
 }

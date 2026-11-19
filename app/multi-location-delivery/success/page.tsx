@@ -77,7 +77,7 @@ const MultiShippingSuccessContent = () => {
 
                 {/* Header */}
                 <div className="text-center mb-10 md:mb-16">
-                    <h1 className="text-h2 md:text-h1 font-black text-black uppercase tracking-tight mb-4">
+                    <h1 className="text-h2 md:text-h1 font-bold text-black uppercase tracking-tight mb-4">
                         {t("multi.thankYou")}
                     </h1>
                     {message && (
@@ -97,8 +97,8 @@ const MultiShippingSuccessContent = () => {
                 <div className="border border-gray-200 shadow-sm overflow-hidden">
                     {/* Table Header */}
                     <div className="flex bg-surface-muted border-b border-gray-200 py-3 px-6">
-                        <div className="w-[180px] md:w-[220px] flex-shrink-0 text-body-sm md:text-body font-black text-black">{t("multi.orderId")}</div>
-                        <div className="flex-1 text-body-sm md:text-body font-black text-black">{t("multi.shipTo")}</div>
+                        <div className="w-[180px] md:w-[220px] flex-shrink-0 text-body-sm md:text-body font-bold text-black">{t("multi.orderId")}</div>
+                        <div className="flex-1 text-body-sm md:text-body font-bold text-black">{t("multi.shipTo")}</div>
                     </div>
 
                     {/* Table Body */}

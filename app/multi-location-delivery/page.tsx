@@ -215,14 +215,14 @@ const MultiLocationDeliveryPage: React.FC = () => {
             <div className="bg-white min-h-screen font-sans">
 
                 <div className="max-w-[1440px] mx-auto py-12 md:py-24 px-3 sm:px-4 flex flex-col items-center text-center">
-                    <h1 className="text-h3 sm:text-h2 md:text-h1-sm font-black text-black uppercase mb-8 md:mb-12 tracking-wide">
+                    <h1 className="text-h3 sm:text-h2 md:text-h1-sm font-bold text-black uppercase mb-8 md:mb-12 tracking-wide">
                         {t("multi.shoppingCart")}
                     </h1>
 
                     <div className="relative mb-8">
                         <ShoppingCart size={60} strokeWidth={1.5} className="text-black sm:w-[80px] sm:h-[80px]" />
                         <div className="absolute -bottom-1 -right-1 bg-white rounded-full p-0.5">
-                            <div className="bg-white border-2 border-black rounded-full w-8 h-8 flex items-center justify-center font-black text-black text-subheading">
+                            <div className="bg-white border-2 border-black rounded-full w-8 h-8 flex items-center justify-center font-bold text-black text-subheading">
                                 !
                                 <div className="absolute inset-0 rounded-full border border-white"></div>
                             </div>
@@ -252,7 +252,7 @@ const MultiLocationDeliveryPage: React.FC = () => {
         return (
             <div className="bg-white min-h-screen font-sans">
                 <div className="max-w-[1440px] mx-auto py-12 md:py-24 px-3 sm:px-4 flex flex-col items-center text-center">
-                    <h1 className="text-subheading sm:text-[22px] md:text-[26px] font-black text-black uppercase tracking-normal mb-6">
+                    <h1 className="text-subheading sm:text-[22px] md:text-[26px] font-bold text-black uppercase tracking-normal mb-6">
                         {t("multi.shipToMultiple")}
                     </h1>
                     <p className="text-body md:text-body-lg font-bold text-[#ff0000] mb-8 max-w-2xl">{startError}</p>
@@ -274,7 +274,7 @@ const MultiLocationDeliveryPage: React.FC = () => {
             <div className="max-w-[1920px] mx-auto py-6 sm:py-8 md:py-12 px-3 sm:px-6 lg:px-10">
                 {/* Heading Block */}
                 <div className="text-center mb-6 md:mb-10">
-                    <h1 className="text-subheading sm:text-[22px] md:text-[26px] font-black text-black uppercase tracking-normal mb-1">
+                    <h1 className="text-subheading sm:text-[22px] md:text-[26px] font-bold text-black uppercase tracking-normal mb-1">
                         {t("multi.shipToMultiple")}
                     </h1>
                     <p className="text-body-sm sm:text-body md:text-body-lg text-black font-medium">
@@ -388,7 +388,7 @@ const MultiLocationDeliveryPage: React.FC = () => {
                 <div className="mt-6 md:mt-8 bg-surface-muted p-4 sm:p-6 flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-6 border border-gray-100">
                     <Link
                         href={lp("/checkout/cart")}
-                        className="w-full sm:w-auto text-center bg-black text-white px-6 md:px-10 py-3.5 md:py-4 text-label font-black uppercase tracking-[0.1em] hover:bg-zinc-900 transition-colors"
+                        className="w-full sm:w-auto text-center bg-black text-white px-6 md:px-10 py-3.5 md:py-4 text-label font-bold uppercase tracking-[0.1em] hover:bg-zinc-900 transition-colors"
                     >
                         {t("multi.backToCart")}
                     </Link>
@@ -396,7 +396,7 @@ const MultiLocationDeliveryPage: React.FC = () => {
                     <button
                         onClick={handleProceed}
                         disabled={!isReadyToProceed || isAssigning}
-                        className={`w-full sm:w-auto justify-center px-6 md:px-10 py-3.5 md:py-4 text-label font-black uppercase tracking-[0.1em] transition-all flex items-center gap-2
+                        className={`w-full sm:w-auto justify-center px-6 md:px-10 py-3.5 md:py-4 text-label font-bold uppercase tracking-[0.1em] transition-all flex items-center gap-2
                             ${isReadyToProceed
                                 ? 'bg-brand-yellow text-black hover:bg-black hover:text-white cursor-pointer'
                                 : 'bg-brand-yellow/60 text-black/40 cursor-not-allowed'

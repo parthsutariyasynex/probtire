@@ -1484,6 +1484,7 @@ export const STORE_CONFIG_QUERY = /* GraphQL */ `
       default_keywords
       base_currency_code
       default_display_currency_code
+      timezone
     }
   }
 `;
@@ -1505,6 +1506,155 @@ export const KLEVER_MULTISHIPPING_PAYMENT_METHODS_QUERY = /* GraphQL */ `
       code
       title
       is_available
+    }
+  }
+`;
+
+// Store views of the website of the Store header (Magento availableStores). Used by reorder to
+// find the store view an order was placed in.
+export const AVAILABLE_STORES_QUERY = /* GraphQL */ `
+  query AvailableStores {
+    availableStores {
+      store_code
+    }
+  }
+`;
+
+// The logged-in customer's order with this number, in the store view of the Store header
+// (default store scope). Empty when the order was placed in another store view.
+export const CUSTOMER_ORDER_BY_NUMBER_QUERY = /* GraphQL */ `
+  query CustomerOrderByNumber($number: String!) {
+    customer {
+      orders(filter: { number: { eq: $number } }) {
+        items {
+          number
+        }
+      }
+    }
+  }
+`;
+
+// Magento's own view of one customer order (My Orders → View Order): status label, the
+// actions Magento allows, invoices and comments — for the website of the Store header.
+export const CUSTOMER_ORDER_VIEW_QUERY = /* GraphQL */ `
+  query CustomerOrderView($number: String!) {
+    customer {
+      orders(filter: { number: { eq: $number } }, scope: WEBSITE) {
+        items {
+          number
+          status
+          order_date
+          available_actions
+          comments { message timestamp }
+          invoices {
+            id
+            number
+            items {
+              id
+              product_name
+              product_sku
+              product_sale_price { value currency }
+              quantity_invoiced
+            }
+            total {
+              subtotal { value }
+              total_shipping { value }
+              total_tax { value }
+              grand_total { value }
+              discounts { label amount { value } }
+            }
+          }
+        }
+      }
+    }
+  }
+`;
+
+// Whether a CMS page exists in the store view of the Store header (menu + cms-page-exists route).
+export const CMS_PAGE_EXISTS_QUERY = /* GraphQL */ `
+  query CmsPageExists($identifier: String!) {
+    cmsPage(identifier: $identifier) { identifier }
+  }
+`;
+
+// The logged-in customer's own account code (My Statement checks every PDF against it).
+export const CUSTOMER_CODE_QUERY = /* GraphQL */ `query StatementCustomerCode { customer { customer_code } }`;
+
+// What a menu URL points to in the store view (category / CMS page), for the main menu.
+export const MENU_URL_RESOLVER_QUERY = /* GraphQL */ `
+  query MenuUrlResolver($url: String!) {
+    urlResolver(url: $url) { type id relative_url }
+  }
+`;
+
+// Country names of the store view, in its language.
+export const COUNTRIES_QUERY = /* GraphQL */ `
+  query StoreCountries { countries { id full_name_locale } }
+`;
+
+// Every wishlist item (items_v2, paged) of the logged-in customer for the store view's website.
+export const CUSTOMER_WISHLIST_ALL_ITEMS_QUERY = /* GraphQL */ `
+  query CustomerWishlistAllItems($currentPage: Int!, $pageSize: Int!) {
+    customer {
+      wishlists {
+        id
+        items_count
+        items_v2(currentPage: $currentPage, pageSize: $pageSize) {
+          items {
+            id
+            quantity
+            product {
+              id
+              sku
+              name
+              url_key
+              stock_status
+              image { url }
+              price_range {
+                minimum_price {
+                  final_price { value currency }
+                  regular_price { value }
+                }
+              }
+            }
+          }
+          page_info { current_page total_pages }
+        }
+      }
+    }
+  }
+`;
+
+// Content of a CMS page in the store view (About Us, User Guides, Product Catalogue).
+export const CMS_PAGE_CONTENT_QUERY = /* GraphQL */ `
+  query GetCmsPageContent($identifier: String!) {
+    cmsPage(identifier: $identifier) {
+      title
+      content_heading
+      content
+    }
+  }
+`;
+
+// Whether the logged-in customer may complete Magento's "Order Check" (Confirm Order) on this
+// order — decided by Magento (its status, role and permission rules). Requires the Magento field
+// kleverPrintOrder.can_confirm_order; until Magento adds it, the order details treat it as false.
+export const ORDER_CHECK_PERMISSION_QUERY = /* GraphQL */ `
+  query OrderCheckPermission($orderId: Int!) {
+    kleverPrintOrder(orderId: $orderId) {
+      can_confirm_order
+    }
+  }
+`;
+
+// CMS page meta fields only (title + SEO meta), no CMS content — used by src/lib/metadata.ts.
+export const CMS_META_QUERY = /* GraphQL */ `
+  query GetCmsPageMeta($identifier: String!) {
+    cmsPage(identifier: $identifier) {
+      title
+      meta_title
+      meta_description
+      meta_keywords
     }
   }
 `;

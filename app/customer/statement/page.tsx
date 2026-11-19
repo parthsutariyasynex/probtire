@@ -9,18 +9,41 @@ import { useRouter } from "next/navigation";
 import { toast } from "react-hot-toast";
 import { redirectToLogin } from "@/utils/helpers";
 import { useTranslation } from "@/hooks/useTranslation";
+import { getClientLocale } from "@/lib/api/api-client";
+import { getClientStoreConfig } from "@/lib/store/client-config";
+
+// Today in the given timezone (Magento's store timezone), `monthsBack` calendar months earlier,
+// as YYYY-MM-DD. A day that doesn't exist in the earlier month rolls over (31 Mar − 1 month →
+// 3 Mar), the same way PHP's "-1 month" does on Magento's side.
+function dateInTimezone(timeZone: string, monthsBack = 0): string {
+    const parts = new Intl.DateTimeFormat("en-CA", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(new Date());
+    const get = (type: string) => Number(parts.find((p) => p.type === type)?.value);
+    const d = new Date(Date.UTC(get("year"), get("month") - 1 - monthsBack, get("day")));
+    return d.toISOString().slice(0, 10);
+}
 
 export default function MyStatementPage() {
     const { data: session, status: authStatus } = useSession();
     const router = useRouter();
     const { t } = useTranslation();
 
-    const today = new Date().toISOString().split('T')[0];
-    const currentYear = new Date().getFullYear();
-    const [startDate, setStartDate] = useState(`${currentYear}-01-01`);
-    const [endDate, setEndDate] = useState(today);
-    const [statementType, setStatementType] = useState("account_statement");
+    // As Magento's form: the period is pre-filled from the same day one month ago up to today
+    // (e.g. 18-10-2026 → 18-11-2026), "today" being in Magento's store timezone (storeConfig.timezone).
+    // The type starts on the first of Magento's statement types.
+    const [startDate, setStartDate] = useState("");
+    const [endDate, setEndDate] = useState("");
+    React.useEffect(() => {
+        let cancelled = false;
+        getClientStoreConfig(getClientLocale()).then((cfg) => {
+            if (cancelled || !cfg?.timezone) return;
+            setStartDate((prev) => prev || dateInTimezone(cfg.timezone!, 1));
+            setEndDate((prev) => prev || dateInTimezone(cfg.timezone!, 0));
+        });
+        return () => { cancelled = true; };
+    }, []);
+    const [statementType, setStatementType] = useState("");
     const [statementTypes, setStatementTypes] = useState<{ value: string; label: string }[]>([]);
+    const [typesLoaded, setTypesLoaded] = useState(false);
 
     const [isDownloading, setIsDownloading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -33,35 +56,33 @@ export default function MyStatementPage() {
 
             try {
                 const res = await fetch("/api/kleverapi/my-statement/types", {
-                    headers: { Authorization: `Bearer ${token}` },
+                    headers: { Authorization: `Bearer ${token}`, "x-locale": getClientLocale() },
                 });
-                if (res.ok) {
-                    const data = await res.json();
-
-                    // Standardize response structure: handle [ {k:v}, ... ] or { types: [...] }
-                    const rawTypes = Array.isArray(data) ? data : (data.types || []);
-                    const mapped = rawTypes.map((t: any) => ({
-                        value: t.value || t.code || t.id || t,
-                        label: t.label || t.name || t.type_name || t.value || t
-                    }));
-
-                    if (mapped.length > 0) {
-                        setStatementTypes(mapped);
-                        // Optional: select first by default if not already set or current is invalid
-                        if (!mapped.find((m: { value: string; label: string }) => m.value === statementType)) {
-                            setStatementType(mapped[0].value);
-                        }
-                    }
+                const data = await res.json().catch(() => null);
+                if (!res.ok) {
+                    setError(data?.message || t("statement.downloadFailed"));
+                    return;
                 }
+                // Magento's statement types exactly ({ code, label }, Magento's order). As Magento's form,
+                // the first type in Magento's list is selected (e.g. "Account Statement").
+                const rawTypes: any[] = Array.isArray(data) ? data : [];
+                const types = rawTypes
+                    .filter((ty) => ty?.code)
+                    .map((ty) => ({ value: String(ty.code), label: String(ty.label ?? ty.code) }));
+                setStatementTypes(types);
+                setStatementType((prev) => (prev && types.some((ty) => ty.value === prev) ? prev : types[0]?.value ?? ""));
             } catch (err) {
                 console.error("Failed to fetch statement types:", err);
+                setError(t("statement.downloadFailed"));
+            } finally {
+                setTypesLoaded(true);
             }
         };
 
         if (authStatus === "authenticated") {
             fetchTypes();
         }
-    }, [authStatus, session]);
+    }, [authStatus, session, t]);
 
     // Auth Guard
     if (authStatus === "unauthenticated") {
@@ -101,12 +122,16 @@ export default function MyStatementPage() {
             const response = await fetch(`/api/kleverapi/my-statement?${queryParams.toString()}`, {
                 headers: {
                     Authorization: `Bearer ${token}`,
+                    "x-locale": getClientLocale(),
                 },
             });
 
             if (!response.ok) {
-                const data = await response.json().catch(() => ({ message: "Failed to download statement" }));
-                throw new Error(data.message || "Something went wrong. Please try again.");
+                // Magento's own message when it gives one.
+                const data = await response.json().catch(() => null);
+                // Magento only returned another account's statement: never shown.
+                if (data?.code === "WRONG_ACCOUNT") throw new Error(t("statement.wrongAccount"));
+                throw new Error(data?.message || t("statement.downloadFailed"));
             }
 
             const contentType = response.headers.get("content-type");
@@ -119,7 +144,11 @@ export default function MyStatementPage() {
                 const a = document.createElement("a");
                 a.style.display = "none";
                 a.href = fileUrl;
-                a.download = `Statement_${startDate}_to_${endDate}.pdf`;
+                // Magento's file name (from the PDF response), as Magento's own download uses.
+                const disposition = response.headers.get("content-disposition") || "";
+                const nameMatch = disposition.match(/filename\*=UTF-8''([^;]+)|filename="?([^";]+)"?/i);
+                const magentoName = nameMatch ? decodeURIComponent(nameMatch[1] || nameMatch[2]) : "";
+                if (magentoName) a.download = magentoName; else a.download = "";
 
                 document.body.appendChild(a);
                 a.click();
@@ -144,11 +173,11 @@ export default function MyStatementPage() {
                     document.body.removeChild(link);
                     toast.success(t("common.success"), { id: "statement-download" });
                 } else {
-                    throw new Error("Invalid response format received from server.");
+                    throw new Error(t("statement.downloadFailed"));
                 }
             }
         } catch (err: any) {
-            setError(err.message || "Failed to fetch statement");
+            setError(err.message || t("statement.downloadFailed"));
             toast.error(err.message || t("statement.downloadFailed"), { id: "statement-download" });
         } finally {
             setIsDownloading(false);
@@ -210,13 +239,13 @@ export default function MyStatementPage() {
                             {/* Statement Type */}
                             <div className="mb-6 md:mb-10">
                                 <label className="block text-body font-bold text-gray-800 mb-2">
-                                    {t("m.type")}
+                                    {t("statement.statementType")}
                                 </label>
                                 <PortalDropdown
                                     value={statementType}
                                     onChange={(val) => setStatementType(val)}
                                     options={statementTypes}
-                                    placeholder={statementTypes.length > 0 ? t("m.select") : t("common.loading")}
+                                    placeholder={typesLoaded ? t("m.select") : t("common.loading")}
                                     buttonClassName="w-full h-[45px] px-4 border border-gray-300 text-body-lg text-gray-700 focus:outline-none focus:border-brand-yellow transition-colors bg-white font-medium shadow-sm flex items-center justify-between cursor-pointer"
                                 />
                             </div>
@@ -225,8 +254,8 @@ export default function MyStatementPage() {
                             <div className="flex flex-col gap-4">
                                 <button
                                     onClick={handleGetStatement}
-                                    disabled={isDownloading}
-                                    className={`w-full sm:w-auto bg-brand-yellow text-black px-6 sm:px-10 py-3 md:py-3.5 font-bold text-body-lg uppercase tracking-widest hover:bg-brand-yellow-dark transition-all rounded-sm flex items-center justify-center gap-3 ${isDownloading ? 'opacity-70 cursor-not-allowed grayscale' : ''}`}
+                                    disabled={isDownloading || !typesLoaded || !startDate || !endDate || !statementType}
+                                    className={`w-full sm:w-auto bg-brand-yellow text-black px-6 sm:px-10 py-3 md:py-3.5 font-bold text-body-lg uppercase tracking-widest hover:bg-brand-yellow-dark transition-all rounded-sm flex items-center justify-center gap-3 ${isDownloading || !typesLoaded || !startDate || !endDate || !statementType ? 'opacity-70 cursor-not-allowed grayscale' : ''}`}
                                 >
                                     {isDownloading ? (
                                         t("common.loading")

@@ -121,9 +121,9 @@ export interface CreateCustomerTokenWithOtpData {
   createCustomerTokenWithOtp: { message: string | null; token: string };
 }
 
-export interface InitiatePasswordResetWithOtpData {
-  initiatePasswordResetWithOTP: { message: string | null };
-}
+// export interface InitiatePasswordResetWithOtpData {
+//   initiatePasswordResetWithOTP: { message: string | null };
+// }
 
 export interface ContactUsData {
   contactUs: { status: boolean };

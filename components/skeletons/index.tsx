@@ -974,6 +974,23 @@ export function WishlistSkeleton({ count = 6 }: { count?: number }) {
 }
 
 // ─── Favourite Products Skeleton ──────────────────────────────────────────────
+/** Favourite Products with no items — title + Magento's warning box, same size as the real one. */
+export function FavouriteProductsEmptySkeleton({ withTitle = true }: { withTitle?: boolean }) {
+  return (
+    <div className={withTitle ? "flex-1 w-full px-4 md:px-6 lg:px-8 py-4 md:py-6 lg:py-5 bg-white min-w-0 font-rubik" : ""}>
+      {withTitle && (
+        <div className="mb-5">
+          <Pulse className="h-6 md:h-7 w-56" />
+        </div>
+      )}
+      <div className="flex items-center gap-3 bg-gray-100 px-4 py-3 rounded-sm animate-pulse">
+        <Pulse className="w-5 h-5 shrink-0" />
+        <Pulse className="h-4 w-full max-w-[22rem]" />
+      </div>
+    </div>
+  );
+}
+
 export function FavouriteProductsSkeleton({ count = 10 }: { count?: number }) {
   return (
     <div className="flex-1 w-full px-4 md:px-6 lg:px-8 py-4 md:py-6 lg:py-5 bg-white min-w-0 font-rubik">

@@ -170,7 +170,7 @@ export default function NotificationDrawer({ isOpen, onClose }: NotificationDraw
                     <Link
                         href={lp("/customer/notifications")}
                         onClick={onClose}
-                        className="w-full h-[55px] bg-brand-yellow hover:bg-black text-black hover:text-white font-black rounded-sm transition-all duration-300 flex items-center justify-center shadow-lg hover:shadow-xl uppercase tracking-[0.2em] text-body-sm"
+                        className="w-full h-[55px] bg-brand-yellow hover:bg-black text-black hover:text-white font-bold rounded-sm transition-all duration-300 flex items-center justify-center shadow-lg hover:shadow-xl uppercase tracking-[0.2em] text-body-sm"
                     >
                         {t("common.view")} {t("nav.notifications")}
                     </Link>

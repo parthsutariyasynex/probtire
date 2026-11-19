@@ -2,16 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { getLocaleFromRequest } from "@/lib/api/magento-url";
 import { toStoreCode } from "@/lib/store/website";
 import { graphqlFetch, isGraphQLRequestError } from "@/src/lib/graphqlFetch";
+import { CMS_PAGE_EXISTS_QUERY } from "@/src/graphql/queries";
 
 // Does the selected website + language have this Magento CMS page?
 // Used to show links (e.g. the sidebar "User Guides" button) only where Magento has the page.
 //   GET /api/kleverapi/cms-page-exists?identifier=user-guides → { store, identifier, exists }
 
-const QUERY = /* GraphQL */ `
-  query CmsPageExists($identifier: String!) {
-    cmsPage(identifier: $identifier) { identifier }
-  }
-`;
 
 const CACHE_TTL_MS = 60 * 1000;
 const cache = new Map<string, { exists: boolean; expires: number }>();
@@ -28,7 +24,7 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({ store, identifier, exists: hit.exists }, { headers: { "X-Cache": "HIT" } });
     }
     try {
-        await graphqlFetch({ query: QUERY, variables: { identifier }, store });
+        await graphqlFetch({ query: CMS_PAGE_EXISTS_QUERY, variables: { identifier }, store });
         cache.set(key, { exists: true, expires: Date.now() + CACHE_TTL_MS });
         return NextResponse.json({ store, identifier, exists: true });
     } catch (err) {

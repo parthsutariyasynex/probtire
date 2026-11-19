@@ -137,7 +137,7 @@ const MultiShippingBillingPage: React.FC = () => {
         <div className="bg-white min-h-screen font-sans pb-10 md:pb-20">
 
             <div className="max-w-[1440px] mx-auto pt-8 md:pt-16 px-3 sm:px-4">
-                <h1 className="text-h3 sm:text-h2 md:text-h1-sm font-black text-black text-center uppercase mb-8 md:mb-16 tracking-tight">
+                <h1 className="text-h3 sm:text-h2 md:text-h1-sm font-bold text-black text-center uppercase mb-8 md:mb-16 tracking-tight">
                     {t("multi.billingInfo")}
                 </h1>
 

@@ -29,9 +29,13 @@ export async function POST(
         // Body is optional; accept either { comment, attachments } or { input: {...} }.
         const body = await request.json().catch(() => ({}));
         const src = body?.input ?? body ?? {};
+        // Magento's KleverConfirmOrderInput: { comment?, attachments?: [{ file_name!, file_content! (base64) }] }
         const input: Record<string, any> = {};
-        if (typeof src.comment === "string") input.comment = src.comment;
-        if (src.attachments != null) input.attachments = src.attachments;
+        if (typeof src.comment === "string" && src.comment.trim()) input.comment = src.comment;
+        const files = (Array.isArray(src.attachments) ? src.attachments : [])
+            .filter((a: any) => a?.file_name && a?.file_content)
+            .map((a: any) => ({ file_name: String(a.file_name), file_content: String(a.file_content) }));
+        if (files.length > 0) input.attachments = files;
 
         const res = await fetch(MAGENTO_GRAPHQL, {
             method: "POST",
@@ -40,7 +44,7 @@ export async function POST(
                 Store: toStoreCode(getLocaleFromRequest(request), request),
                 Authorization: `Bearer ${token}`,
             },
-            body: JSON.stringify({ query: KLEVER_CONFIRM_ORDER_MUTATION, variables: { orderId: id, request: input } }),
+            body: JSON.stringify({ query: KLEVER_CONFIRM_ORDER_MUTATION, variables: { orderId: id, input } }),
             cache: "no-store",
         });
 

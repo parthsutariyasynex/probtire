@@ -267,10 +267,12 @@ const Sidebar = () => {
     const isSubAccount = sidebarData.user_type === "Company Sub Account";
     const isMultiCompany = sidebarData.user_type === "Multiple Company User";
     const restrictedRole = isSubAccount || isMultiCompany;
+    // Sales Person: Manage Accounts follows Magento's is_visible flag, exactly like Magento's menu.
+    const isSalesPerson = sidebarData.user_type === "Sales Person";
 
     const visibleItems = sidebarData.items
         .filter(item => {
-            if (item.code === "manage_subaccounts") return !restrictedRole;
+            if (item.code === "manage_subaccounts") return isSalesPerson ? item.is_visible : !restrictedRole;
             return item.is_visible;
         })
         .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));

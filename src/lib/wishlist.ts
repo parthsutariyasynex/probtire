@@ -9,42 +9,11 @@
 // Both are read in full and merged by wishlist item id, so the list is exactly the set
 // of items Magento holds for this website, and the count is that list's length.
 
-import { CUSTOMER_WISHLIST_LEGACY_ITEMS_QUERY } from "@/src/graphql/queries";
+import { CUSTOMER_WISHLIST_LEGACY_ITEMS_QUERY, CUSTOMER_WISHLIST_ALL_ITEMS_QUERY } from "@/src/graphql/queries";
 
 const MAGENTO_GRAPHQL = (process.env.NEXT_PUBLIC_MAGENTO_BASE_URL || "") + "/graphql";
 const V2_PAGE_SIZE = 100;
 
-const WISHLIST_ITEMS_V2_QUERY = /* GraphQL */ `
-  query CustomerWishlistAllItems($currentPage: Int!, $pageSize: Int!) {
-    customer {
-      wishlists {
-        id
-        items_count
-        items_v2(currentPage: $currentPage, pageSize: $pageSize) {
-          items {
-            id
-            quantity
-            product {
-              id
-              sku
-              name
-              url_key
-              stock_status
-              image { url }
-              price_range {
-                minimum_price {
-                  final_price { value currency }
-                  regular_price { value }
-                }
-              }
-            }
-          }
-          page_info { current_page total_pages }
-        }
-      }
-    }
-  }
-`;
 
 export interface WishlistItem {
     id: string;
@@ -81,7 +50,7 @@ export async function getCustomerWishlist(store: string, authHeader: string): Pr
     // items_v2, every page of every wishlist
     const byWishlist = new Map<string, { count: number; items: WishlistItem[] }>();
     for (let page = 1; ; page++) {
-        const data = await gql(WISHLIST_ITEMS_V2_QUERY, { currentPage: page, pageSize: V2_PAGE_SIZE }, store, authHeader);
+        const data = await gql(CUSTOMER_WISHLIST_ALL_ITEMS_QUERY, { currentPage: page, pageSize: V2_PAGE_SIZE }, store, authHeader);
         const lists: any[] = data?.customer?.wishlists ?? [];
         let more = false;
         for (const w of lists) {

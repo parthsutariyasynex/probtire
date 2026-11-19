@@ -9,35 +9,17 @@ import Price from "@/app/components/Price";
 import { useRouter, useSearchParams } from "next/navigation";
 import Sidebar from "@/components/Sidebar";
 import Filters from "@/components/Filters";
-import OrdersTable, { Order } from "@/components/OrdersTable";
+import OrdersTable, { Order, OrdersTableLayout } from "@/components/OrdersTable";
 import Pagination from "@/components/Pagination";
 import { MyOrdersSkeleton, SidebarSkeleton, OrdersTableSkeleton } from "@/components/skeletons";
 import { useCart } from "@/modules/cart/context/CartContext";
 import { toast } from "react-hot-toast";
 
-function formatOrderDate(dateStr: string): string {
-    if (!dateStr) return "";
-    try {
-        const d = new Date(dateStr);
-        if (isNaN(d.getTime())) return dateStr;
-        return new Intl.DateTimeFormat("en-US", {
-            year: "2-digit", month: "numeric", day: "numeric"
-        }).format(d);
-    } catch {
-        return dateStr;
-    }
-}
-
-function formatOrderStatus(status: string): string {
-    if (!status) return "";
-    if (status === "approval_pending") return "Check Pending";
-    return status.replace(/_/g, " ").replace(/\b\w/g, (c: string) => c.toUpperCase());
-}
-
 function mapOrder(item: any): Order {
     const id = item.increment_id || "";
     const sapOrderNumber = item.sap_order_number || "";
-    const date = formatOrderDate(item.created_at);
+    // Magento's date in its store timezone (formatted by the route).
+    const date = item.date_label || "";
     const grandTotal = item.grand_total;
 
     let orderedBy = (item.ordered_by || "").trim();
@@ -50,7 +32,8 @@ function mapOrder(item: any): Order {
 
     const company = (item.company_name || "").trim();
     const companyCode = (item.company_code || "").trim();
-    const status = formatOrderStatus(item.status || "");
+    // Magento's status label for the store view (kleverMyOrders.status_label).
+    const status = item.status || "";
 
     return {
         id,
@@ -101,8 +84,10 @@ function MyOrdersPageContent() {
     const isSalesPerson = useMemo(() => Number((session as any)?.utypid) === 3, [session]);
     const [isMultiCompany, setIsMultiCompany] = useState(false);
     const [isSubOrMasterCompany, setIsSubOrMasterCompany] = useState(false);
+    // Magento's account type is exactly "Sales Person" (utypid 3 is shared with Master Company).
+    const [isSalesPersonType, setIsSalesPersonType] = useState(false);
     useEffect(() => {
-        if (!authToken) { setIsMultiCompany(false); setIsSubOrMasterCompany(false); return; }
+        if (!authToken) { setIsMultiCompany(false); setIsSubOrMasterCompany(false); setIsSalesPersonType(false); return; }
         if (typeof sessionStorage === "undefined") return;
         const ROLE_CACHE = "altalayi_user_type_v1";
         const TOKEN_CACHE = "altalayi_role_token_v1";
@@ -110,6 +95,7 @@ function MyOrdersPageContent() {
             const cached = sessionStorage.getItem(ROLE_CACHE) || "Customer";
             setIsMultiCompany(cached === "Multiple Company User");
             setIsSubOrMasterCompany(cached === "Company Sub Account" || cached === "Master Company");
+            setIsSalesPersonType(cached === "Sales Person");
             return;
         }
         fetch("/api/kleverapi/account-sidebar", {
@@ -120,9 +106,38 @@ function MyOrdersPageContent() {
             sessionStorage.setItem(TOKEN_CACHE, authToken);
             setIsMultiCompany(type === "Multiple Company User");
             setIsSubOrMasterCompany(type === "Company Sub Account" || type === "Master Company");
+            setIsSalesPersonType(type === "Sales Person");
         }).catch(() => { });
     }, [authToken]);
     const shouldHideCartActions = false;
+
+    // Magento's own My Orders table layout (columns, header + action texts) for this customer and store view.
+    // Magento is the only source: if it can't be read, the page shows an error state (no local UI).
+    const [tableLayout, setTableLayout] = useState<OrdersTableLayout | null>(null);
+    const [layoutSettled, setLayoutSettled] = useState(false);
+    const [layoutError, setLayoutError] = useState<string | null>(null);
+    const [layoutAttempt, setLayoutAttempt] = useState(0);
+    useEffect(() => {
+        if (!authToken) return;
+        let cancelled = false;
+        setLayoutSettled(false);
+        setLayoutError(null);
+        fetch("/api/kleverapi/my-orders/layout", {
+            headers: { Authorization: `Bearer ${authToken}`, "x-locale": window.location.pathname.startsWith("/ar") ? "ar" : "en" },
+        })
+            .then(async (r) => {
+                const d = await r.json().catch(() => null);
+                if (!r.ok || !Array.isArray(d?.columns)) throw new Error(d?.message || `HTTP ${r.status}`);
+                return d as OrdersTableLayout;
+            })
+            .then((d) => { if (!cancelled) setTableLayout(d); })
+            .catch((err) => {
+                console.error("[my-orders] Magento layout unavailable:", err?.message || err);
+                if (!cancelled) { setTableLayout(null); setLayoutError(err?.message || "error"); }
+            })
+            .finally(() => { if (!cancelled) setLayoutSettled(true); });
+        return () => { cancelled = true; };
+    }, [authToken, layoutAttempt]);
     const showCompanyFilters = true;
 
     // Filter states - derived from URL
@@ -443,42 +458,59 @@ function MyOrdersPageContent() {
                         </button>
                     </div>
 
-                    <Filters
-                        status={localStatus}
-                        search={localSearch}
-                        onStatusChange={setLocalStatus}
-                        onSearchChange={setLocalSearch}
-                        onApplySearch={handleSearchClick}
-                        onReset={handleResetClick}
-                        isFiltered={isFiltered}
-                        statusCounts={statusCounts}
-                        company={localCompany}
-                        onCompanyChange={setLocalCompany}
-                        companyCode={localCompanyCode}
-                        onCompanyCodeChange={setLocalCompanyCode}
-                        showCompanyFilters={showCompanyFilters}
-                    />
+                    {tableLayout?.filters && (
+                        <Filters
+                            status={localStatus}
+                            search={localSearch}
+                            onStatusChange={setLocalStatus}
+                            onSearchChange={setLocalSearch}
+                            onApplySearch={handleSearchClick}
+                            onReset={handleResetClick}
+                            isFiltered={isFiltered}
+                            statusCounts={statusCounts}
+                            company={localCompany}
+                            onCompanyChange={setLocalCompany}
+                            companyCode={localCompanyCode}
+                            onCompanyCodeChange={setLocalCompanyCode}
+                            showCompanyFilters={showCompanyFilters}
+                            magento={tableLayout.filters}
+                        />
+                    )}
 
                     {/* Loading (initial mount or fetch) with no data yet → show the table skeleton
                         in-place. The real chrome (sidebar/heading/export/filters) stays rendered,
                         so the layout is the full page and there's no shift when data arrives. */}
-                    {((isLoading || !hasFetched) && orders.length === 0) ? (
+                    {layoutError ? (
+                        <div className="py-12 bg-white border border-gray-100 rounded-lg shadow-sm px-4 md:px-10">
+                            <div className="flex flex-col sm:flex-row sm:items-center gap-3 bg-red-50 border border-red-100 p-4 rounded-md text-red-700">
+                                <span className="text-body-lg font-medium flex-1">{t("orders.magentoUnavailable")}</span>
+                                <button
+                                    onClick={() => setLayoutAttempt((n) => n + 1)}
+                                    className="px-4 py-1.5 bg-white border border-red-200 text-body text-red-700 hover:bg-red-100 transition-colors rounded-xs cursor-pointer"
+                                >
+                                    {t("orderDetails.tryAgain")}
+                                </button>
+                            </div>
+                        </div>
+                    ) : (((isLoading || !hasFetched) && orders.length === 0) || !layoutSettled || !tableLayout) ? (
                         <OrdersTableSkeleton rows={pageSize} />
                     ) : (hasFetched && orders.length === 0 && !isLoading) ? (
                         <div className="py-12 bg-white border border-gray-100 rounded-lg shadow-sm px-4 md:px-10">
-                            <div className="mb-4">
-                                <button
-                                    onClick={handleResetClick}
-                                    className="px-4 py-1.5 bg-[#f0f0f0] border border-gray-300 text-body text-black hover:bg-gray-200 transition-colors rounded-xs"
-                                >
-                                    {t("orders.reset")}
-                                </button>
-                            </div>
+                            {tableLayout.filters?.resetButton && (
+                                <div className="mb-4">
+                                    <button
+                                        onClick={handleResetClick}
+                                        className="px-4 py-1.5 bg-[#f0f0f0] border border-gray-300 text-body text-black hover:bg-gray-200 transition-colors rounded-xs"
+                                    >
+                                        {tableLayout.filters.resetButton}
+                                    </button>
+                                </div>
+                            )}
                             <div className="flex items-center gap-3 bg-[#fef9c3] border border-[#fef08a] p-4 rounded-md text-[#854d0e]">
                                 <svg className="w-5 h-5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                                     <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
                                 </svg>
-                                <span className="text-body-lg font-medium">{t("orders.noOrders")}</span>
+                                <span className="text-body-lg font-medium">{tableLayout.empty_message}</span>
                             </div>
                         </div>
                     ) : (
@@ -486,8 +518,10 @@ function MyOrdersPageContent() {
                             <OrdersTable
                                 orders={orders}
                                 onViewOrder={handleViewOrder}
+                                viewHref={(o) => lp(`/sales/order/view/order_id/${o.entity_id}`)}
                                 onReorder={handleReorder}
                                 hideReorder={shouldHideCartActions}
+                                layout={isSalesPersonType ? tableLayout : { ...tableLayout, empty_texts: undefined }}
                             />
                             {totalItems > 0 && (
                                 <Pagination

@@ -46,30 +46,61 @@ function parseTyreSize(input: string): { width: string; height: string; rim: str
     return { width: digits, height: "", rim: "" };
 }
 
+/** Magento's header tyre-size search (src/lib/magentoOrderView.ts → getMagentoTyreSizeSearch). */
+type TyreSize = { label: string; lookup: string; width: string; height: string; rim: string };
+type TyreSizeSearch = { sizes: TyreSize[]; placeholder: string | null; minCharsText: string | null; noResultText: string | null };
+// Magento shows matches only from 3 typed characters (its "Please enter 3 or more characters").
+const MIN_CHARS = 3;
+
 const SearchPopup: React.FC<SearchPopupProps> = ({ isOpen, onClose }) => {
-    const { t, isRtl } = useTranslation();
+    const { isRtl, locale } = useTranslation();
     const router = useRouter();
     const lp = useLocalePath();
     const [query, setQuery] = useState("");
-    const [suggestions, setSuggestions] = useState<{ label: string; sku: string }[]>([]);
-    const [isSearching, setIsSearching] = useState(false);
-    const [noResults, setNoResults] = useState(false);
+    // Magento's size list + texts for the selected website and language (loaded when the popup opens)
+    const [magento, setMagento] = useState<TyreSizeSearch | null>(null);
+    const [loadedFor, setLoadedFor] = useState<string | null>(null);
+    const [isLoading, setIsLoading] = useState(false);
+    const [loadError, setLoadError] = useState(false);
 
     const handleClose = () => {
         setQuery("");
-        setSuggestions([]);
-        setNoResults(false);
         onClose();
     };
 
     // Clear search query whenever popup closes or opens
     React.useEffect(() => {
-        if (!isOpen) {
-            setQuery("");
-            setSuggestions([]);
-            setNoResults(false);
-        }
+        if (!isOpen) setQuery("");
     }, [isOpen]);
+
+    // Load Magento's tyre-size list once per website + language (store cookie / locale decide it)
+    React.useEffect(() => {
+        if (!isOpen) return;
+        const key = `${locale}|${typeof document !== "undefined" ? document.cookie.match(/selected_store=([^;]*)/)?.[1] ?? "" : ""}`;
+        if (loadedFor === key && magento) return;
+        let cancelled = false;
+        setIsLoading(true);
+        setLoadError(false);
+        const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+        fetch(`/api/kleverapi/quick-order/search?view=tyre-sizes`, {
+            headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}), "x-locale": locale },
+            cache: "no-store",
+        })
+            .then((r) => (r.ok ? r.json() : Promise.reject(r.status)))
+            .then((d: TyreSizeSearch) => { if (!cancelled) { setMagento(d); setLoadedFor(key); } })
+            .catch(() => { if (!cancelled) setLoadError(true); })
+            .finally(() => { if (!cancelled) setIsLoading(false); });
+        return () => { cancelled = true; };
+    }, [isOpen, locale, loadedFor, magento]);
+
+    // Same rule as Magento's popup: a size matches when its lookup text contains what was typed.
+    const typed = query.toLowerCase();
+    const suggestions = React.useMemo(
+        () => (magento && typed.length >= MIN_CHARS ? magento.sizes.filter((s) => s.lookup.toLowerCase().includes(typed)) : []),
+        [magento, typed]
+    );
+    const tooShort = query.length > 0 && typed.length < MIN_CHARS;
+    const noResults = !!magento && typed.length >= MIN_CHARS && suggestions.length === 0;
 
     const handleSearch = (e?: React.FormEvent, term?: string) => {
         if (e) e.preventDefault();
@@ -89,107 +120,17 @@ const SearchPopup: React.FC<SearchPopupProps> = ({ isOpen, onClose }) => {
         handleClose();
     };
 
-    const handleSuggestionClick = (suggestion: { label: string; sku: string }) => {
-        const parsed = parseTyreSize(suggestion.label);
+    // A size picked from Magento's list → products filtered by its width / height / rim (as Magento does).
+    const handleSuggestionClick = (size: TyreSize) => {
         const params = new URLSearchParams();
-        if (parsed.width) params.set("width", parsed.width);
-        if (parsed.height) params.set("height", parsed.height);
-        if (parsed.rim) params.set("rim", parsed.rim);
-        if (!parsed.width && suggestion.sku) params.set("search", suggestion.sku);
+        if (size.width) params.set("width", size.width);
+        if (size.height) params.set("height", size.height);
+        if (size.rim) params.set("rim", size.rim);
 
         router.push(lp(`/products?${params.toString()}`));
         handleClose();
     };
 
-    // Fetch tyre size suggestions
-    React.useEffect(() => {
-        if (query.length < 2) {
-            setSuggestions([]);
-            setNoResults(false);
-            return;
-        }
-
-        const abortController = new AbortController();
-        const handler = setTimeout(async () => {
-            setIsSearching(true);
-            setNoResults(false);
-            try {
-                const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
-                const res = await fetch(`/api/kleverapi/quick-order/search?query=${encodeURIComponent(query)}&pageSize=20`, {
-                    headers: token ? { "Authorization": `Bearer ${token}` } : {},
-                    signal: abortController.signal,
-                });
-
-                if (res.ok) {
-                    const data = await res.json();
-                    console.log("[SearchPopup] API Response:", data);
-                    const items = data.items || data || [];
-                    const results: { label: string; sku: string }[] = [];
-                    const seen = new Set<string>();
-
-                    items.forEach((item: any) => {
-                        let size = item.tyre_size || item.size || item.color || "";
-
-                        // If no tyre_size field, try to extract size from product name
-                        // Matches patterns like: 265/70 R19.5, 195/65R15, 195 R15, 205/55 R16, 195/65
-                        if (!size && item.name) {
-                            const match = item.name.match(/(\d{3}\/?\d{0,2}\s*R?\s*\d{0,3}(?:\.\d)?)/i);
-                            if (match && match[1] && match[1].length >= 3) {
-                                size = match[1].trim();
-                            } else {
-                                size = item.name;
-                            }
-                        }
-
-                        if (size && !seen.has(size)) {
-                            seen.add(size);
-                            results.push({ label: size, sku: item.sku || "" });
-                        }
-                    });
-
-                    // Fallback to displaying full names if no size labels extracted
-                    if (results.length === 0 && items.length > 0) {
-                        items.forEach((item: any) => {
-                            const label = item.name || item.sku || "";
-                            if (label && !seen.has(label)) {
-                                seen.add(label);
-                                results.push({ label, sku: item.sku || "" });
-                            }
-                        });
-                    }
-
-                    const cleanQ = query.trim().toLowerCase();
-                    results.sort((a, b) => {
-                        const aStarts = a.label.toLowerCase().startsWith(cleanQ);
-                        const bStarts = b.label.toLowerCase().startsWith(cleanQ);
-                        if (aStarts && !bStarts) return -1;
-                        if (!aStarts && bStarts) return 1;
-                        return a.label.localeCompare(b.label);
-                    });
-
-                    setSuggestions(results);
-                    setNoResults(results.length === 0);
-                } else {
-                    console.error("[SearchPopup] API Error:", res.status);
-                    setSuggestions([]);
-                    setNoResults(true);
-                }
-            } catch (err: any) {
-                if (err.name !== "AbortError") {
-                    console.error("Search error:", err);
-                    setSuggestions([]);
-                    setNoResults(true);
-                }
-            } finally {
-                if (!abortController.signal.aborted) setIsSearching(false);
-            }
-        }, 400);
-
-        return () => {
-            clearTimeout(handler);
-            abortController.abort();
-        };
-    }, [query]);
 
     return (
         <Popup
@@ -217,7 +158,7 @@ const SearchPopup: React.FC<SearchPopupProps> = ({ isOpen, onClose }) => {
                             autoFocus
                             value={query}
                             onChange={(e) => setQuery(e.target.value)}
-                            placeholder={t("nav.searchPlaceholder")}
+                            placeholder={magento?.placeholder ?? ""}
                             className="flex-1 px-6 md:px-10 text-base md:text-lg font-bold text-black outline-none placeholder:text-[#b2b2b2] placeholder:font-medium bg-transparent min-w-0 text-left"
                         />
                         <button
@@ -228,34 +169,36 @@ const SearchPopup: React.FC<SearchPopupProps> = ({ isOpen, onClose }) => {
                         </button>
                     </form>
 
-                    {/* Suggestions Dropdown */}
-                    {(suggestions.length > 0 || isSearching || noResults) && (
+                    {/* Suggestions — Magento's tyre sizes matching what was typed, with Magento's texts */}
+                    {(query.length > 0 || loadError) && (isLoading || loadError || tooShort || noResults || suggestions.length > 0) && (
                         <div className="bg-white border border-gray-200 border-t-0 rounded-b-xl max-h-[300px] overflow-y-auto shadow-lg">
-                            {isSearching && (
+                            {isLoading && (
                                 <div className="p-3 space-y-2">
                                     {[0, 1, 2].map((i) => (
-                                        <div key={i} className="flex items-center gap-3 px-3 py-2">
-                                            <div className="w-10 h-10 bg-gray-200 rounded animate-pulse flex-shrink-0" />
-                                            <div className="flex-1 space-y-1.5">
-                                                <div className="h-3 w-3/4 bg-gray-200 rounded animate-pulse" />
-                                                <div className="h-2.5 w-1/2 bg-gray-200 rounded animate-pulse" />
-                                            </div>
+                                        <div key={i} className="px-3 py-2">
+                                            <div className="h-4 w-1/3 bg-gray-200 rounded animate-pulse" />
                                         </div>
                                     ))}
                                 </div>
                             )}
-                            {!isSearching && noResults && (
-                                <div className="px-6 md:px-10 py-6 text-center text-gray-400 text-sm font-medium">
-                                    {t("quickOrder.noProducts")}
+                            {!isLoading && loadError && (
+                                <div className="px-6 md:px-10 py-6 text-center text-red-600 text-sm font-medium">
+                                    <button type="button" onClick={() => { setLoadedFor(null); setMagento(null); }} className="underline cursor-pointer">↻</button>
                                 </div>
                             )}
-                            {!isSearching && suggestions.map((item, idx) => (
+                            {!isLoading && !loadError && tooShort && magento?.minCharsText && (
+                                <div className="px-6 md:px-10 py-6 text-center text-gray-400 text-sm font-medium">{magento.minCharsText}</div>
+                            )}
+                            {!isLoading && !loadError && noResults && (
+                                <div className="px-6 md:px-10 py-6 text-center text-gray-400 text-sm font-medium">{magento?.noResultText}</div>
+                            )}
+                            {!isLoading && !loadError && suggestions.map((size) => (
                                 <div
-                                    key={`${item.sku}-${idx}`}
-                                    onClick={() => handleSuggestionClick(item)}
+                                    key={size.label}
+                                    onClick={() => handleSuggestionClick(size)}
                                     className="px-6 md:px-10 py-3.5 hover:bg-gray-50 cursor-pointer border-b border-gray-50 last:border-0 transition-colors"
                                 >
-                                    <span dir="ltr" className="text-body-xl font-bold text-black">{item.label}</span>
+                                    <span dir="ltr" className="text-body-xl font-bold text-black">{size.label}</span>
                                 </div>
                             ))}
                         </div>

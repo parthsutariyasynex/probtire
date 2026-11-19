@@ -34,11 +34,11 @@ export default function BusinessOverviewEditModal({ isOpen, onClose, initialData
     useEffect(() => {
         if (initialData) {
             setFormData({
-                total_employees: initialData.total_employees || "",
-                trucks: initialData.trucks || "",
-                annual_revenue: initialData.annual_revenue || "",
-                business_model: initialData.business_model || "",
-                products_offered: initialData.products_offered || "",
+                total_employees: String(initialData.total_employees ?? ""),
+                trucks: String(initialData.trucks ?? ""),
+                annual_revenue: String(initialData.annual_revenue ?? ""),
+                business_model: String(initialData.business_model ?? ""),
+                products_offered: String(initialData.products_offered ?? ""),
             });
         }
     }, [initialData, isOpen]);
@@ -51,14 +51,16 @@ export default function BusinessOverviewEditModal({ isOpen, onClose, initialData
 
         try {
             // Note: Sending exactly the fields shown in the UI/Image
-            await api.put("/kleverapi/business-overview", formData);
+            const result: any = await api.put("/kleverapi/business-overview", formData);
+            // Magento answers { success, message }: a refused update is an error, with Magento's message.
+            if (result?.success === false) throw new Error(result?.message || t("common.failed"));
 
-            toast.success(t("dashboard.businessOverviewUpdated"), { id: toastId });
+            toast.success(result?.message || t("dashboard.businessOverviewUpdated"), { id: toastId });
             onSuccess();
             onClose();
         } catch (error: any) {
             console.error("Save Error:", error);
-            toast.error(t("common.failed"), { id: toastId });
+            toast.error(error?.message || t("common.failed"), { id: toastId });
         } finally {
             setIsSaving(false);
         }
@@ -93,9 +95,9 @@ export default function BusinessOverviewEditModal({ isOpen, onClose, initialData
                             <input
                                 type="text"
                                 className={inputClass}
-                                // value={formData.total_employees}
+                                value={formData.total_employees}
                                 onChange={(e) => setFormData({ ...formData, total_employees: e.target.value })}
-                                placeholder="e.g. 501"
+                                placeholder={t("dashboard.placeholderEmployees")}
                             />
                         </div>
 
@@ -104,9 +106,9 @@ export default function BusinessOverviewEditModal({ isOpen, onClose, initialData
                             <input
                                 type="text"
                                 className={inputClass}
-                                // value={formData.trucks}
+                                value={formData.trucks}
                                 onChange={(e) => setFormData({ ...formData, trucks: e.target.value })}
-                                placeholder="e.g. 100"
+                                placeholder={t("dashboard.placeholderTrucks")}
                             />
                         </div>
 
@@ -115,9 +117,9 @@ export default function BusinessOverviewEditModal({ isOpen, onClose, initialData
                             <input
                                 type="text"
                                 className={inputClass}
-                                // value={formData.annual_revenue}
+                                value={formData.annual_revenue}
                                 onChange={(e) => setFormData({ ...formData, annual_revenue: e.target.value })}
-                                placeholder="e.g. 5000000"
+                                placeholder={t("dashboard.placeholderRevenue")}
                             />
                         </div>
 
@@ -126,9 +128,9 @@ export default function BusinessOverviewEditModal({ isOpen, onClose, initialData
                             <input
                                 type="text"
                                 className={inputClass}
-                                // value={formData.business_model}
+                                value={formData.business_model}
                                 onChange={(e) => setFormData({ ...formData, business_model: e.target.value })}
-                                placeholder="e.g. B2B"
+                                placeholder={t("dashboard.placeholderBusinessModel")}
                             />
                         </div>
 
@@ -137,9 +139,9 @@ export default function BusinessOverviewEditModal({ isOpen, onClose, initialData
                             <input
                                 type="text"
                                 className={inputClass}
-                                // value={formData.products_offered}
+                                value={formData.products_offered}
                                 onChange={(e) => setFormData({ ...formData, products_offered: e.target.value })}
-                                placeholder="e.g. Tyres and Wheels"
+                                placeholder={t("dashboard.placeholderProducts")}
                             />
                         </div>
                     </div>

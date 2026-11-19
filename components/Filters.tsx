@@ -209,6 +209,7 @@
 
 import { useTranslation } from "@/hooks/useTranslation";
 import React, { useState, useRef, useEffect, useMemo } from "react";
+import type { MagentoOrderFilters } from "@/src/lib/magentoOrderView";
 
 interface FiltersProps {
     status: string;
@@ -224,6 +225,9 @@ interface FiltersProps {
     companyCode?: string;
     onCompanyCodeChange?: (code: string) => void;
     showCompanyFilters?: boolean;
+    /** Magento's own filter bar for this customer + store view. When given, it is the only source:
+     *  exactly Magento's filters, labels, options and button texts — nothing local is added. */
+    magento?: MagentoOrderFilters | null;
 }
 
 const Filters: React.FC<FiltersProps> = ({
@@ -240,22 +244,44 @@ const Filters: React.FC<FiltersProps> = ({
     companyCode = "",
     onCompanyCodeChange,
     showCompanyFilters = false,
+    magento = null,
 }) => {
     const { t } = useTranslation();
+    // With Magento's filter bar: exactly its filters, labels, options and button texts.
+    const showCompanyDropdown = magento ? !!magento.company : showCompanyFilters;
+    const showCompanyCode = magento ? !!magento.companyCode : showCompanyFilters;
+    const showStatus = magento ? !!magento.status : true;
+    const showOrder = magento ? !!magento.order : true;
+    const showSearchButton = magento ? !!magento.searchButton : true;
+    const showResetButton = magento ? !!magento.resetButton : true;
+    const optionText = (label: string) =>
+        magento ? label : (t(`data.${label}`) !== `data.${label}` ? t(`data.${label}`) : label);
     const [isStatusOpen, setIsStatusOpen] = useState(false);
     const [isOrderOpen, setIsOrderOpen] = useState(false);
     const [isCompanyOpen, setIsCompanyOpen] = useState(false);
 
-    const [statusOptions, setStatusOptions] = useState<any[]>(["All"]);
+    const magentoStatusOptions = (m: MagentoOrderFilters | null) =>
+        m?.status?.options?.map((o) => ({ label: o.label, value: o.value || "All" })) ?? [];
+    const magentoCompanyOptions = (m: MagentoOrderFilters | null) =>
+        m?.company?.options?.map((o) => ({ label: o.label, value: o.value || "All" })) ?? [];
+    const [statusOptions, setStatusOptions] = useState<any[]>(() => (magento ? magentoStatusOptions(magento) : ["All"]));
     const [orderOptions, setOrderOptions] = useState<any[]>(["All"]);
-    const [companyOptions, setCompanyOptions] = useState<any[]>([{ label: "All", value: "All" }]);
+    const [companyOptions, setCompanyOptions] = useState<any[]>(() => (magento ? magentoCompanyOptions(magento) : [{ label: "All", value: "All" }]));
 
     const statusRef = useRef<HTMLDivElement>(null);
     const orderRef = useRef<HTMLDivElement>(null);
     const companyRef = useRef<HTMLDivElement>(null);
 
+    // Magento's own status + company options (Magento's "All" option has value "")
+    useEffect(() => {
+        if (!magento) return;
+        setStatusOptions(magentoStatusOptions(magento));
+        setCompanyOptions(magentoCompanyOptions(magento));
+    }, [magento]);
+
     // Fetch dynamic filter options
     useEffect(() => {
+        if (magento) return;
         async function fetchFilterOptions() {
             try {
                 const res = await fetch("/api/kleverapi/my-orders/filter-options", {
@@ -318,7 +344,7 @@ const Filters: React.FC<FiltersProps> = ({
             }
         }
         fetchFilterOptions();
-    }, []);
+    }, [magento]);
 
     // Close dropdowns on outside click
     useEffect(() => {
@@ -342,28 +368,31 @@ const Filters: React.FC<FiltersProps> = ({
             const val = typeof opt === 'string' ? opt : (opt.value || opt.id || opt.label || opt.status || "");
             return val === status;
         });
-        if (!found) return status || "All";
+        if (!found) return magento ? "" : (status || "All");
         return typeof found === 'string' ? found : (found.label || found.name || status || "All");
-    }, [status, statusOptions]);
+    }, [status, statusOptions, magento]);
 
     const selectedCompanyLabel = useMemo(() => {
-        if (!company || company === "All") return "All";
+        if (!company || company === "All") {
+            const all = companyOptions.find((o: any) => (typeof o === "string" ? o : o.value) === "All");
+            return typeof all === "string" ? all : (all?.label || (magento ? "" : "All"));
+        }
         const found = companyOptions.find(opt => {
             const val = typeof opt === 'string' ? opt : (opt.value || opt.id || "");
             return val === company;
         });
         if (!found) return company;
         return typeof found === 'string' ? found : (found.label || found.name || company);
-    }, [company, companyOptions]);
+    }, [company, companyOptions, magento]);
 
     return (
         <div className="bg-white p-3 rounded-sm border border-[#ddd] mb-3 overflow-visible">
             <div className="flex flex-col md:flex-row gap-3 md:gap-5 items-end flex-wrap">
                 {/* Filter By Company Dropdown */}
-                {showCompanyFilters && (
+                {showCompanyDropdown && (
                     <div className="flex flex-col gap-1.5 min-w-full md:min-w-[180px]">
                         <label className="text-xs font-bold text-black uppercase tracking-wide">
-                            Filter By Company
+                            {magento ? magento.company?.label : "Filter By Company"}
                         </label>
                         <div className="relative" ref={companyRef}>
                             <button
@@ -411,9 +440,10 @@ const Filters: React.FC<FiltersProps> = ({
                 )}
 
                 {/* Status Dropdown */}
+                {showStatus && (
                 <div className="flex flex-col gap-1.5 min-w-full md:min-w-[180px]">
                     <label className="text-xs font-bold text-black uppercase tracking-wide">
-                        {t("common.filter")} {t("common.status")}
+                        {magento ? magento.status?.label : `${t("common.filter")} ${t("common.status")}`}
                     </label>
                     <div className="relative" ref={statusRef}>
                         <button
@@ -425,7 +455,7 @@ const Filters: React.FC<FiltersProps> = ({
                             }}
                             className="h-[38px] w-full px-3 bg-white border border-gray-300 text-black text-xs font-bold flex items-center justify-between cursor-pointer focus:outline-none focus:border-brand-yellow rounded-md transition-colors"
                         >
-                            <span>{t(`data.${selectedStatusLabel}`) !== `data.${selectedStatusLabel}` ? t(`data.${selectedStatusLabel}`) : selectedStatusLabel}</span>
+                            <span>{optionText(selectedStatusLabel)}</span>
                             <svg className={`w-3 h-3 text-gray-500 transition-transform duration-200 ${isStatusOpen ? "rotate-180" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7" />
                             </svg>
@@ -450,7 +480,7 @@ const Filters: React.FC<FiltersProps> = ({
                                                         : "text-gray-700 hover:bg-brand-yellow-light hover:text-black"
                                                     }`}
                                             >
-                                                {t(`data.${optionLabel}`) !== `data.${optionLabel}` ? t(`data.${optionLabel}`) : optionLabel}
+                                                {optionText(optionLabel)}
                                             </button>
                                         </li>
                                     );
@@ -460,10 +490,13 @@ const Filters: React.FC<FiltersProps> = ({
                     </div>
                 </div>
 
+                )}
+
                 {/* Search By Order # (Text Input) */}
+                {showOrder && (
                 <div className="flex-1 min-w-[200px]">
                     <label className="block text-xs font-bold text-black mb-1.5 uppercase tracking-wide">
-                        {t("common.filter")} {t("orders.orderId")}
+                        {magento ? magento.order?.label : `${t("common.filter")} ${t("orders.orderId")}`}
                     </label>
                     <div className="relative">
                         <input
@@ -475,17 +508,19 @@ const Filters: React.FC<FiltersProps> = ({
                                     onApplySearch();
                                 }
                             }}
-                            placeholder={t("m.search")}
+                            placeholder={magento ? undefined : t("m.search")}
                             className="w-full h-[38px] px-3 bg-white border border-gray-300 text-xs text-black focus:outline-none focus:border-brand-yellow transition-colors rounded-md placeholder:text-gray-400"
                         />
                     </div>
                 </div>
 
+                )}
+
                 {/* Filter By Company Code (Text Input) */}
-                {showCompanyFilters && (
+                {showCompanyCode && (
                     <div className="flex-1 min-w-[200px]">
                         <label className="block text-xs font-bold text-black mb-1.5 uppercase tracking-wide">
-                            Filter By Company Code
+                            {magento ? magento.companyCode?.label : "Filter By Company Code"}
                         </label>
                         <div className="relative">
                             <input
@@ -497,7 +532,7 @@ const Filters: React.FC<FiltersProps> = ({
                                         onApplySearch();
                                     }
                                 }}
-                                placeholder="Company Code"
+                                placeholder={magento ? undefined : "Company Code"}
                                 className="w-full h-[38px] px-3 bg-white border border-gray-300 text-xs text-black focus:outline-none focus:border-brand-yellow transition-colors rounded-md placeholder:text-gray-400"
                             />
                         </div>
@@ -506,18 +541,22 @@ const Filters: React.FC<FiltersProps> = ({
 
                 {/* Actions */}
                 <div className="flex gap-2 min-w-fit">
+                    {showSearchButton && (
                     <button
                         onClick={onApplySearch}
                         className="h-[38px] px-6 bg-brand-yellow hover:bg-brand-yellow-dark text-black text-xs font-bold uppercase tracking-wider transition-all rounded-md shadow-sm active:scale-95"
                     >
-                        {t("m.search")}
+                        {magento ? magento.searchButton : t("m.search")}
                     </button>
+                    )}
+                    {showResetButton && (
                     <button
                         onClick={onReset}
                         className="h-[38px] px-6 bg-gray-100 hover:bg-gray-200 text-black text-xs font-bold uppercase tracking-wider transition-all rounded-md shadow-sm active:scale-95 border border-gray-200"
                     >
-                        {t("m.reset")}
+                        {magento ? magento.resetButton : t("m.reset")}
                     </button>
+                    )}
                 </div>
             </div>
         </div>

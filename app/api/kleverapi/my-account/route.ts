@@ -4,6 +4,7 @@ import { getRequestToken } from '@/lib/api/auth-helper';
 import { CUSTOMER_QUERY } from '@/src/graphql/queries';
 import { UPDATE_CUSTOMER_MUTATION } from '@/src/graphql/mutations';
 import { toStoreCode } from "@/lib/store/website";
+import { getMagentoAccountPage } from "@/src/lib/magentoOrderView";
 
 const MAGENTO_GRAPHQL = (process.env.NEXT_PUBLIC_MAGENTO_BASE_URL || "") + "/graphql";
 
@@ -25,6 +26,14 @@ export async function GET(request: NextRequest) {
         const token = await getRequestToken(request);
         if (!token) {
             return NextResponse.json({ message: 'Authentication required.' }, { status: 401 });
+        }
+
+        // ?view=magento (Sales Person My Account) — Magento's own My Account page for this login and
+        // store view: blocks, box titles, lines and links. 502 when Magento's page cannot be read.
+        if (new URL(request.url).searchParams.get('view') === 'magento') {
+            const page = await getMagentoAccountPage(toStoreCode(getLocaleFromRequest(request), request), `Bearer ${token}`);
+            if (!page) return NextResponse.json({ message: "Magento's My Account page could not be read." }, { status: 502 });
+            return NextResponse.json(page);
         }
 
         const res = await fetch(MAGENTO_GRAPHQL, {

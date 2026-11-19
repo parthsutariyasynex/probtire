@@ -4,6 +4,9 @@ import { useTranslation } from "@/hooks/useTranslation";
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import useSWR from "swr";
+import { useSession } from "next-auth/react";
+import type { MagentoAddressBook } from "@/src/lib/magentoOrderView";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchAddresses, deleteAddress, setDefaultAddress } from "@/store/actions/addressActions";
 import { RootState } from "@/store/store";
@@ -98,6 +101,19 @@ export default function Addresses() {
   const [actionLoading, setActionLoading] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
+  const { data: session } = useSession();
+  const accessToken = (session as any)?.accessToken as string | undefined;
+  // Magento's own Address Book page: the "Additional Address Entries" title and its
+  // "no other address entries" message, as Magento shows them in this store view.
+  const { data: magentoBook } = useSWR<MagentoAddressBook>(
+    accessToken ? ["/api/kleverapi/address-book", accessToken] : null,
+    async ([url, tk]: [string, string]) => {
+      const res = await fetch(url, { headers: { Authorization: `Bearer ${tk}` }, cache: "no-store" });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return res.json();
+    },
+    { revalidateOnFocus: false }
+  );
 
   useEffect(() => {
     // @ts-ignore
@@ -196,10 +212,14 @@ export default function Addresses() {
       {/* Section 2: Additional Addresses */}
       <div>
         <div className="flex items-center gap-4 mb-4">
-          <h2 className="text-sm font-bold text-black uppercase tracking-widest whitespace-nowrap">{t("addressBook.additionalAddresses")}</h2>
+          <h2 className="text-sm font-bold text-black uppercase tracking-widest whitespace-nowrap">{magentoBook?.additional?.title}</h2>
           <div className="h-[1px] flex-1 bg-gray-300"></div>
         </div>
 
+        {/* No other addresses: only Magento's message, as Magento shows it (no table, no headers). */}
+        {filteredAddresses.length === 0 && !loading && !error ? (
+          <p className="text-black text-body">{magentoBook?.additional?.emptyMessage}</p>
+        ) : (
         <div className="hidden md:block overflow-x-auto w-full">
           <table className="w-full border-collapse min-w-[640px] border border-[#ddd] bg-white">
             <thead>
@@ -224,16 +244,6 @@ export default function Addresses() {
                   </td>
                 </tr>
               )}
-              {filteredAddresses.length === 0 && !loading && !error && (
-                <tr>
-                  <td colSpan={6} className="px-3 py-24 text-center border-b border-gray-200">
-                    <p className="text-gray-400 text-xs italic tracking-[0.2em] uppercase font-black">
-                      {t("addressBook.noAdditionalAddresses")}
-                    </p>
-                  </td>
-                </tr>
-              )}
-
               {filteredAddresses.slice((currentPage - 1) * pageSize, currentPage * pageSize).map((address: any, idx: number) => (
                 <tr key={address.id} className={`${idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'} border-b border-gray-200 hover:bg-gray-50/50 transition-colors`}>
                   <td className="px-3 py-2 border-r border-gray-200 font-medium text-black uppercase ltr:text-left rtl:text-right text-body">{address.firstname}</td>
@@ -251,6 +261,7 @@ export default function Addresses() {
             </tbody>
           </table>
         </div>
+        )}
 
         {filteredAddresses.length > 0 && (
           <div className="mt-6">

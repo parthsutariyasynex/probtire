@@ -190,7 +190,7 @@ export default function MyOrdersPage() {
                     <main className="flex-1 w-full min-w-0">
                         {/* Header */}
                         <div className="flex items-center gap-4 mb-8">
-                            <h1 className="text-xl font-black text-black uppercase tracking-tight">
+                            <h1 className="text-xl font-bold text-black uppercase tracking-tight">
                                 {t("nav.myOrders")}
                             </h1>
                             <div className="h-[2px] flex-1 bg-gradient-to-r from-yellow-400 to-transparent"></div>

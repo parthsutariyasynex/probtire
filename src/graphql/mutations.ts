@@ -83,18 +83,18 @@ export const CREATE_CUSTOMER_TOKEN_WITH_OTP_MUTATION = /* GraphQL */ `
   }
 `;
 
-export const INITIATE_PASSWORD_RESET_WITH_OTP_MUTATION = /* GraphQL */ `
-  mutation InitiatePasswordResetWithOtp($mobile: String!, $otp: String!, $template: String!, $websiteId: Int!) {
-    initiatePasswordResetWithOTP(
-      mobile: $mobile
-      otp: $otp
-      template: $template
-      websiteId: $websiteId
-    ) {
-      message
-    }
-  }
-`;
+// export const INITIATE_PASSWORD_RESET_WITH_OTP_MUTATION = /* GraphQL */ `
+//   mutation InitiatePasswordResetWithOtp($mobile: String!, $otp: String!, $template: String!, $websiteId: Int!) {
+//     initiatePasswordResetWithOTP(
+//       mobile: $mobile
+//       otp: $otp
+//       template: $template
+//       websiteId: $websiteId
+//     ) {
+//       message
+//     }
+//   }
+// `;
 
 export const CONTACT_US_MUTATION = /* GraphQL */ `
   mutation ContactUs($input: ContactUsInput!) {
@@ -532,8 +532,8 @@ export const KLEVER_CANCEL_ORDER_MUTATION = /* GraphQL */ `
 `;
 
 export const KLEVER_CONFIRM_ORDER_MUTATION = /* GraphQL */ `
-  mutation KleverConfirmOrder($orderId: Int!, $request: KleverConfirmOrderRequestInput!) {
-    kleverConfirmOrder(orderId: $orderId, request: $request) {
+  mutation KleverConfirmOrder($orderId: Int!, $input: KleverConfirmOrderInput) {
+    kleverConfirmOrder(orderId: $orderId, input: $input) {
       success
       message
       order_id
@@ -872,6 +872,16 @@ export const KLEVER_SITE_LOGIN_SWITCH_MUTATION = /* GraphQL */ `
     kleverSiteLoginSwitch(account_id: $account_id) {
       token
       account { ${SITE_LOGIN_ACCOUNT_FIELDS} }
+    }
+  }
+`;
+
+// Magento's one-time storefront login link (…/sitelogin/token/login/?t=…) for the logged-in
+// customer's own account — used server-side to read Magento's own order page.
+export const KLEVER_SITE_LOGIN_URL_MUTATION = /* GraphQL */ `
+  mutation KleverSiteLoginUrl($account_id: Int!) {
+    kleverSiteLoginSwitch(account_id: $account_id) {
+      login_url
     }
   }
 `;

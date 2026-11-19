@@ -12,7 +12,7 @@ export default function PopupDemo() {
     return (
         <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-6 space-y-8">
             <div className="text-center space-y-2">
-                <h1 className="text-4xl font-black text-gray-900 tracking-tight">PREMIUM POPUPS</h1>
+                <h1 className="text-4xl font-bold text-gray-900 tracking-tight">PREMIUM POPUPS</h1>
                 <p className="text-gray-500">Smooth, GPU-accelerated transitions powered by Framer Motion.</p>
             </div>
 

@@ -132,7 +132,7 @@ function EditAccountPageContent() {
 
             <main className="flex-1 p-6 md:p-12 min-h-0 bg-[#FDFDFD]">
                 <div className="w-full">
-                    <h1 className="text-h3 sm:text-h2 md:text-h1-sm font-black text-black mb-6 md:mb-10 uppercase tracking-tight">
+                    <h1 className="text-h3 sm:text-h2 md:text-h1-sm font-bold text-black mb-6 md:mb-10 uppercase tracking-tight">
                         {t("account.editAccountInformation")}
                     </h1>
 

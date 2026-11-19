@@ -4,6 +4,7 @@ import { getRequestToken } from '@/lib/api/auth-helper';
 import { KLEVER_FORECAST_LIST_QUERY } from '@/src/graphql/queries';
 import { KLEVER_UPLOAD_FORECAST_MUTATION } from '@/src/graphql/mutations';
 import { toStoreCode } from "@/lib/store/website";
+import { getMagentoForecastEmptyMessage } from "@/src/lib/magentoOrderView";
 
 const MAGENTO_GRAPHQL = (process.env.NEXT_PUBLIC_MAGENTO_BASE_URL || "") + "/graphql";
 
@@ -16,6 +17,14 @@ export async function GET(request: NextRequest) {
         if (!token) return NextResponse.json({ message: 'Authentication required.' }, { status: 401 });
 
         const { searchParams } = new URL(request.url);
+
+        // ?view=empty-message — Magento's own "No records found" text on My Forecast for this store view.
+        if (searchParams.get('view') === 'empty-message') {
+            const message = await getMagentoForecastEmptyMessage(toStoreCode(getLocaleFromRequest(request), request), `Bearer ${token}`);
+            if (!message) return NextResponse.json({ message: "Magento's My Forecast text could not be read." }, { status: 502 });
+            return NextResponse.json({ message });
+        }
+
         const pageSize = parseInt(searchParams.get('pageSize') || '10', 10) || 10;
         const currentPage = parseInt(searchParams.get('currentPage') || '1', 10) || 1;
 
